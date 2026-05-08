@@ -50,10 +50,10 @@
 
 <div id="thunder-overlay" class="fixed inset-0 pointer-events-none z-50 transition-colors duration-500"></div>
 
-<!-- 全新手機優先 UI 佈局 (Top, Middle-Transparent, Bottom) -->
+<!-- 全新手機優先 UI 佈局 -->
 <div id="main-ui" class="fixed inset-0 ui-overlay z-10 transition-all duration-500">
     
-    <!-- 頂部：資訊與控制區 (緊湊配置，不佔空間) -->
+    <!-- 頂部：資訊與控制區 -->
     <div class="w-full flex-none p-2 md:p-4 flex flex-col md:flex-row gap-2 justify-between items-start">
         <div id="main-dashboard" class="glass rounded-xl p-3 w-full md:w-[24rem] shadow-lg transition-all duration-500">
             <div class="flex justify-between items-center mb-1">
@@ -72,7 +72,7 @@
                     <div id="frozen-balance" class="text-[8px] text-gray-500 mt-0.5">凍結 0</div>
                 </div>
                 <div id="real-pnl-container" class="flex flex-col items-end">
-                    <span class="text-[9px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">今日戰果</span>
+                    <span class="text-[9px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">已實現戰果</span>
                     <div id="today-total-result" class="text-base md:text-lg font-black font-mono">加 0</div>
                 </div>
                 <div id="sim-pnl-container" class="hidden flex flex-col items-end">
@@ -97,31 +97,31 @@
                     <span id="market-price" class="text-xl md:text-2xl font-mono font-black text-white">連線中</span>
                     <span id="price-change" class="text-[9px] md:text-[10px] font-bold text-gray-400">0.00 %</span>
                 </div>
-                <div class="text-right">
-                    <span class="text-[8px] text-gray-500 uppercase mr-1">昨收</span>
+                <div class="text-right flex flex-col items-end">
+                    <span class="text-[8px] text-gray-500 uppercase">昨收</span>
                     <span id="base-price-display" class="text-xs md:text-sm font-mono font-bold text-gray-300">---</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 中央戰區 (維持全透明，讓 3D 戰場完美呈現，不可遮擋) -->
-    <div class="flex-1 min-h-[35vh] w-full pointer-events-none"></div>
+    <!-- 中央戰區 (不可遮擋) -->
+    <div class="flex-1 min-h-[30vh] w-full pointer-events-none"></div>
 
-    <!-- 底部：軍令操作與報表區 (固定於底部) -->
-    <div class="w-full flex-none p-2 md:p-4 flex flex-col md:flex-row gap-2 max-h-[50vh]">
+    <!-- 底部：軍令操作與報表區 -->
+    <div class="w-full flex-none p-2 md:p-4 flex flex-col md:flex-row gap-2 max-h-[55vh]">
         
-        <!-- 左/上：部隊與掛單列表 (限制高度，內部滾動) -->
-        <div class="glass rounded-xl flex flex-col w-full md:w-80 flex-1 md:flex-none h-full max-h-[22vh] md:max-h-[30vh]">
+        <!-- 左/上：部隊與掛單列表 (優化高度) -->
+        <div class="glass rounded-xl flex flex-col w-full md:w-96 flex-1 md:flex-none h-full max-h-[25vh] md:max-h-[35vh]">
             <div class="flex border-b border-white/10">
-                <button onclick="switchTab('units')" id="tab-units" class="tab-btn active">未平倉</button>
-                <button onclick="switchTab('history')" id="tab-history" class="tab-btn">戰史</button>
-                <button onclick="switchTab('pending')" id="tab-pending" class="tab-btn">待命</button>
+                <button onclick="switchTab('units')" id="tab-units" class="tab-btn active">未平倉部隊</button>
+                <button onclick="switchTab('history')" id="tab-history" class="tab-btn">今日戰史</button>
+                <button onclick="switchTab('pending')" id="tab-pending" class="tab-btn">待命軍令</button>
             </div>
             <div id="tab-container" class="p-2 flex-1 overflow-y-auto scrollbar-hide">
-                <div id="tab-content-units" class="space-y-1.5"></div>
-                <div id="tab-content-history" class="space-y-1.5 hidden"></div>
-                <div id="tab-content-pending" class="space-y-1.5 hidden"></div>
+                <div id="tab-content-units" class="space-y-2"></div>
+                <div id="tab-content-history" class="space-y-2 hidden"></div>
+                <div id="tab-content-pending" class="space-y-2 hidden"></div>
             </div>
         </div>
 
@@ -181,14 +181,14 @@
             
             <div class="grid grid-cols-2 gap-3 relative z-10">
                 <div class="bg-black/40 border border-white/5 p-3 rounded-xl shadow-inner">
-                    <span class="text-[9px] text-gray-400 font-bold uppercase tracking-widest mb-1 block">凱迪指標 (KD)</span>
+                    <span class="text-[9px] text-gray-400 font-bold uppercase tracking-widest mb-1 block">凱迪指標 Ｋ Ｄ</span>
                     <div class="flex items-baseline justify-around">
                         <span id="kd-k" class="text-lg font-mono font-black text-sky-400">K --</span>
                         <span id="kd-d" class="text-lg font-mono font-black text-orange-400">D --</span>
                     </div>
                 </div>
                 <div class="bg-black/40 border border-white/5 p-3 rounded-xl shadow-inner text-center">
-                    <span class="text-[9px] text-gray-400 font-bold uppercase tracking-widest mb-1 block">動能指標 (MACD)</span>
+                    <span class="text-[9px] text-gray-400 font-bold uppercase tracking-widest mb-1 block">動能指標 麥克滴</span>
                     <div id="macd-val" class="text-xl font-mono font-black text-white">---</div>
                 </div>
             </div>
@@ -220,7 +220,7 @@
 <div id="api-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300 p-4">
     <div class="glass rounded-2xl p-5 w-full max-w-sm border-white/20">
         <h2 class="text-lg font-black text-center mb-2 tracking-widest">天道連線金鑰</h2>
-        <p class="text-[10px] text-gray-400 mb-4 text-center leading-relaxed">預設全域爬蟲。若有專屬金鑰可於此填寫。</p>
+        <p class="text-[10px] text-gray-400 mb-4 text-center leading-relaxed">預設使用全域爬蟲。若有專屬金鑰可於此填寫。</p>
         <div class="space-y-3">
             <input id="api-key-input" type="text" placeholder="留空使用預設通道" class="w-full bg-black/50 border border-white/20 rounded-lg px-3 py-2 text-white focus:border-yellow-500 outline-none font-mono text-xs">
             <div class="flex gap-2">
@@ -450,7 +450,6 @@ function init3D() {
     battleLine = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 60), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }));
     scene.add(battleLine);
 
-    // 拉近鏡頭，確保城池森林清晰
     camera.position.set(0, 35, 60); 
     camera.lookAt(0, 0, 0);
 
@@ -470,18 +469,15 @@ function onWindowResize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-// 產生方陣排兵 (3排 x 8列)
 function spawnBasePhalanx() {
     const rows = 3, cols = 8;
     for(let r=0; r<rows; r++) {
         for(let c=0; c<cols; c++) {
             const zPos = (c - cols/2 + 0.5) * 4;
-            // 紅方陣
             const rm = createSoldier(0x882222, false);
             rm.userData.baseX = -12 - r*3;
             rm.position.set(rm.userData.baseX, 0, zPos);
             baseRedArmy.push(rm); scene.add(rm);
-            // 綠方陣
             const gm = createSoldier(0x226622, false);
             gm.userData.baseX = 12 + r*3;
             gm.position.set(gm.userData.baseX, 0, zPos);
@@ -504,7 +500,6 @@ function syncPlayerTroopsFromState() {
     gameState.units.forEach(u => { if(u.city === gameState.activeCity) spawnPlayerTroop(u.side); });
 }
 
-// 方陣衝鋒動畫
 function triggerAttackAnim(side) {
     const attackers = side === 'LONG' ? [...playerRedArmy, ...baseRedArmy] : [...playerGreenArmy, ...baseGreenArmy];
     const dir = side === 'LONG' ? 1 : -1; 
@@ -538,13 +533,12 @@ function updateVisuals() {
     const p = safeNum(city.price, city.basePrice);
     const bP = safeNum(city.basePrice, 100);
     const diff = bP>0 ? (p-bP)/bP : 0;
-    const drift = safeNum(diff * 350, 0); // 限縮位移避免出框
+    const drift = safeNum(diff * 350, 0);
     
     battleLine.position.x += (drift - battleLine.position.x) * 0.15;
     if(!battleLine.material.color.equals(new THREE.Color(0xffffff))) 
         battleLine.material.color.setHex(diff>=0?0xef4444:0x22c55e);
 
-    // 方陣整體隨戰線微微推移
     const shift = drift * 0.3;
     [...baseRedArmy, ...playerRedArmy].forEach(m => { if(!m.userData.isAttacking) m.position.x += ((m.userData.baseX + shift) - m.position.x) * 0.1; });
     [...baseGreenArmy, ...playerGreenArmy].forEach(m => { if(!m.userData.isAttacking) m.position.x += ((m.userData.baseX + shift) - m.position.x) * 0.1; });
@@ -581,7 +575,7 @@ function checkTimeEvents() {
             }
         }
         currentMarketState = newStatus;
-        updateOrderButtonsUI(); // 更新按鈕狀態
+        updateOrderButtonsUI();
     }
 
     const label = document.getElementById('market-status-label');
@@ -612,7 +606,6 @@ function checkTimeEvents() {
     }
 }
 
-// 嚴謹的休市物理鎖死UI
 function updateOrderButtonsUI() {
     const btnL = document.getElementById('btn-long');
     const btnS = document.getElementById('btn-short');
@@ -1044,18 +1037,61 @@ function updateUI() {
 
 function renderLists() {
     const cont = document.getElementById(`tab-content-${gameState.currentTab}`); if(!cont) return; cont.innerHTML = '';
+    
     if(gameState.currentTab === 'units'){
-        if(gameState.units.length === 0) cont.innerHTML = '<div class="text-[9px] text-gray-600 text-center py-4 font-bold tracking-widest">無駐紮部隊</div>';
-        gameState.units.forEach(u => {
-            const c = CITIES[u.city]; const m = c ? safeNum(c.price, c.basePrice) : safeNum(u.entry, 0);
-            const p = (u.side==='LONG' ? (m-u.cost) : (u.cost-m))*u.qty*1000;
-            const tag = u.isSim ? '<span class="bg-sky-500/20 border border-sky-500/30 text-sky-400 px-1 py-0.5 rounded text-[8px] ml-1">沙盤</span>' : '';
-            cont.innerHTML += `<div class="bg-black/40 rounded-lg p-2 border-r-2 ${p>=0?'border-red-500':'border-green-500'} text-right mb-1.5 shadow-inner">
-                <button onclick="settle(${u.id})" class="float-left text-[9px] bg-white/10 hover:bg-white/20 border border-white/20 px-2 py-1 rounded text-gray-300">結算</button>
-                <div class="text-[10px] text-gray-400 font-bold mb-0.5">${c?.name || u.city} <span class="${u.side==='LONG'?'text-red-400':'text-green-400'}">${u.side==='LONG'?'多':'空'}</span> ${safeNum(u.qty).toFixed(1)} 營 ${tag}</div>
-                <div class="text-xs font-black font-mono ${p>=0?'text-red-500':'text-green-500'}">戰功 ${Math.floor(safeNum(p)).toLocaleString()}</div>
-            </div>`;
-        });
+        if(gameState.units.length === 0) {
+            cont.innerHTML = '<div class="text-[9px] text-gray-600 text-center py-4 font-bold tracking-widest">無駐紮部隊</div>';
+        } else {
+            gameState.units.forEach(u => {
+                const c = CITIES[u.city]; 
+                const m = c ? safeNum(c.price, c.basePrice) : safeNum(u.entry, 0);
+                const costVal = safeNum(u.cost);
+                const principal = costVal * u.qty * 1000;
+                
+                const p = (u.side==='LONG' ? (m-costVal) : (costVal-m))*u.qty*1000;
+                const roi = principal > 0 ? (p / principal) * 100 : 0;
+                const roiStr = roi >= 0 ? `+${roi.toFixed(2)} %` : `${roi.toFixed(2)} %`;
+                const totalValue = principal + p; 
+                
+                const tag = u.isSim ? '<span class="bg-sky-500/20 border border-sky-500/30 text-sky-400 px-1 py-0.5 rounded text-[8px] ml-1">沙盤推演</span>' : '';
+                
+                cont.innerHTML += `
+                <div class="bg-black/40 rounded-xl p-3 border-r-4 ${p>=0?'border-red-500':'border-green-500'} mb-2 shadow-inner">
+                    <div class="flex justify-between items-start border-b border-white/10 pb-2 mb-2">
+                        <div>
+                            <div class="flex items-center gap-1.5 mb-1">
+                                <span class="text-sm text-gray-200 font-bold">${c?.name || u.city}</span>
+                                <span class="${u.side==='LONG'?'text-red-400 bg-red-400/10':'text-green-400 bg-green-400/10'} px-1.5 py-0.5 rounded text-[10px] font-bold tracking-widest">${u.side==='LONG'?'做多':'做空'}</span>
+                                ${tag}
+                            </div>
+                            <div class="text-[10px] text-gray-400">派遣 <span class="text-white font-mono">${safeNum(u.qty).toFixed(1)}</span> 營</div>
+                        </div>
+                        <div class="text-right flex flex-col items-end">
+                            <span class="text-[9px] text-gray-500 tracking-widest mb-0.5">未實現戰功</span>
+                            <div class="text-sm font-black font-mono ${p>=0?'text-red-500':'text-green-500'}">${p>=0?'加':'減'} ${Math.abs(Math.floor(safeNum(p))).toLocaleString()}</div>
+                            <div class="text-[10px] font-bold ${p>=0?'text-red-400':'text-green-400'}">${roiStr}</div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between text-[10px] mb-3 px-1">
+                        <div class="flex flex-col">
+                            <span class="text-gray-500 tracking-widest mb-0.5">均價成本</span>
+                            <span class="text-gray-200 font-mono">${costVal.toFixed(2)}</span>
+                        </div>
+                        <div class="flex flex-col text-center">
+                            <span class="text-gray-500 tracking-widest mb-0.5">目前市價</span>
+                            <span class="text-gray-200 font-mono">${m.toFixed(2)}</span>
+                        </div>
+                        <div class="flex flex-col text-right">
+                            <span class="text-gray-500 tracking-widest mb-0.5">帳面戰力</span>
+                            <span class="text-gray-200 font-mono">${Math.floor(totalValue).toLocaleString()}</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <button onclick="settle(${u.id})" class="text-[10px] bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 rounded-lg transition-colors font-bold text-gray-300 tracking-widest">結算撤軍</button>
+                    </div>
+                </div>`;
+            });
+        }
     } else if(gameState.currentTab === 'history'){
         if(gameState.history.length === 0) cont.innerHTML = '<div class="text-[9px] text-gray-600 text-center py-4 font-bold tracking-widest">尚無作戰紀錄</div>';
         gameState.history.slice(0, 15).forEach(h => {
