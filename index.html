@@ -285,6 +285,7 @@ let gameState = {
 let isSimMode = false;
 let realStateSnapshot = null;
 let currentMarketState = "CLOSED"; // PRE, OPEN, CLOSED
+let lastPriceForAnim = 0; // 用於觸發攻擊動畫
 
 function saveState() {
     if (!isSimMode) {
@@ -320,11 +321,51 @@ function loadState() {
     } catch(e) { console.error("自選股讀取失敗", e); }
 }
 
-// --- Three.js 戰場渲染與統帥專屬部隊 ---
+// --- Three.js 戰場渲染與立體戰棋武將 ---
 let scene, camera, renderer, battleLine;
 let baseRedArmy = [], baseGreenArmy = [];
 let playerRedArmy = [], playerGreenArmy = []; // 專屬統帥入陣部隊
 let currentPrice = 0;
+
+// 建立立體戰棋模型函式
+function createSoldier(colorHex, isPlayer) {
+    const group = new THREE.Group();
+    const scale = isPlayer ? 1.5 : 0.8; // 統帥武將較大，市場士兵較小
+
+    const mat = new THREE.MeshStandardMaterial({
+        color: colorHex,
+        emissive: isPlayer ? colorHex : 0x000000,
+        emissiveIntensity: isPlayer ? 0.6 : 0,
+        metalness: isPlayer ? 0.8 : 0.2,
+        roughness: 0.3
+    });
+
+    // 身體 (圓柱體)
+    const bodyGeo = new THREE.CylinderGeometry(0.4 * scale, 0.6 * scale, 1.6 * scale, 8);
+    const body = new THREE.Mesh(bodyGeo, mat);
+    body.position.y = 0.8 * scale;
+    group.add(body);
+
+    // 頭部 (球體)
+    const headGeo = new THREE.SphereGeometry(0.5 * scale, 8, 8);
+    const head = new THREE.Mesh(headGeo, mat);
+    head.position.y = 1.9 * scale;
+    group.add(head);
+
+    // 專屬發光長矛 (僅限統帥部隊)
+    if (isPlayer) {
+        const wpnGeo = new THREE.CylinderGeometry(0.05 * scale, 0.05 * scale, 2.5 * scale, 4);
+        const wpnMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.8 });
+        const wpn = new THREE.Mesh(wpnGeo, wpnMat);
+        wpn.position.set(0.6 * scale, 1.2 * scale, 0.5 * scale);
+        wpn.rotation.x = Math.PI / 4;
+        group.add(wpn);
+    }
+
+    // 記錄基礎高度供動畫使用
+    group.userData.isAttacking = false;
+    return group;
+}
 
 function init3D() {
     scene = new THREE.Scene();
@@ -339,13 +380,13 @@ function init3D() {
     document.body.appendChild(renderer.domElement);
 
     // 大幅調亮光線，解決「軍隊太暗」的問題
-    scene.add(new THREE.AmbientLight(0xffffff, 3.5));
-    const d = new THREE.DirectionalLight(0xffffff, 4.0);
+    scene.add(new THREE.AmbientLight(0xffffff, 4.0));
+    const d = new THREE.DirectionalLight(0xffffff, 5.0);
     d.position.set(20, 50, 20); scene.add(d);
     
     scene.add(new THREE.GridHelper(300, 100, 0x222222, 0x111111));
 
-    battleLine = new THREE.Mesh(new THREE.BoxGeometry(1, 0.4, 50), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 }));
+    battleLine = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.4, 50), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 }));
     scene.add(battleLine);
 
     camera.position.set(0, 35, 55); camera.lookAt(0, 0, 0);
@@ -367,33 +408,25 @@ function onWindowResize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-// 產生暗色的「市場趨勢力道」大軍 (避免與玩家混淆)
+// 產生暗色的「市場趨勢力道」大軍 (避免與統帥混淆)
 function spawnBaseMarketTroops() {
-    const geo = new THREE.BoxGeometry(1.2, 1.2, 1.2);
-    const redMat = new THREE.MeshStandardMaterial({ color: 0x661111 }); // 暗紅
-    const greenMat = new THREE.MeshStandardMaterial({ color: 0x115511 }); // 暗綠
-    
-    for(let i=0; i<30; i++){
-        const r = new THREE.Mesh(geo, redMat);
-        r.position.set(-25 - Math.random()*10, 0.6, (Math.random()-0.5)*40);
+    for(let i=0; i<25; i++){
+        // 紅軍
+        const r = createSoldier(0x882222, false);
+        r.position.set(-25 - Math.random()*15, 0, (Math.random()-0.5)*40);
         baseRedArmy.push(r); scene.add(r);
         
-        const g = new THREE.Mesh(geo, greenMat);
-        g.position.set(25 + Math.random()*10, 0.6, (Math.random()-0.5)*40);
+        // 綠軍
+        const g = createSoldier(0x226622, false);
+        g.position.set(25 + Math.random()*15, 0, (Math.random()-0.5)*40);
         baseGreenArmy.push(g); scene.add(g);
     }
 }
 
-// 產生巨大的「統帥專屬」部隊 (只有真正成交入陣才顯示，解決視覺誤導)
+// 產生巨大的「統帥專屬」武將戰棋
 function spawnPlayerTroop(side) {
-    const geo = new THREE.BoxGeometry(3.0, 3.0, 3.0); // 體型巨大化
-    const mat = new THREE.MeshStandardMaterial({
-        color: side === 'LONG' ? 0xff3333 : 0x33ff33, // 鮮豔紅綠
-        emissive: side === 'LONG' ? 0xaa0000 : 0x00aa00, // 高光發亮
-        metalness: 0.5, roughness: 0.2
-    });
-    const m = new THREE.Mesh(geo, mat);
-    m.position.set(side === 'LONG' ? -15 : 15, 1.5, (Math.random()-0.5)*20);
+    const m = createSoldier(side === 'LONG' ? 0xff2222 : 0x22ff22, true);
+    m.position.set(side === 'LONG' ? -15 : 15, 0, (Math.random()-0.5)*20);
     scene.add(m);
     
     if (side === 'LONG') playerRedArmy.push(m);
@@ -418,6 +451,32 @@ function syncPlayerTroopsFromState() {
     });
 }
 
+// --- 動態躍擊動畫引擎 ---
+function triggerAttackAnim(side) {
+    const attackers = side === 'LONG' ? [...playerRedArmy, ...baseRedArmy] : [...playerGreenArmy, ...baseGreenArmy];
+    const dir = side === 'LONG' ? 1 : -1; // 多軍往右衝，空軍往左衝
+    
+    attackers.forEach(m => {
+        if (m.userData.isAttacking) return;
+        m.userData.isAttacking = true;
+        const origY = m.position.y;
+        
+        new TWEEN.Tween(m.position)
+            .to({ y: origY + 4, x: m.position.x + dir * 6 }, 200)
+            .easing(TWEEN.Easing.Quadratic.Out)
+            .yoyo(true)
+            .repeat(1)
+            .onComplete(() => { m.userData.isAttacking = false; })
+            .start();
+    });
+
+    // 戰線閃爍碰撞特效
+    battleLine.material.color.setHex(0xffffff);
+    setTimeout(() => {
+        battleLine.material.color.setHex(side === 'LONG' ? 0xef4444 : 0x22c55e);
+    }, 300);
+}
+
 function updateVisuals() {
     const city = CITIES[gameState.activeCity];
     if(!city) return;
@@ -428,29 +487,42 @@ function updateVisuals() {
     
     const diff = bP > 0 ? (p - bP) / bP : 0;
     const drift = safeNum(diff * 450, 0);
-    battleLine.position.x = drift;
-    battleLine.material.color.setHex(diff >= 0 ? 0xef4444 : 0x22c55e);
+    
+    // 戰線位移
+    battleLine.position.x += (drift - battleLine.position.x) * 0.2;
+    if (!battleLine.material.color.equals(new THREE.Color(0xffffff))) { // 若非閃爍狀態
+        battleLine.material.color.setHex(diff >= 0 ? 0xef4444 : 0x22c55e);
+    }
 
-    baseRedArmy.forEach((m, i) => {
-        const s = diff >= 0 ? 1 + Math.abs(diff)*25 : 1;
-        m.scale.set(s,s,s); m.position.y = (0.6*s);
-        const tx = Math.min(drift - (2*s), -10 + (diff >= 0 ? Math.abs(diff)*180 : 0));
-        m.position.x += (safeNum(tx, -10) - m.position.x) * 0.1;
+    // 更新非攻擊狀態下的部隊基準位移
+    baseRedArmy.forEach(m => {
+        const s = diff >= 0 ? 1 + Math.abs(diff)*8 : 1;
+        m.scale.set(s,s,s);
+        if (!m.userData.isAttacking) {
+            const tx = Math.min(drift - (2*s) - 2, -8 + (diff >= 0 ? Math.abs(diff)*100 : 0));
+            m.position.x += (safeNum(tx, -8) - m.position.x) * 0.1;
+        }
     });
-    baseGreenArmy.forEach((m, i) => {
-        const s = diff < 0 ? 1 + Math.abs(diff)*25 : 1;
-        m.scale.set(s,s,s); m.position.y = (0.6*s);
-        const tx = Math.max(drift + (2*s), 10 - (diff < 0 ? Math.abs(diff)*180 : 0));
-        m.position.x += (safeNum(tx, 10) - m.position.x) * 0.1;
+    baseGreenArmy.forEach(m => {
+        const s = diff < 0 ? 1 + Math.abs(diff)*8 : 1;
+        m.scale.set(s,s,s);
+        if (!m.userData.isAttacking) {
+            const tx = Math.max(drift + (2*s) + 2, 8 - (diff < 0 ? Math.abs(diff)*100 : 0));
+            m.position.x += (safeNum(tx, 8) - m.position.x) * 0.1;
+        }
     });
     
     playerRedArmy.forEach(m => {
-        const tx = Math.min(drift - 4, -5 + (diff >= 0 ? Math.abs(diff)*150 : 0));
-        m.position.x += (safeNum(tx, -5) - m.position.x) * 0.15;
+        if (!m.userData.isAttacking) {
+            const tx = Math.min(drift - 6, -3 + (diff >= 0 ? Math.abs(diff)*120 : 0));
+            m.position.x += (safeNum(tx, -3) - m.position.x) * 0.15;
+        }
     });
     playerGreenArmy.forEach(m => {
-        const tx = Math.max(drift + 4, 5 - (diff < 0 ? Math.abs(diff)*150 : 0));
-        m.position.x += (safeNum(tx, 5) - m.position.x) * 0.15;
+        if (!m.userData.isAttacking) {
+            const tx = Math.max(drift + 6, 3 - (diff < 0 ? Math.abs(diff)*120 : 0));
+            m.position.x += (safeNum(tx, 3) - m.position.x) * 0.15;
+        }
     });
 }
 
@@ -498,7 +570,7 @@ function checkTimeEvents() {
     const simBtn = document.getElementById('sim-btn');
     
     if (isSimMode) {
-        label.innerText = "沙盤推演 練兵中";
+        label.innerText = "沙盤推演 無損練兵中";
         label.className = "text-[10px] md:text-xs text-sky-400 font-bold uppercase tracking-widest bg-sky-400/20 px-2 py-1 rounded animate-pulse";
         simBtn.innerText = "結束推演 迎接開盤";
         simBtn.className = "bg-red-600 hover:bg-red-500 px-2 py-1 rounded text-[9px] text-white font-bold tracking-widest";
@@ -741,6 +813,11 @@ function localTick() {
         currentPrice = city.price;
     }
 
+    // 觸發躍擊動畫判定
+    if (currentPrice > lastPriceForAnim) triggerAttackAnim('LONG');
+    else if (currentPrice < lastPriceForAnim) triggerAttackAnim('SHORT');
+    lastPriceForAnim = currentPrice;
+
     if (currentMarketState !== "PRE") {
         checkPendingOrders();
     }
@@ -767,6 +844,7 @@ function switchSector(code) {
         opt.value = ""; opt.innerText = "尚無城池";
         sel.appendChild(opt);
         currentPrice = 0; 
+        lastPriceForAnim = 0;
         document.getElementById('market-price').innerText = "---";
         return;
     }
@@ -783,6 +861,8 @@ function switchCity(code) {
     gameState.activeCity = code;
     if (!CITIES[code].bars || Object.keys(CITIES[code].bars).length === 0) initKbars(CITIES[code]);
     currentPrice = safeNum(CITIES[code].price, CITIES[code].basePrice);
+    lastPriceForAnim = currentPrice;
+    
     document.getElementById('chart-city-name').innerText = CITIES[code].name;
     showMsg(`軍令轉移 至 ${CITIES[code].name}`);
     syncPlayerTroopsFromState();
@@ -790,6 +870,13 @@ function switchCity(code) {
 }
 
 function issueOrder(side) {
+    // 嚴格閘門：非營業時間且未啟動沙盤，絕對禁止下單
+    if (currentMarketState === "CLOSED" && !isSimMode) {
+        showMsg("天道休市期間 僅開放沙盤練兵下單");
+        triggerThunder();
+        return;
+    }
+
     const qtyStr = String(document.getElementById('order-qty').value).trim();
     const priceStr = String(document.getElementById('order-price').value).trim();
     const qty = parseInt(qtyStr) || 0;
