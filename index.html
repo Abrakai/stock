@@ -22,7 +22,14 @@
             20% { background: rgba(255, 255, 255, 0); }
             100% { background: rgba(255, 255, 255, 0); }
         }
+        @keyframes goldThunder {
+            0% { background: rgba(234, 179, 8, 0); }
+            10% { background: rgba(234, 179, 8, 0.4); }
+            20% { background: rgba(234, 179, 8, 0); }
+            100% { background: rgba(234, 179, 8, 0); }
+        }
         .thunder-flash { animation: thunder 0.5s ease-out; }
+        .gold-thunder-flash { animation: goldThunder 0.8s ease-out; }
         .result-positive { color: #ef4444; }
         .result-negative { color: #22c55e; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
@@ -182,7 +189,7 @@
 <div id="api-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300">
     <div class="glass rounded-3xl p-6 md:p-8 max-w-md w-full mx-4 shadow-2xl border-white/20">
         <h2 class="text-xl md:text-2xl font-black text-center mb-4 tracking-widest">天道報價連線設定</h2>
-        <p class="text-xs text-gray-400 mb-6 leading-relaxed">目前預設使用「隱形代理爬蟲」抓取真實股價。若您有專業報價金鑰（如 Finnhub），可在此輸入以獲得更穩定的專屬連線。</p>
+        <p class="text-xs text-gray-400 mb-6 leading-relaxed">目前預設使用隱形代理爬蟲抓取真實股價。若您有專業報價金鑰，可在此輸入以獲得更穩定的專屬連線。</p>
         <div class="space-y-4">
             <input id="api-key-input" type="text" placeholder="留空則使用預設公開連線" class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:border-yellow-500 outline-none font-mono text-sm">
             <div class="flex gap-4">
@@ -198,8 +205,8 @@
     <div class="glass rounded-3xl p-6 md:p-8 max-w-md w-full mx-4 shadow-2xl border-yellow-500/20">
         <h2 class="text-xl md:text-2xl font-black text-center mb-6 tracking-widest">統帥自選城池管理</h2>
         <div class="space-y-4 mb-6">
-            <input id="custom-symbol" type="text" placeholder="股票代號 (如 2603)" class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:border-yellow-500 outline-none font-mono text-sm uppercase">
-            <input id="custom-name" type="text" placeholder="城池名稱 (如 長榮)" class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:border-yellow-500 outline-none text-sm">
+            <input id="custom-symbol" type="text" placeholder="股票代號" class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:border-yellow-500 outline-none font-mono text-sm uppercase">
+            <input id="custom-name" type="text" placeholder="城池名稱" class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:border-yellow-500 outline-none text-sm">
             <button onclick="addCustomStock()" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-bold text-sm transition-all shadow-lg">新增至自選領域</button>
         </div>
         <div class="border-t border-white/10 pt-4">
@@ -224,8 +231,8 @@
 // --- 核心變數與領域資料 ---
 const TAX_RATE = 0.003;
 const FEE_RATE = 0.001425;
+const GENERALS = ["神將關雲長", "猛將張翼德", "智將諸葛孔明", "龍騎趙子龍", "錦馬超", "神射黃漢升"];
 
-// API 設定
 let USER_API_KEY = localStorage.getItem('abula_api_key') || '';
 let apiPollingInterval = null;
 
@@ -236,7 +243,6 @@ const SECTORS = {
     "CUSTOM": { name: "統帥自選 專屬領域", cities: [] }
 };
 
-// 本地緩存城池清單
 const CITIES = {
     "2330": { name: "台積電", price: 825.0, basePrice: 825.0, bars: {} },
     "2317": { name: "鴻海", price: 180.0, basePrice: 180.0, bars: {} },
@@ -259,12 +265,8 @@ function loadCustomStocks() {
     try {
         const saved = JSON.parse(localStorage.getItem('abula_custom_stocks') || '[]');
         saved.forEach(s => {
-            if (!CITIES[s.symbol]) {
-                CITIES[s.symbol] = { name: s.name, price: 100.0, basePrice: 100.0, bars: {} };
-            }
-            if (!SECTORS["CUSTOM"].cities.includes(s.symbol)) {
-                SECTORS["CUSTOM"].cities.push(s.symbol);
-            }
+            if (!CITIES[s.symbol]) CITIES[s.symbol] = { name: s.name, price: 100.0, basePrice: 100.0, bars: {} };
+            if (!SECTORS["CUSTOM"].cities.includes(s.symbol)) SECTORS["CUSTOM"].cities.push(s.symbol);
         });
     } catch(e) { console.error(e); }
 }
@@ -348,12 +350,12 @@ function updateVisuals() {
     });
 }
 
-// --- 真實報價引擎 ---
+// --- 真實報價引擎與配息邏輯 ---
 
 function getYahooSymbol(sym) {
-    if (/^\d{4}$/.test(sym)) return sym + '.TW'; // 台灣
-    if (["6758", "7203", "7974"].includes(sym)) return sym + '.T'; // 日本
-    return sym; // 美國或其他
+    if (/^\d{4}$/.test(sym)) return sym + '.TW'; 
+    if (["6758", "7203", "7974"].includes(sym)) return sym + '.T'; 
+    return sym; 
 }
 
 async function fetchRealMarketData() {
@@ -366,16 +368,13 @@ async function fetchRealMarketData() {
 
     try {
         if (USER_API_KEY) {
-            // 選項甲：若有 Finnhub 格式金鑰，優先走專屬連線
             const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${cityCode}&token=${USER_API_KEY}`);
             if (res.ok) {
                 const data = await res.json();
                 if(data.c) { fetchedPrice = data.c; fetchedBase = data.pc; }
             }
         }
-
         if (!fetchedPrice) {
-            // 選項乙：使用全域代理爬蟲抓取公開資訊
             const ySym = getYahooSymbol(cityCode);
             const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ySym}`;
             const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
@@ -393,19 +392,16 @@ async function fetchRealMarketData() {
             city.basePrice = fetchedBase || fetchedPrice;
             currentPrice = city.price;
             
-            // 寫入 K 棒聚合歷史
             if(!city.bars[gameState.timeframe]) initKbars(city);
             const bars = city.bars[gameState.timeframe];
-            // 模擬量能配合真實價格
             bars.push({ p: fetchedPrice, v: 100 + Math.random()*900 });
             if(bars.length > 100) bars.shift();
 
             document.getElementById('market-price').innerText = fetchedPrice.toFixed(2);
         } else {
-            document.getElementById('market-price').innerText = "休市或連線延遲";
+            document.getElementById('market-price').innerText = "休市或延遲";
         }
     } catch(e) {
-        console.warn("真實報價獲取失敗", e);
         document.getElementById('market-price').innerText = city.price.toFixed(2);
     }
 }
@@ -414,7 +410,6 @@ function initKbars(city) {
     city.bars = { "1m": [], "5m": [], "15m": [], "30m": [], "1H": [], "1D": [], "1W": [] };
     let tempPrice = city.basePrice;
     for(let i=0; i<100; i++){
-        // 微幅震盪產出歷史線圖
         tempPrice += (Math.random()-0.5) * (city.basePrice * 0.01);
         if(tempPrice <= 0.1) tempPrice = 0.1;
         const bar = { p: tempPrice, v: 100 + Math.random()*900 };
@@ -424,14 +419,39 @@ function initKbars(city) {
 
 function startMarketPolling() {
     if (apiPollingInterval) clearInterval(apiPollingInterval);
-    // 每 5 秒向真實世界抓取一次最新數據
     apiPollingInterval = setInterval(fetchRealMarketData, 5000);
     fetchRealMarketData();
 }
 
-// 負責本地端每秒鐘的畫面刷新與軍令撮合
+function triggerHeavenlyRain(unit) {
+    const gen = GENERALS[Math.floor(Math.random() * GENERALS.length)];
+    const bonus = 0.5;
+    const oldQty = unit.qty;
+    unit.qty += bonus;
+    // 股價不變的情況下，因為總兵力變多，平均成本被攤低
+    unit.cost = (unit.cost * oldQty) / unit.qty; 
+    
+    // 金色神雷特效
+    const o = document.getElementById('thunder-overlay');
+    o.classList.add('gold-thunder-flash');
+    setTimeout(()=>o.classList.remove('gold-thunder-flash'), 800);
+    
+    showMsg(`天降甘霖 大將 ${gen} 參戰 賜予 零點五 營兵力`);
+    updateUI();
+}
+
 function localTick() {
     checkPendingOrders();
+    
+    // 大將參戰機制 (配股配息) 偵測
+    gameState.units.forEach(u => {
+        u.holdTicks++;
+        // 模擬：每駐紮 60 秒觸發一次大將賜軍
+        if (u.holdTicks % 60 === 0) {
+            triggerHeavenlyRain(u);
+        }
+    });
+
     updateVisuals();
     if(document.getElementById('chart-page').classList.contains('hidden') === false) {
         updateCharts();
@@ -464,17 +484,12 @@ function switchSector(code) {
 
 function switchCity(code) {
     if (!code || !CITIES[code]) return;
-    
     gameState.activeCity = code;
     if (!CITIES[code].bars || Object.keys(CITIES[code].bars).length === 0) initKbars(CITIES[code]);
-    
     currentPrice = CITIES[code].price;
     document.getElementById('chart-city-name').innerText = CITIES[code].name;
     document.getElementById('market-price').innerText = "讀取中";
-    
     showMsg(`軍令轉移 至 ${CITIES[code].name}`);
-    
-    // 切換城池時立刻抓取該城池真實報價
     fetchRealMarketData();
 }
 
@@ -516,7 +531,6 @@ function updateCharts() {
     const bars = city.bars[gameState.timeframe] || [];
     if(bars.length < 9) return;
 
-    // 計算 KD
     const recentPrices = bars.slice(-9).map(b => b.p);
     const low = Math.min(...recentPrices), high = Math.max(...recentPrices);
     const rsv = high === low ? 50 : ((currentPrice - low)/(high - low))*100;
@@ -559,8 +573,14 @@ function issueOrder(side) {
     const tax = vol * TAX_RATE, fee = vol * FEE_RATE, total = vol + tax + fee;
     if(gameState.balance < total){ showMsg("存銀不足 無法派遣"); triggerThunder(); return; }
 
-    if((side === 'LONG' && tPrice >= currentPrice) || (side === 'SHORT' && tPrice <= currentPrice)){
+    // 最嚴謹的多空撮合邏輯
+    let immediate = false;
+    if(side === 'LONG' && tPrice >= currentPrice) immediate = true;
+    if(side === 'SHORT' && tPrice <= currentPrice) immediate = true;
+
+    if(immediate){
         gameState.balance -= total;
+        // 以實際當下市價成交
         executeOrder({ city: gameState.activeCity, side, qty, tax, fee }, currentPrice);
         showMsg("市價滿足 立即出征");
     } else {
@@ -576,7 +596,12 @@ function checkPendingOrders() {
         const o = gameState.pending[i];
         const m = CITIES[o.city]?.price;
         if (!m) continue;
-        if((o.side==='LONG' && m<=o.price) || (o.side==='SHORT' && m>=o.price)){
+        
+        let canFill = false;
+        if(o.side === 'LONG' && m <= o.price) canFill = true;
+        if(o.side === 'SHORT' && m >= o.price) canFill = true;
+
+        if(canFill){
             gameState.pending.splice(i,1); executeOrder(o, m);
             showMsg(`天道撮合 ${CITIES[o.city].name} 入城`);
         }
@@ -592,7 +617,8 @@ function executeOrder(o, fP) {
         id: Date.now() + Math.random(), city: o.city, side: o.side, qty: o.qty,
         cost: (vol + aTax + aFee) / (o.qty * 1000),
         entry: fP, tax: aTax, fee: aFee,
-        time: new Date().toLocaleTimeString('zh-TW', { hour12: false })
+        time: new Date().toLocaleTimeString('zh-TW', { hour12: false }),
+        holdTicks: 0 // 新增持久戰計時器
     });
 }
 
@@ -617,17 +643,14 @@ function settle(id) {
     updateUI();
 }
 
-// --- UI 與設定管理 ---
+// --- 設定與管理介面 ---
 
 function openApiSettings() {
     const m = document.getElementById('api-modal');
     document.getElementById('api-key-input').value = USER_API_KEY;
     m.classList.remove('opacity-0', 'pointer-events-none');
 }
-
-function closeApiSettings() {
-    document.getElementById('api-modal').classList.add('opacity-0', 'pointer-events-none');
-}
+function closeApiSettings() { document.getElementById('api-modal').classList.add('opacity-0', 'pointer-events-none'); }
 
 function saveApiKey() {
     const raw = String(document.getElementById('api-key-input').value).trim();
@@ -643,7 +666,6 @@ function openCustomManager() {
     document.getElementById('custom-modal').classList.remove('opacity-0', 'pointer-events-none');
     renderCustomList();
 }
-
 function closeCustomManager() {
     document.getElementById('custom-modal').classList.add('opacity-0', 'pointer-events-none');
     if(gameState.activeSector === 'CUSTOM') switchSector('CUSTOM');
@@ -652,30 +674,19 @@ function closeCustomManager() {
 function addCustomStock() {
     const rawSym = String(document.getElementById('custom-symbol').value).trim().toUpperCase();
     const rawName = String(document.getElementById('custom-name').value).trim();
-    
     const cleanSym = rawSym.replace(/[^A-Z0-9\.]/g, '');
     const cleanName = rawName.replace(/[<>]/g, '');
 
-    if (!cleanSym || !cleanName) {
-        showMsg("請輸入有效的代號與名稱");
-        return;
-    }
+    if (!cleanSym || !cleanName) { showMsg("請輸入有效的代號與名稱"); return; }
+    if (!CITIES[cleanSym]) CITIES[cleanSym] = { name: cleanName, price: 100.0, basePrice: 100.0, bars: {} };
+    else CITIES[cleanSym].name = cleanName;
 
-    if (!CITIES[cleanSym]) {
-        CITIES[cleanSym] = { name: cleanName, price: 100.0, basePrice: 100.0, bars: {} };
-    } else {
-        CITIES[cleanSym].name = cleanName;
-    }
-
-    if (!SECTORS["CUSTOM"].cities.includes(cleanSym)) {
-        SECTORS["CUSTOM"].cities.push(cleanSym);
-    }
+    if (!SECTORS["CUSTOM"].cities.includes(cleanSym)) SECTORS["CUSTOM"].cities.push(cleanSym);
 
     const toSave = SECTORS["CUSTOM"].cities.map(sym => ({ symbol: sym, name: CITIES[sym].name }));
     localStorage.setItem('abula_custom_stocks', JSON.stringify(toSave));
 
-    document.getElementById('custom-symbol').value = '';
-    document.getElementById('custom-name').value = '';
+    document.getElementById('custom-symbol').value = ''; document.getElementById('custom-name').value = '';
     showMsg(`已編列 ${cleanName} 進入自選`);
     renderCustomList();
 }
@@ -705,7 +716,7 @@ function renderCustomList() {
     });
 }
 
-// --- 報表與分頁介面 ---
+// --- 報表與分頁 ---
 
 function switchTab(t) {
     gameState.currentTab = t;
@@ -761,6 +772,7 @@ function updateUI() {
     document.getElementById('user-balance').innerText = Math.floor(gameState.balance).toLocaleString();
     document.getElementById('frozen-balance').innerText = `天道凍結 待命軍費 ${Math.floor(gameState.frozen).toLocaleString()}`;
     document.getElementById('total-tax-display').innerText = Math.floor(gameState.taxTotal).toLocaleString();
+    document.getElementById('market-price').innerText = currentPrice.toFixed(2);
     document.getElementById('base-price-display').innerText = city.basePrice.toFixed(2);
     
     const pct = ((currentPrice - city.basePrice)/city.basePrice*100).toFixed(2);
@@ -791,9 +803,10 @@ function renderLists() {
         gameState.units.forEach(u => {
             const m = CITIES[u.city]?.price || u.entry;
             const p = (u.side==='LONG' ? (m-u.cost) : (u.cost-m))*u.qty*1000;
+            // UI 呈現小數點第一位的規模 (例如: 2.5 營)
             cont.innerHTML += `<div class="glass rounded-xl p-2 md:p-3 border-r-4 ${p>=0?'border-red-500':'border-green-500'} text-right mb-2">
                 <button onclick="settle(${u.id})" class="float-left text-[9px] bg-white/10 px-2 py-1 rounded">結算撤軍</button>
-                <div class="text-[10px] text-gray-500">${CITIES[u.city]?.name || u.city} ${u.side==='LONG'?'多':'空'}</div>
+                <div class="text-[10px] text-gray-500">${CITIES[u.city]?.name || u.city} ${u.side==='LONG'?'多':'空'} ${u.qty.toFixed(1)} 營</div>
                 <div class="text-xs font-bold ${p>=0?'text-red-500':'text-green-500'}">戰功 ${Math.floor(p).toLocaleString()}</div>
             </div>`;
         });
@@ -826,7 +839,7 @@ function cancelOrder(id) {
     updateUI();
 }
 
-function triggerThunder() { const o = document.getElementById('thunder-overlay'); o.classList.add('thunder-flash'); setTimeout(()=>o.classList.remove('thunder-flash'), 500); }
+function triggerThunder() { const o = document.getElementById('thunder-overlay'); o.classList.remove('thunder-flash','gold-thunder-flash'); void o.offsetWidth; o.classList.add('thunder-flash'); setTimeout(()=>o.classList.remove('thunder-flash'), 500); }
 function showMsg(t) { const el = document.getElementById('msg-box'); el.innerText = t; el.style.opacity = '1'; el.style.transform = 'translateX(-50%) translateY(-10px)'; setTimeout(()=>{el.style.opacity='0'; el.style.transform='translateX(-50%) translateY(0)';}, 3000); }
 function animate() { requestAnimationFrame(animate); TWEEN.update(); renderer.render(scene, camera); }
 
