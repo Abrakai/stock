@@ -399,13 +399,13 @@ function loadState() {
 }
 
 // ==========================================
-// 3. 史詩級 3D 戰場渲染 (修正視角與陣型)
+// 3. 史詩級 3D 戰場渲染 (四時節氣與五階裝備)
 // ==========================================
 let scene, camera, renderer, battleLine;
 let baseRedArmy = [], baseGreenArmy = [];
 let playerRedArmy = [], playerGreenArmy = []; 
 let particles, snowParticles;
-let castleGroup, forestGroup;
+let castleGroup, forestGroup, decorationsGroup;
 const MAX_PHALANX_SIZE = 50; 
 
 function getSeason() {
@@ -424,6 +424,7 @@ function getPriceTier(price) {
     return 5;
 }
 
+// 建立具有季節感與科技感的城池
 function createCastle(tier, season) {
     const group = new THREE.Group();
     const isWinter = season === 'WINTER';
@@ -450,16 +451,36 @@ function createCastle(tier, season) {
         }
     }
     
+    // 第四與第五階：科幻高科技武裝城牆
     if (tier >= 4) {
         const glowColor = tier === 5 ? 0x00ffff : 0xffaa00; 
-        const glowMat = new THREE.MeshStandardMaterial({color: glowColor, emissive: glowColor, emissiveIntensity: 2.5});
+        const glowMat = new THREE.MeshStandardMaterial({color: glowColor, emissive: glowColor, emissiveIntensity: tier === 5 ? 3 : 1.5});
         const line = new THREE.Mesh(new THREE.BoxGeometry(11, 0.8, 61), glowMat);
         line.position.set(-35, wallHeight * 0.8, 0);
         group.add(line);
+        
+        // 高階防禦砲塔
+        for(let z of [-15, 0, 15]) {
+            const turret = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2, 5, 8), new THREE.MeshStandardMaterial({color: 0x334455, metalness: 0.8}));
+            turret.position.set(-32, wallHeight + 2.5, z);
+            const cannon = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 6, 8), glowMat);
+            cannon.rotation.x = Math.PI/2;
+            cannon.position.set(2.5, 1.5, 0);
+            turret.add(cannon);
+            group.add(turret);
+        }
+
+        // 第五階專屬：全像防禦能量陣列
+        if (tier === 5) {
+            const shield = new THREE.Mesh(new THREE.BoxGeometry(18, wallHeight + 15, 75), new THREE.MeshBasicMaterial({color: 0x00ffff, transparent: true, opacity: 0.08, wireframe: true}));
+            shield.position.set(-35, (wallHeight+15)/2, 0);
+            group.add(shield);
+        }
     }
     return group;
 }
 
+// 建立隨季節變化的森林
 function createForest(season) {
     const group = new THREE.Group();
     const isWinter = season === 'WINTER';
@@ -487,6 +508,23 @@ function createForest(season) {
     return group;
 }
 
+// Low-Poly 雪人 (冬季專屬)
+function createSnowman() {
+    const group = new THREE.Group();
+    const snowMat = new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 1});
+    const base = new THREE.Mesh(new THREE.DodecahedronGeometry(1.5, 1), snowMat); base.position.y = 1.5;
+    const mid = new THREE.Mesh(new THREE.DodecahedronGeometry(1.2, 1), snowMat); mid.position.y = 3.5;
+    const head = new THREE.Mesh(new THREE.DodecahedronGeometry(0.8, 1), snowMat); head.position.y = 5.2;
+    
+    // 紅圍巾
+    const scarf = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.4, 8), new THREE.MeshStandardMaterial({color: 0xdd2222}));
+    scarf.position.y = 4.6;
+    
+    group.add(base, mid, head, scarf);
+    return group;
+}
+
+// 建立依階級改變的士兵與武裝
 function createSoldier(colorHex, isPlayer, tier = 1) {
     const group = new THREE.Group();
     let scale = isPlayer ? 2.0 : 1.3; 
@@ -494,9 +532,10 @@ function createSoldier(colorHex, isPlayer, tier = 1) {
     
     const mat = new THREE.MeshStandardMaterial({
         color: colorHex, emissive: isPlayer ? colorHex : 0x000000,
-        emissiveIntensity: isPlayer ? 0.6 : 0, metalness: 0.7, roughness: 0.3
+        emissiveIntensity: isPlayer ? 0.6 : 0, metalness: tier >= 4 ? 0.8 : 0.4, roughness: 0.3
     });
     
+    // 高價股為方形機甲裝備，低價股為常規圓柱
     const bodyGeo = tier >= 4 ? new THREE.BoxGeometry(0.8*scale, 2.0*scale, 0.8*scale) : new THREE.CylinderGeometry(0.4*scale, 0.6*scale, 2.0*scale, 6);
     const body = new THREE.Mesh(bodyGeo, mat); 
     body.position.y = 1.0 * scale; 
@@ -507,11 +546,30 @@ function createSoldier(colorHex, isPlayer, tier = 1) {
     head.position.y = 2.5 * scale; 
     group.add(head);
 
-    if (isPlayer) {
-        const wpnColor = tier >= 4 ? (colorHex === 0xff3333 || colorHex === 0xff2222 ? 0xff4444 : 0x44ff44) : 0xffdd88;
-        const wpn = new THREE.Mesh(new THREE.CylinderGeometry(0.06*scale, 0.06*scale, 4.5*scale, 4), new THREE.MeshStandardMaterial({color: wpnColor, emissive: wpnColor, emissiveIntensity: 2}));
-        wpn.position.set(0.7*scale, 1.5*scale, 0.6*scale); wpn.rotation.x = Math.PI/3; group.add(wpn);
+    // 第五階 (千金股) 專屬能量背包
+    if (tier === 5) {
+        const coreMat = new THREE.MeshStandardMaterial({color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 2});
+        const core = new THREE.Mesh(new THREE.BoxGeometry(0.6*scale, 0.9*scale, 0.5*scale), coreMat);
+        core.position.set(-0.5*scale, 1.3*scale, 0); 
+        group.add(core);
     }
+
+    // 武器配置 (四五階擁有發光雷射武器)
+    if (isPlayer || tier >= 4) {
+        const wpnColor = tier >= 4 ? (colorHex === 0xff3333 || colorHex === 0xff2222 || colorHex === 0xdd3333 ? 0xff4444 : 0x44ff44) : 0xffdd88;
+        const wpnInt = tier >= 4 ? (tier === 5 ? 3 : 2) : 1;
+        const wpnScale = tier >= 4 ? 1.5 : 1.0;
+        
+        const wpn = new THREE.Mesh(new THREE.CylinderGeometry(0.06*scale, 0.06*scale, 4.5*scale*wpnScale, 4), new THREE.MeshStandardMaterial({color: wpnColor, emissive: wpnColor, emissiveIntensity: wpnInt}));
+        wpn.position.set(0.7*scale, 1.5*scale, 0.6*scale); wpn.rotation.x = Math.PI/3; group.add(wpn);
+
+        // 統帥專屬能量環
+        if (isPlayer && tier === 5) {
+            const ring = new THREE.Mesh(new THREE.RingGeometry(0.9*scale, 1.1*scale, 16), new THREE.MeshBasicMaterial({color: colorHex, transparent: true, opacity: 0.8}));
+            ring.rotation.x = -Math.PI/2; ring.position.y = 0.05; group.add(ring);
+        }
+    }
+    
     group.userData = { isAttacking: false, isPlayer: isPlayer, active: true };
     return group;
 }
@@ -559,6 +617,7 @@ function rebuildEnvironment() {
     
     if(castleGroup) scene.remove(castleGroup);
     if(forestGroup) scene.remove(forestGroup);
+    if(decorationsGroup) scene.remove(decorationsGroup);
     if(snowParticles) { scene.remove(snowParticles); snowParticles = null; }
     
     castleGroup = createCastle(tier, season);
@@ -566,10 +625,22 @@ function rebuildEnvironment() {
     scene.add(castleGroup);
     scene.add(forestGroup);
     
+    decorationsGroup = new THREE.Group();
     if(season === 'WINTER') {
+        const snowman = createSnowman();
+        snowman.position.set(22, 0, 15);
+        decorationsGroup.add(snowman);
+        
+        // 局部積雪
+        for(let i=0; i<15; i++) {
+            const patch = new THREE.Mesh(new THREE.CylinderGeometry(Math.random()*4+2, Math.random()*4+2, 0.1, 8), new THREE.MeshBasicMaterial({color: 0xdddddd}));
+            patch.position.set((Math.random()-0.5)*100, 0.05, (Math.random()-0.5)*100);
+            decorationsGroup.add(patch);
+        }
+
         const geom = new THREE.BufferGeometry();
-        const pos = new Float32Array(300 * 3);
-        for (let i=0; i<300; i++) { 
+        const pos = new Float32Array(200 * 3);
+        for (let i=0; i<200; i++) { 
             pos[i*3] = (Math.random()-0.5)*150; 
             pos[i*3+1] = Math.random()*60; 
             pos[i*3+2] = (Math.random()-0.5)*120; 
@@ -577,7 +648,17 @@ function rebuildEnvironment() {
         geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
         snowParticles = new THREE.Points(geom, new THREE.PointsMaterial({color: 0xffffff, size: 0.6, transparent: true, opacity: 0.6}));
         scene.add(snowParticles);
+        
+    } else if (season === 'AUTUMN') {
+        // 落葉模塊
+        for(let i=0; i<60; i++) {
+            const leaf = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.5), new THREE.MeshBasicMaterial({color: Math.random() > 0.5 ? 0xc96b1e : 0x8b4513}));
+            leaf.position.set(20 + Math.random()*40, 0.05, (Math.random()-0.5)*90);
+            leaf.rotation.y = Math.random() * Math.PI;
+            decorationsGroup.add(leaf);
+        }
     }
+    scene.add(decorationsGroup);
     
     baseRedArmy.forEach(m => scene.remove(m)); baseRedArmy = [];
     baseGreenArmy.forEach(m => scene.remove(m)); baseGreenArmy = [];
@@ -593,14 +674,12 @@ function init3D() {
     renderer.domElement.className = 'three-canvas';
     document.body.appendChild(renderer.domElement);
 
-    // 提亮全局光線
     scene.add(new THREE.AmbientLight(0xffffff, 3.5));
     const dLight = new THREE.DirectionalLight(0xffffff, 5.0); dLight.position.set(20, 100, 40); scene.add(dLight);
     
     const grid = new THREE.GridHelper(200, 80, 0x223344, 0x0a1122); grid.position.y = 0.01; scene.add(grid);
     battleLine = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 70), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })); scene.add(battleLine);
 
-    // 調整視角，更貼近戰場中心
     camera.position.set(0, 30, 60); camera.lookAt(0, 5, 0);
 
     initParticles();
@@ -693,7 +772,7 @@ function animate() {
     updateParticles(); 
     if(snowParticles) {
         const pos = snowParticles.geometry.attributes.position.array;
-        for(let i=0; i<300; i++) {
+        for(let i=0; i<200; i++) {
             pos[i*3+1] -= 0.2; pos[i*3] -= 0.1; 
             if(pos[i*3+1] < 0) { pos[i*3+1] = 60; pos[i*3] = (Math.random()-0.5)*150; }
         }
@@ -1335,7 +1414,7 @@ window.saveApiKey = function() {
 };
 
 window.openCustomManager = function() { document.getElementById('custom-modal').classList.remove('opacity-0', 'pointer-events-none'); renderCustomList(); };
-window.closeCustomManager = function() { document.getElementById('custom-modal').classList.add('opacity-0', 'pointer-events-none'); if(gameState.activeSector === 'CUSTOM') switchSector('CUSTOM'); };
+window.closeCustomManager = function() { document.getElementById('custom-modal').classList.add('opacity-0', 'pointer-events-none'); if(gameState.activeSector === 'CUSTOM') window.switchSector('CUSTOM'); };
 window.addCustomStock = function() {
     const cleanSym = String(document.getElementById('custom-symbol').value).trim().toUpperCase().replace(/[^A-Z0-9\.]/g, ''); 
     const cleanName = String(document.getElementById('custom-name').value).trim().replace(/[<>]/g, '');
@@ -1461,7 +1540,7 @@ function renderLists() {
                         </div>
                     </div>
                     <div class="text-right">
-                        <button onclick="settle(${u.id})" class="text-[10px] bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 rounded-lg transition-colors font-bold text-gray-300 tracking-widest cursor-pointer">結算撤軍</button>
+                        <button onclick="window.settle(${u.id})" class="text-[10px] bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 rounded-lg transition-colors font-bold text-gray-300 tracking-widest cursor-pointer">結算撤軍</button>
                     </div>
                 </div>`;
             });
@@ -1481,7 +1560,7 @@ function renderLists() {
         gameState.pending.forEach(o => {
             const tag = o.isSim ? '<span class="bg-sky-500/20 border border-sky-500/30 text-sky-400 px-1.5 py-0.5 rounded text-[8px] ml-2">沙盤推演</span>' : '';
             cont.innerHTML += `<div class="bg-black/40 rounded-xl p-3 border-r-4 border-gray-500 text-right mb-2 flex justify-between items-center shadow-inner">
-                <button onclick="cancelOrder(${o.id})" class="text-[10px] bg-red-900/30 hover:bg-red-800/50 border border-red-500/30 text-red-300 px-3 py-1.5 rounded-lg transition-colors font-bold cursor-pointer">撤回</button>
+                <button onclick="window.cancelOrder(${o.id})" class="text-[10px] bg-red-900/30 hover:bg-red-800/50 border border-red-500/30 text-red-300 px-3 py-1.5 rounded-lg transition-colors font-bold cursor-pointer">撤回</button>
                 <div class="text-[11px] text-gray-300 font-bold">${CITIES[o.city]?.name || o.city} <span class="text-gray-500 ml-1 text-[9px] tracking-widest">待命價</span> <span class="font-mono text-sm">${safeNum(o.price).toFixed(2)}</span> ${tag}</div>
             </div>`;
         });
