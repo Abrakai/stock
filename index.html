@@ -69,9 +69,9 @@
                 <div class="flex justify-between items-center mb-2">
                     <span id="market-status-label" class="text-[10px] md:text-xs text-yellow-400 font-bold uppercase tracking-widest bg-yellow-500/20 px-2 py-1 rounded border border-yellow-500/30">判讀時區中</span>
                     <div class="flex gap-1.5">
-                        <button onclick="toggleSimMode()" id="sim-btn" class="hidden bg-sky-600 hover:bg-sky-500 px-2.5 py-1.5 rounded text-[10px] text-white font-bold tracking-widest shadow-[0_0_10px_rgba(2,132,199,0.5)] transition-all">啟動沙盤</button>
-                        <button onclick="openChartPage()" class="bg-white/10 hover:bg-white/20 border border-white/20 px-2.5 py-1.5 rounded text-[10px] text-white font-bold tracking-widest transition-all">軍師圖表</button>
-                        <button onclick="showDailySummary()" class="bg-purple-900/50 hover:bg-purple-800 border border-purple-500/40 px-2.5 py-1.5 rounded text-[10px] text-purple-200 font-bold tracking-widest transition-all">結算大表</button>
+                        <button onclick="toggleSimMode()" id="sim-btn" class="hidden bg-sky-600 hover:bg-sky-500 px-2.5 py-1.5 rounded text-[10px] text-white font-bold tracking-widest shadow-[0_0_10px_rgba(2,132,199,0.5)] transition-all cursor-pointer">啟動沙盤</button>
+                        <button onclick="openChartPage()" class="bg-white/10 hover:bg-white/20 border border-white/20 px-2.5 py-1.5 rounded text-[10px] text-white font-bold tracking-widest transition-all cursor-pointer">軍師圖表</button>
+                        <button onclick="showDailySummary()" class="bg-purple-900/50 hover:bg-purple-800 border border-purple-500/40 px-2.5 py-1.5 rounded text-[10px] text-purple-200 font-bold tracking-widest transition-all cursor-pointer">結算大表</button>
                     </div>
                 </div>
                 
@@ -99,7 +99,7 @@
                         <option value="CUSTOM">自選</option>
                     </select>
                     <select id="city-selector" onchange="switchCity(this.value)" class="flex-1 bg-black/50 border border-white/20 rounded-lg px-2 py-1.5 text-[11px] md:text-sm font-bold text-white focus:outline-none truncate cursor-pointer"></select>
-                    <button onclick="openCustomManager()" class="bg-white/10 hover:bg-white/20 p-1.5 rounded-lg text-white font-bold text-[10px]">設定</button>
+                    <button onclick="openCustomManager()" class="bg-white/10 hover:bg-white/20 p-1.5 rounded-lg text-white font-bold text-[10px] cursor-pointer">設定</button>
                 </div>
                 
                 <div class="flex justify-between items-center bg-black/40 p-2.5 rounded-lg mt-3 border border-white/10 shadow-inner">
@@ -241,7 +241,7 @@
 <div id="api-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300 p-4">
     <div class="glass rounded-2xl p-6 w-full max-w-sm border-white/20 shadow-2xl">
         <h2 class="text-xl font-black text-center mb-2 tracking-widest text-sky-400">天道連線金鑰</h2>
-        <p class="text-[11px] text-gray-400 mb-5 text-center leading-relaxed">預設使用全域代理爬蟲。<br>若有 Finnhub 專屬金鑰可於此填寫。</p>
+        <p class="text-[11px] text-gray-400 mb-5 text-center leading-relaxed">預設使用全域代理爬蟲。<br>若有專屬金鑰可於此填寫。</p>
         <div class="space-y-4">
             <input id="api-key-input" type="text" placeholder="留空使用預設免費通道" class="w-full bg-black/60 border border-white/20 rounded-lg px-4 py-3 text-white focus:border-sky-500 outline-none font-mono text-sm">
             <div class="flex gap-3 pt-2">
@@ -257,6 +257,19 @@
     <div id="modal-window" class="glass rounded-2xl p-6 w-full max-w-md border-purple-500/40 transform scale-95 transition-transform duration-300 shadow-[0_0_30px_rgba(168,85,247,0.15)]">
         <div id="modal-body"></div>
         <button onclick="closeModal()" class="mt-6 w-full bg-purple-600 hover:bg-purple-500 py-3 rounded-xl font-black text-sm text-white shadow-lg transition-all active:scale-95 cursor-pointer tracking-widest">關閉報表</button>
+    </div>
+</div>
+
+<!-- 手動報價 Modal (斷線應急) -->
+<div id="price-prompt-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+    <div class="glass rounded-2xl p-6 w-full max-w-sm border-sky-500/40 shadow-2xl">
+        <h2 class="text-xl font-black text-center mb-2 tracking-widest text-sky-400">天道斷線 請求支援</h2>
+        <p class="text-[11px] text-gray-400 mb-5 text-center leading-relaxed">無法取得 <span id="prompt-city-name" class="text-white font-bold"></span> 的真實報價。<br>請統帥即時提供基準平盤價 以啟動沙盤演練。</p>
+        <div class="space-y-4">
+            <input id="manual-price-input" type="number" step="0.5" placeholder="請輸入基準股價 如 150.5" class="w-full bg-black/60 border border-white/20 rounded-lg px-4 py-3 text-white focus:border-sky-500 outline-none font-mono text-sm text-center">
+            <button onclick="submitManualPrice()" class="w-full bg-sky-600 hover:bg-sky-500 py-3 rounded-xl font-bold text-sm text-white shadow-lg transition-colors cursor-pointer tracking-widest">設定基準並進入沙盤</button>
+            <button onclick="closePricePrompt()" class="w-full bg-gray-700 hover:bg-gray-600 py-3 rounded-xl font-bold text-sm text-white mt-2 transition-colors cursor-pointer tracking-widest">取消</button>
+        </div>
     </div>
 </div>
 
@@ -321,13 +334,19 @@ const SECTORS = {
 };
 
 const CITIES = {};
+// 預設具有歷史基準價的城池
 ["2330","2454","2303","2317","2382","3231","2412","3045","4904"].forEach(sym => {
-    // chartData 存 OHLC 物件陣列 {x, o, h, l, c, v}
-    CITIES[sym] = { price: 100, basePrice: 100, realPrice: 100, simBasePrice: 100, vol: 2, chartData: {} };
+    CITIES[sym] = { price: 100, basePrice: 100, realPrice: 100, simBasePrice: 100, vol: 2, chartData: {}, autoSimTriggered: false };
 });
-CITIES["2330"].name="台積電"; CITIES["2454"].name="聯發科"; CITIES["2303"].name="聯電";
-CITIES["2317"].name="鴻海"; CITIES["2382"].name="廣達"; CITIES["3231"].name="緯創";
-CITIES["2412"].name="中華電"; CITIES["3045"].name="台灣大"; CITIES["4904"].name="遠傳";
+CITIES["2330"].name="台積電"; CITIES["2330"].basePrice=825.0; CITIES["2330"].price=825.0; CITIES["2330"].realPrice=825.0; CITIES["2330"].simBasePrice=825.0;
+CITIES["2454"].name="聯發科"; CITIES["2454"].basePrice=1150.0; CITIES["2454"].price=1150.0; CITIES["2454"].realPrice=1150.0; CITIES["2454"].simBasePrice=1150.0;
+CITIES["2303"].name="聯電"; CITIES["2303"].basePrice=50.0; CITIES["2303"].price=50.0; CITIES["2303"].realPrice=50.0; CITIES["2303"].simBasePrice=50.0;
+CITIES["2317"].name="鴻海"; CITIES["2317"].basePrice=180.0; CITIES["2317"].price=180.0; CITIES["2317"].realPrice=180.0; CITIES["2317"].simBasePrice=180.0;
+CITIES["2382"].name="廣達"; CITIES["2382"].basePrice=280.0; CITIES["2382"].price=280.0; CITIES["2382"].realPrice=280.0; CITIES["2382"].simBasePrice=280.0;
+CITIES["3231"].name="緯創"; CITIES["3231"].basePrice=115.0; CITIES["3231"].price=115.0; CITIES["3231"].realPrice=115.0; CITIES["3231"].simBasePrice=115.0;
+CITIES["2412"].name="中華電"; CITIES["2412"].basePrice=125.0; CITIES["2412"].price=125.0; CITIES["2412"].realPrice=125.0; CITIES["2412"].simBasePrice=125.0;
+CITIES["3045"].name="台灣大"; CITIES["3045"].basePrice=100.0; CITIES["3045"].price=100.0; CITIES["3045"].realPrice=100.0; CITIES["3045"].simBasePrice=100.0;
+CITIES["4904"].name="遠傳"; CITIES["4904"].basePrice=105.0; CITIES["4904"].price=105.0; CITIES["4904"].realPrice=105.0; CITIES["4904"].simBasePrice=105.0;
 
 const TAX_RATE = 0.003;
 const FEE_RATE = 0.001425;
@@ -344,6 +363,7 @@ let isSimMode = false;
 let realStateSnapshot = null;
 let currentMarketState = "CLOSED"; 
 let lastPriceForAnim = 0; 
+let pendingPriceCity = "";
 
 function saveState() {
     if (!isSimMode) localStorage.setItem('abula_gamestate', JSON.stringify(gameState));
@@ -372,7 +392,8 @@ function loadState() {
     try {
         const customSaved = JSON.parse(localStorage.getItem('abula_custom_stocks') || '[]');
         customSaved.forEach(s => {
-            if (!CITIES[s.symbol]) CITIES[s.symbol] = { name: s.name, price: 100, basePrice: 100, realPrice: 100, simBasePrice: 100, vol: 2, chartData: {} };
+            // 自選股若無暫存檔，預設為 0 以觸發手動輸入
+            if (!CITIES[s.symbol]) CITIES[s.symbol] = { name: s.name, price: 0, basePrice: 0, realPrice: 0, simBasePrice: 0, vol: 2, chartData: {}, autoSimTriggered: false };
             if (!SECTORS["CUSTOM"].cities.includes(s.symbol)) SECTORS["CUSTOM"].cities.push(s.symbol);
         });
     } catch(e) {}
@@ -628,15 +649,22 @@ function processOvernightDividend(todayStr) {
     gameState.lastDividendDay = todayStr; saveState();
 }
 
-window.toggleSimMode = function() {
-    if (currentMarketState === "OPEN" || currentMarketState === "PRE") { window.showMsg("真實天道運行中 禁止沙盤推演"); return; }
+window.toggleSimMode = function(isAutoFallback = false) {
+    if (!isAutoFallback && (currentMarketState === "OPEN" || currentMarketState === "PRE")) { window.showMsg("真實天道運行中 禁止手動啟動沙盤"); return; }
     if (isSimMode) forceCloseSimMode(false);
     else {
         realStateSnapshot = JSON.parse(JSON.stringify(gameState)); isSimMode = true;
-        Object.keys(CITIES).forEach(c => CITIES[c].simBasePrice = safeNum(CITIES[c].price, CITIES[c].basePrice));
+        Object.keys(CITIES).forEach(c => {
+            // 如果連線失敗被迫進入，保留現有的 basePrice 作為 simBasePrice
+            if(!isAutoFallback) {
+                CITIES[c].simBasePrice = safeNum(CITIES[c].price, CITIES[c].basePrice);
+            }
+        });
         document.getElementById('real-pnl-container').classList.add('hidden'); document.getElementById('sim-pnl-container').classList.remove('hidden'); document.getElementById('base-price-label').innerText = '沙盤基準';
         ['main-dashboard','tab-container','order-panel'].forEach(id => document.getElementById(id).classList.replace('glass', 'glass-sim'));
-        triggerSimThunder(); window.showMsg("進入沙盤時空 資金獨立計算"); updateOrderButtonsUI(); updateUI();
+        triggerSimThunder(); 
+        window.showMsg(isAutoFallback ? "連線中斷 自動進入沙盤時空" : "進入沙盤時空 資金獨立計算"); 
+        updateOrderButtonsUI(); updateUI();
     }
 };
 
@@ -655,6 +683,36 @@ function forceCloseSimMode(isAuto) {
     window.showMsg(msg); saveState(); updateOrderButtonsUI(); updateUI();
 }
 
+// 手動基準報價
+window.openPricePrompt = function(cityCode) {
+    pendingPriceCity = cityCode;
+    document.getElementById('prompt-city-name').innerText = CITIES[cityCode].name;
+    document.getElementById('manual-price-input').value = '';
+    document.getElementById('price-prompt-modal').classList.remove('opacity-0', 'pointer-events-none');
+};
+
+window.closePricePrompt = function() {
+    document.getElementById('price-prompt-modal').classList.add('opacity-0', 'pointer-events-none');
+};
+
+window.submitManualPrice = function() {
+    const val = parseFloat(document.getElementById('manual-price-input').value);
+    if(isNaN(val) || val <= 0) {
+        window.showMsg("請輸入有效的基準價格");
+        return;
+    }
+    const city = CITIES[pendingPriceCity];
+    if(city) {
+        city.basePrice = val; city.simBasePrice = val; city.price = val; city.realPrice = val;
+        initKbars(city);
+    }
+    window.closePricePrompt();
+    if(!isSimMode) {
+        window.showMsg("基準價已設定 系統自動導入沙盤");
+        window.toggleSimMode(true);
+    }
+};
+
 async function fetchRealMarketData() {
     const cityCode = gameState.activeCity; const city = CITIES[cityCode]; if (!city) return;
     let fetchedPrice = null, fetchedBase = null;
@@ -664,12 +722,34 @@ async function fetchRealMarketData() {
             const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${cityCode}&token=${USER_API_KEY}`);
             if (res.ok) { const data = await res.json(); if(data.c) { fetchedPrice = data.c; fetchedBase = data.pc; } }
         }
+        if (!fetchedPrice) {
+            const ySym = /^\d{4}$/.test(cityCode) ? cityCode + '.TW' : cityCode;
+            const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ySym}?interval=1m&range=1d`;
+            try {
+                const res = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(url)}`);
+                if (res.ok) { const data = await res.json(); fetchedPrice = data.chart.result[0].meta.regularMarketPrice; fetchedBase = data.chart.result[0].meta.previousClose; }
+            } catch(e) {
+                const res2 = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
+                if (res2.ok) { const data2 = await res2.json(); fetchedPrice = data2.chart.result[0].meta.regularMarketPrice; fetchedBase = data2.chart.result[0].meta.previousClose; }
+            }
+        }
     } catch(e) {}
     
     const p = parseFloat(fetchedPrice);
     if (!isNaN(p) && p > 0) {
         city.realPrice = p; city.basePrice = parseFloat(fetchedBase) || city.realPrice;
         if (!isSimMode) { city.price = city.realPrice; currentPrice = city.price; }
+    } else {
+        // 連線失敗，啟動容錯機制
+        if (!city.basePrice || city.basePrice === 0) {
+            if (!document.getElementById('price-prompt-modal').classList.contains('opacity-100') && !isSimMode) {
+                window.openPricePrompt(cityCode);
+            }
+        } else if (!isSimMode && !city.autoSimTriggered) {
+            window.showMsg("天道連線失敗 自動導入沙盤");
+            window.toggleSimMode(true);
+            city.autoSimTriggered = true; // 防止無限迴圈
+        }
     }
 }
 
@@ -747,6 +827,7 @@ window.switchSector = function(code) {
 window.switchCity = function(code) {
     if (!code || !CITIES[code]) return;
     gameState.activeCity = code;
+    CITIES[code].autoSimTriggered = false; // 切換城池時重置觸發鎖
     currentPrice = safeNum(CITIES[code].price, CITIES[code].basePrice); lastPriceForAnim = currentPrice;
     document.getElementById('chart-city-name').innerText = CITIES[code].name;
     window.showMsg(`軍令轉移 至 ${CITIES[code].name}`);
@@ -942,7 +1023,7 @@ window.fetchFullChartData = async function() {
     } catch(e) {}
     
     if(!city.chartData || !city.chartData[gameState.timeframe] || city.chartData[gameState.timeframe].length < 10) {
-        initKbars(city);
+        if(city.basePrice > 0) initKbars(city);
     }
 
     if(!document.getElementById('chart-page').classList.contains('hidden')) renderChartInstance();
@@ -1118,7 +1199,10 @@ window.closeModal = function() {
 
 window.openApiSettings = function() { document.getElementById('api-modal').classList.remove('opacity-0', 'pointer-events-none'); document.getElementById('api-key-input').value = USER_API_KEY; };
 window.closeApiSettings = function() { document.getElementById('api-modal').classList.add('opacity-0', 'pointer-events-none'); };
-window.saveApiKey = function() { USER_API_KEY = String(document.getElementById('api-key-input').value).trim().replace(/[^a-zA-Z0-9_\-]/g, ''); localStorage.setItem('abula_api_key', USER_API_KEY); closeApiSettings(); window.showMsg("設定已儲存"); fetchRealMarketData(); };
+window.saveApiKey = function() { 
+    USER_API_KEY = String(document.getElementById('api-key-input').value).trim().replace(/[^a-zA-Z0-9_\-]/g, ''); 
+    localStorage.setItem('abula_api_key', USER_API_KEY); closeApiSettings(); window.showMsg("設定已儲存"); fetchRealMarketData(); 
+};
 
 window.openCustomManager = function() { document.getElementById('custom-modal').classList.remove('opacity-0', 'pointer-events-none'); renderCustomList(); };
 window.closeCustomManager = function() { document.getElementById('custom-modal').classList.add('opacity-0', 'pointer-events-none'); if(gameState.activeSector === 'CUSTOM') switchSector('CUSTOM'); };
@@ -1126,7 +1210,7 @@ window.addCustomStock = function() {
     const cleanSym = String(document.getElementById('custom-symbol').value).trim().toUpperCase().replace(/[^A-Z0-9\.]/g, ''); 
     const cleanName = String(document.getElementById('custom-name').value).trim().replace(/[<>]/g, '');
     if (!cleanSym || !cleanName) { window.showMsg("請輸入有效台股代號"); return; }
-    if (!CITIES[cleanSym]) CITIES[cleanSym] = { name: cleanName, price: 100.0, basePrice: 100.0, realPrice: 100.0, simBasePrice: 100.0, vol: 2.0, chartData: {} };
+    if (!CITIES[cleanSym]) CITIES[cleanSym] = { name: cleanName, price: 0, basePrice: 0, realPrice: 0, simBasePrice: 0, vol: 2.0, chartData: {}, autoSimTriggered: false };
     else CITIES[cleanSym].name = cleanName;
     if (!SECTORS["CUSTOM"].cities.includes(cleanSym)) SECTORS["CUSTOM"].cities.push(cleanSym);
     localStorage.setItem('abula_custom_stocks', JSON.stringify(SECTORS["CUSTOM"].cities.map(sym => ({ symbol: sym, name: CITIES[sym].name }))));
