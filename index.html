@@ -9,26 +9,37 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        body { margin: 0; overflow: hidden; background: #020202; font-family: 'Noto Sans TC', sans-serif; color: white; touch-action: none; }
+        body { margin: 0; overflow: hidden; background: #02050a; font-family: 'Noto Sans TC', sans-serif; color: white; touch-action: none; }
         canvas { display: block; }
-        .glass { background: rgba(0, 0, 0, 0.88); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.08); }
-        .glass-sim { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(25px); border: 1px solid rgba(56, 189, 248, 0.3); box-shadow: 0 0 20px rgba(56, 189, 248, 0.1); }
+        .glass { background: rgba(10, 15, 25, 0.85); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .glass-sim { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(25px); border: 1px solid rgba(56, 189, 248, 0.4); box-shadow: 0 0 25px rgba(56, 189, 248, 0.15); }
         .ui-overlay { pointer-events: none; }
         .ui-overlay > * { pointer-events: auto; }
         .tab-btn { font-size: 11px; padding: 8px 12px; border-bottom: 2px solid transparent; transition: all 0.3s; color: #888; font-weight: bold; white-space: nowrap; }
-        .tab-btn.active { color: #eab308; border-color: #eab308; }
+        .tab-btn.active { color: #eab308; border-color: #eab308; text-shadow: 0 0 10px rgba(234,179,8,0.5); }
         @keyframes thunder { 0% { background: rgba(255, 255, 255, 0); } 10% { background: rgba(255, 255, 255, 0.3); } 20% { background: rgba(255, 255, 255, 0); } 100% { background: rgba(255, 255, 255, 0); } }
         @keyframes goldThunder { 0% { background: rgba(234, 179, 8, 0); } 10% { background: rgba(234, 179, 8, 0.4); } 20% { background: rgba(234, 179, 8, 0); } 100% { background: rgba(234, 179, 8, 0); } }
         @keyframes simThunder { 0% { background: rgba(56, 189, 248, 0); } 10% { background: rgba(56, 189, 248, 0.4); } 20% { background: rgba(56, 189, 248, 0); } 100% { background: rgba(56, 189, 248, 0); } }
         .thunder-flash { animation: thunder 0.5s ease-out; }
         .gold-thunder-flash { animation: goldThunder 0.8s ease-out; }
         .sim-thunder-flash { animation: simThunder 0.8s ease-out; }
-        .result-positive { color: #ef4444; }
-        .result-negative { color: #22c55e; }
+        .result-positive { color: #ef4444; text-shadow: 0 0 8px rgba(239,68,68,0.4); }
+        .result-negative { color: #22c55e; text-shadow: 0 0 8px rgba(34,197,94,0.4); }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         .timeframe-btn { font-size: 12px; padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; }
-        .timeframe-btn.active { background: #eab308; color: black; border-color: #eab308; font-weight: 900; }
+        .timeframe-btn.active { background: #eab308; color: black; border-color: #eab308; font-weight: 900; box-shadow: 0 0 10px rgba(234,179,8,0.5); }
+        
+        /* 讓輸入框更有質感 */
+        input[type=number] {
+            background: rgba(0,0,0,0.3);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+            transition: all 0.3s;
+        }
+        input[type=number]:focus {
+            background: rgba(255,255,255,0.1);
+            box-shadow: 0 0 15px rgba(234,179,8,0.3), inset 0 2px 4px rgba(0,0,0,0.5);
+        }
     </style>
 </head>
 <body>
@@ -41,106 +52,109 @@
     <div class="flex flex-col md:flex-row justify-between items-start gap-2 md:gap-4 h-[40vh] md:h-auto overflow-hidden">
         
         <!-- Left Panel -->
-        <div class="space-y-2 md:space-y-4 w-full md:w-96 flex-shrink-0 overflow-y-auto scrollbar-hide pb-2">
-            <div id="main-dashboard" class="glass rounded-2xl p-4 md:p-5 w-full shadow-2xl transition-all duration-500">
+        <div class="space-y-2 md:space-y-4 w-full md:w-[26rem] flex-shrink-0 overflow-y-auto scrollbar-hide pb-2">
+            <div id="main-dashboard" class="glass rounded-2xl p-4 md:p-5 w-full transition-all duration-500">
                 <div class="flex justify-between items-center mb-2">
-                    <span id="market-status-label" class="text-[10px] md:text-xs text-yellow-500 font-bold uppercase tracking-widest bg-yellow-500/10 px-2 py-1 rounded">判讀時區中</span>
+                    <span id="market-status-label" class="text-[10px] md:text-xs text-yellow-400 font-bold uppercase tracking-widest bg-yellow-500/20 px-3 py-1.5 rounded-md border border-yellow-500/30">判讀時區中</span>
                     <div class="flex gap-2">
-                        <button onclick="toggleSimMode()" id="sim-btn" class="hidden bg-blue-600 hover:bg-blue-500 px-2 py-1 rounded text-[9px] text-white font-bold tracking-widest animate-pulse">啟動沙盤練兵</button>
-                        <button onclick="openChartPage()" class="bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-[9px] text-white font-bold tracking-widest">軍師圖表</button>
+                        <button onclick="toggleSimMode()" id="sim-btn" class="hidden bg-sky-600 hover:bg-sky-500 px-3 py-1.5 rounded-md text-[10px] text-white font-bold tracking-widest shadow-[0_0_15px_rgba(2,132,199,0.5)] transition-all">啟動沙盤練兵</button>
+                        <button onclick="openChartPage()" class="bg-white/10 hover:bg-white/20 border border-white/20 px-3 py-1.5 rounded-md text-[10px] text-white font-bold tracking-widest transition-all">軍師圖表</button>
                     </div>
                 </div>
-                <div class="flex justify-between items-end">
+                <div class="flex justify-between items-end mt-4">
                     <div>
-                        <div class="text-[9px] text-gray-500 mb-1">人界存銀 天幣</div>
-                        <div id="user-balance" class="text-2xl md:text-3xl font-mono font-black text-white">讀取中</div>
-                        <div id="frozen-balance" class="text-[9px] text-gray-500 mt-1">天道凍結 待命軍費 零</div>
+                        <div class="text-[10px] text-gray-400 mb-1 tracking-wider">人界存銀 天幣</div>
+                        <div id="user-balance" class="text-3xl md:text-4xl font-mono font-black text-white drop-shadow-md">讀取中</div>
+                        <div id="frozen-balance" class="text-[10px] text-gray-500 mt-1.5">天道凍結 待命軍費 零</div>
                     </div>
                     <!-- 雙軌統計切換區 -->
                     <div id="real-pnl-container" class="flex flex-col items-end">
-                        <span class="text-[9px] text-gray-500 font-bold uppercase">今日總戰果</span>
-                        <div id="today-total-result" class="text-base md:text-lg font-black font-mono">加 零</div>
+                        <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">今日總戰果</span>
+                        <div id="today-total-result" class="text-lg md:text-xl font-black font-mono">加 零</div>
                     </div>
                     <div id="sim-pnl-container" class="hidden flex flex-col items-end">
-                        <span class="text-[9px] text-sky-400 font-bold uppercase animate-pulse">沙盤累積戰果</span>
-                        <div id="sim-total-result" class="text-base md:text-lg font-black font-mono text-sky-400">加 零</div>
+                        <span class="text-[10px] text-sky-400 font-bold uppercase tracking-wider mb-1">沙盤累積戰果</span>
+                        <div id="sim-total-result" class="text-lg md:text-xl font-black font-mono text-sky-400 drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]">加 零</div>
                     </div>
                 </div>
                 
-                <div class="mt-3 md:mt-4 pt-3 border-t border-white/10 space-y-2">
+                <div class="mt-4 pt-4 border-t border-white/10 space-y-3">
                     <div class="flex gap-2 items-center">
-                        <select id="sector-selector" onchange="switchSector(this.value)" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-[10px] md:text-xs font-bold text-gray-300 focus:outline-none truncate">
+                        <select id="sector-selector" onchange="switchSector(this.value)" class="flex-1 bg-black/40 border border-white/20 rounded-lg px-2 py-2.5 text-[11px] md:text-xs font-bold text-gray-200 focus:outline-none focus:border-yellow-500 truncate transition-colors">
                             <option value="SEMICON">半導體 領域</option>
                             <option value="COMPUTER">電腦週邊 領域</option>
                             <option value="NETWORK">通信網路 領域</option>
                             <option value="CUSTOM">統帥自選 領域</option>
                         </select>
-                        <select id="city-selector" onchange="switchCity(this.value)" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-[10px] md:text-xs font-bold text-white focus:outline-none cursor-pointer truncate"></select>
-                        <button onclick="openCustomManager()" class="bg-white/10 p-2 rounded-lg text-white font-bold text-[10px]">管理</button>
+                        <select id="city-selector" onchange="switchCity(this.value)" class="flex-1 bg-black/40 border border-white/20 rounded-lg px-2 py-2.5 text-[11px] md:text-xs font-bold text-white focus:outline-none focus:border-yellow-500 cursor-pointer truncate transition-colors"></select>
+                        <button onclick="openCustomManager()" class="bg-white/10 hover:bg-white/20 border border-white/20 p-2.5 rounded-lg text-white font-bold text-[11px] transition-all">管理</button>
                     </div>
                     
-                    <div class="flex justify-between items-end">
+                    <div class="flex justify-between items-end bg-black/20 p-3 rounded-xl border border-white/5">
                         <div class="flex flex-col">
-                            <span id="market-price" class="text-xl md:text-2xl font-mono font-black text-white tracking-tighter">連線中</span>
-                            <span id="price-change" class="text-[10px] md:text-xs font-bold text-gray-400">零點零零 百分比</span>
+                            <span id="market-price" class="text-2xl md:text-3xl font-mono font-black text-white tracking-tighter drop-shadow-md">連線中</span>
+                            <span id="price-change" class="text-[11px] md:text-xs font-bold text-gray-400 mt-1">零點零零 百分比</span>
                         </div>
-                        <div class="text-right">
-                            <div class="text-[8px] md:text-[9px] text-gray-500 uppercase font-bold">昨日平盤價</div>
-                            <div id="base-price-display" class="text-xs md:text-sm font-mono font-bold text-gray-300">---</div>
+                        <div class="text-right flex flex-col items-end justify-center">
+                            <div class="text-[9px] md:text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">昨日平盤價</div>
+                            <div id="base-price-display" class="text-sm md:text-base font-mono font-bold text-gray-300 bg-white/5 px-2 py-1 rounded">---</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="glass rounded-2xl p-3 md:p-4 w-full border-purple-500/30 flex justify-between items-center hidden md:flex">
+            <div class="glass rounded-2xl p-4 w-full border-purple-500/30 flex justify-between items-center hidden md:flex">
                 <div>
-                    <div class="text-[9px] md:text-[10px] text-purple-400 font-bold uppercase tracking-widest mb-1">天道國庫 總資產</div>
-                    <div id="treasury-balance-display" class="text-lg md:text-xl font-mono font-black text-yellow-400">讀取中</div>
+                    <div class="text-[10px] text-purple-400 font-bold uppercase tracking-widest mb-1">天道國庫 總資產</div>
+                    <div id="treasury-balance-display" class="text-xl font-mono font-black text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.3)]">讀取中</div>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="openApiSettings()" class="bg-white/10 hover:bg-white/20 text-[9px] font-bold px-2 py-2 rounded-lg">連線金鑰</button>
-                    <button onclick="showDailySummary()" class="bg-purple-900/40 hover:bg-purple-800 text-[9px] font-bold px-3 py-2 rounded-lg border border-purple-500/30">檢視結算大表</button>
+                    <button onclick="openApiSettings()" class="bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-bold px-3 py-2 rounded-lg transition-colors">連線金鑰</button>
+                    <button onclick="showDailySummary()" class="bg-purple-900/40 hover:bg-purple-800 text-[10px] font-bold px-3 py-2 rounded-lg border border-purple-500/40 shadow-[0_0_10px_rgba(168,85,247,0.2)] transition-all">結算大表</button>
                 </div>
             </div>
         </div>
 
         <!-- Right Panel: Sidebar Tabs -->
-        <div class="w-full md:w-80 lg:w-96 flex flex-col gap-2 h-full md:max-h-[70vh] flex-shrink-0">
+        <div class="w-full md:w-80 lg:w-[28rem] flex flex-col h-full md:max-h-[75vh] flex-shrink-0 drop-shadow-2xl">
             <div class="glass rounded-t-2xl flex border-b border-white/10 overflow-x-auto scrollbar-hide">
-                <button onclick="switchTab('units')" id="tab-units" class="tab-btn flex-1 active">未平倉部隊</button>
-                <button onclick="switchTab('history')" id="tab-history" class="tab-btn flex-1">今日戰史</button>
-                <button onclick="switchTab('pending')" id="tab-pending" class="tab-btn flex-1">待命軍令</button>
+                <button onclick="switchTab('units')" id="tab-units" class="tab-btn flex-1 active py-3">未平倉部隊</button>
+                <button onclick="switchTab('history')" id="tab-history" class="tab-btn flex-1 py-3">今日戰史</button>
+                <button onclick="switchTab('pending')" id="tab-pending" class="tab-btn flex-1 py-3">待命軍令</button>
             </div>
-            <div id="tab-container" class="glass rounded-b-2xl p-3 md:p-4 flex-1 overflow-y-auto scrollbar-hide min-h-[150px] transition-colors duration-500">
-                <div id="tab-content-units" class="space-y-2"></div>
-                <div id="tab-content-history" class="space-y-2 hidden"></div>
-                <div id="tab-content-pending" class="space-y-2 hidden"></div>
+            <div id="tab-container" class="glass rounded-b-2xl p-4 flex-1 overflow-y-auto scrollbar-hide min-h-[180px] transition-colors duration-500">
+                <div id="tab-content-units" class="space-y-3"></div>
+                <div id="tab-content-history" class="space-y-3 hidden"></div>
+                <div id="tab-content-pending" class="space-y-3 hidden"></div>
             </div>
         </div>
     </div>
 
     <!-- Bottom Bar: Orders -->
-    <div class="w-full max-w-4xl mx-auto mt-2 md:mt-auto">
-        <div id="order-panel" class="glass rounded-3xl p-3 md:p-6 flex flex-wrap md:flex-nowrap items-center gap-2 md:gap-6 shadow-2xl border-white/20 w-full transition-colors duration-500">
+    <div class="w-full max-w-5xl mx-auto mt-2 md:mt-auto">
+        <div id="order-panel" class="glass rounded-3xl p-4 md:p-6 flex flex-wrap md:flex-nowrap items-center gap-3 md:gap-8 transition-colors duration-500 relative overflow-hidden">
+            <!-- 裝飾光暈 -->
+            <div class="absolute top-0 left-1/4 w-32 h-full bg-white/5 -skew-x-12 transform -translate-x-full pointer-events-none"></div>
+            
             <div class="flex flex-col w-[48%] md:w-auto">
-                <span class="text-[9px] text-gray-400 font-bold uppercase mb-1">派遣數量 營</span>
-                <input id="order-qty" type="number" value="1" min="1" class="bg-white/5 border border-white/10 rounded-lg px-2 md:px-4 py-2 w-full md:w-24 text-base md:text-xl font-bold focus:border-yellow-500 outline-none text-center">
+                <span class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5">派遣數量 營</span>
+                <input id="order-qty" type="number" value="1" min="1" class="border border-white/20 rounded-xl px-3 md:px-5 py-3 w-full md:w-28 text-lg md:text-2xl font-bold focus:border-yellow-500 outline-none text-center text-white font-mono">
             </div>
             <div class="flex flex-col w-[48%] md:w-auto">
-                <span class="text-[9px] text-gray-400 font-bold uppercase mb-1">委託進場價位</span>
-                <input id="order-price" type="number" step="0.5" placeholder="市價" class="bg-white/5 border border-white/10 rounded-lg px-2 md:px-4 py-2 w-full md:w-32 text-base md:text-xl font-bold focus:border-yellow-500 outline-none text-center">
+                <span class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5">委託進場價位</span>
+                <input id="order-price" type="number" step="0.5" placeholder="市價" class="border border-white/20 rounded-xl px-3 md:px-5 py-3 w-full md:w-36 text-lg md:text-2xl font-bold focus:border-yellow-500 outline-none text-center text-white font-mono">
             </div>
             
-            <div class="hidden md:block h-12 w-px bg-white/10"></div>
+            <div class="hidden md:block h-16 w-px bg-gradient-to-b from-transparent via-white/20 to-transparent mx-2"></div>
             
-            <div class="flex gap-2 md:gap-4 flex-1 w-full mt-2 md:mt-0">
-                <button id="btn-long" onclick="issueOrder('LONG')" class="flex-1 bg-red-600 hover:bg-red-500 active:scale-95 transition-all rounded-xl md:rounded-2xl py-3 md:py-4 flex flex-col items-center justify-center border-b-4 border-red-800">
-                    <span class="text-[10px] md:text-xs font-bold text-red-200">護國多軍</span>
-                    <span class="text-sm md:text-lg font-black uppercase tracking-widest">派遣入城</span>
+            <div class="flex gap-3 md:gap-6 flex-1 w-full mt-2 md:mt-0">
+                <button id="btn-long" onclick="issueOrder('LONG')" class="flex-1 bg-gradient-to-b from-red-500 to-red-700 hover:from-red-400 hover:to-red-600 active:scale-95 transition-all rounded-2xl py-3 md:py-5 flex flex-col items-center justify-center border border-red-400/30 shadow-[0_5px_20px_rgba(220,38,38,0.4)]">
+                    <span class="text-[11px] md:text-xs font-bold text-red-100 tracking-widest mb-1">護國多軍</span>
+                    <span class="text-base md:text-xl font-black uppercase tracking-widest text-white drop-shadow-md">派遣入城</span>
                 </button>
-                <button id="btn-short" onclick="issueOrder('SHORT')" class="flex-1 bg-green-600 hover:bg-green-500 active:scale-95 transition-all rounded-xl md:rounded-2xl py-3 md:py-4 flex flex-col items-center justify-center border-b-4 border-green-800">
-                    <span class="text-[10px] md:text-xs font-bold text-green-200">掠奪空軍</span>
-                    <span class="text-sm md:text-lg font-black uppercase tracking-widest">派遣攻掠</span>
+                <button id="btn-short" onclick="issueOrder('SHORT')" class="flex-1 bg-gradient-to-b from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 active:scale-95 transition-all rounded-2xl py-3 md:py-5 flex flex-col items-center justify-center border border-green-400/30 shadow-[0_5px_20px_rgba(22,163,74,0.4)]">
+                    <span class="text-[11px] md:text-xs font-bold text-green-100 tracking-widest mb-1">掠奪空軍</span>
+                    <span class="text-base md:text-xl font-black uppercase tracking-widest text-white drop-shadow-md">派遣攻掠</span>
                 </button>
             </div>
         </div>
@@ -148,16 +162,22 @@
 </div>
 
 <!-- Separated Chart Page -->
-<div id="chart-page" class="fixed inset-0 z-40 bg-black flex flex-col hidden transition-all duration-300 transform translate-y-full">
-    <div class="flex justify-between items-center p-4 border-b border-white/10 bg-gray-900">
-        <h2 class="text-lg font-bold text-yellow-500 tracking-widest">軍師戰略室 圖表</h2>
-        <button onclick="closeChartPage()" class="bg-white/10 px-4 py-2 rounded-lg text-sm font-bold hover:bg-white/20">返回戰場</button>
+<div id="chart-page" class="fixed inset-0 z-40 bg-[#02050a] flex flex-col hidden transition-all duration-300 transform translate-y-full">
+    <div class="flex justify-between items-center p-5 border-b border-white/10 bg-gray-900/80 backdrop-blur-md shadow-lg">
+        <div class="flex items-center gap-3">
+            <div class="w-1 h-6 bg-yellow-500 rounded-full"></div>
+            <h2 class="text-xl font-black text-white tracking-widest">軍師戰略室 <span class="text-yellow-500">圖表分析</span></h2>
+        </div>
+        <button onclick="closeChartPage()" class="bg-white/10 border border-white/20 px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-white/20 transition-all shadow-md">返回實戰戰場</button>
     </div>
-    <div class="flex-1 p-4 overflow-y-auto">
-        <div class="glass rounded-2xl p-6 shadow-2xl flex flex-col gap-6 max-w-5xl mx-auto h-full border-blue-500/20">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div class="text-2xl font-black" id="chart-city-name">城池名稱</div>
-                <div class="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-hide">
+    <div class="flex-1 p-4 md:p-6 overflow-y-auto">
+        <div class="glass rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col gap-8 max-w-6xl mx-auto h-full border-blue-500/20 relative overflow-hidden">
+            <!-- 裝飾背景 -->
+            <div class="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10">
+                <div class="text-3xl md:text-4xl font-black tracking-wider drop-shadow-md" id="chart-city-name">城池名稱</div>
+                <div class="flex gap-2 overflow-x-auto w-full md:w-auto pb-3 md:pb-0 scrollbar-hide">
                     <button onclick="setTimeframe('1m')" class="timeframe-btn active flex-shrink-0" id="tf-1m">一分</button>
                     <button onclick="setTimeframe('5m')" class="timeframe-btn flex-shrink-0" id="tf-5m">五分</button>
                     <button onclick="setTimeframe('15m')" class="timeframe-btn flex-shrink-0" id="tf-15m">十五分</button>
@@ -168,17 +188,22 @@
                 </div>
             </div>
             
-            <div class="flex-1 min-h-[200px] flex items-end gap-[2px] px-1 border-b border-white/10 overflow-hidden relative">
-                <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20 text-4xl font-black tracking-widest">量能趨勢圖</div>
+            <div class="flex-1 min-h-[250px] flex items-end gap-[3px] px-2 border-b-2 border-white/10 overflow-hidden relative z-10 bg-black/20 rounded-xl p-4">
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10 text-5xl font-black tracking-widest text-white">量能波段趨勢</div>
                 <div id="volume-bars" class="flex items-end gap-[4px] w-full h-full relative z-10"></div>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white/5 p-6 rounded-xl">
-                <div class="flex flex-col"><span class="text-sm text-gray-500 font-bold uppercase tracking-widest mb-2">凱迪指標 Ｋ Ｄ</span>
-                    <div class="flex items-baseline gap-6"><span id="kd-k" class="text-2xl font-mono font-bold text-blue-400">K --</span><span id="kd-d" class="text-2xl font-mono font-bold text-orange-400">D --</span></div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+                <div class="bg-black/40 border border-white/5 p-6 rounded-2xl shadow-inner">
+                    <span class="text-xs text-gray-400 font-bold uppercase tracking-widest mb-3 block">凱迪指標 (KD)</span>
+                    <div class="flex items-baseline gap-8">
+                        <span id="kd-k" class="text-3xl font-mono font-black text-sky-400 drop-shadow-[0_0_8px_rgba(56,189,248,0.4)]">K --</span>
+                        <span id="kd-d" class="text-3xl font-mono font-black text-orange-400 drop-shadow-[0_0_8px_rgba(251,146,60,0.4)]">D --</span>
+                    </div>
                 </div>
-                <div class="flex flex-col"><span class="text-sm text-gray-500 font-bold uppercase tracking-widest mb-2">動能指標 麥克滴</span>
-                    <div id="macd-val" class="text-3xl font-mono font-bold text-white">---</div>
+                <div class="bg-black/40 border border-white/5 p-6 rounded-2xl shadow-inner">
+                    <span class="text-xs text-gray-400 font-bold uppercase tracking-widest mb-3 block">動能指標 (MACD)</span>
+                    <div id="macd-val" class="text-4xl font-mono font-black text-white drop-shadow-md">---</div>
                 </div>
             </div>
         </div>
@@ -191,10 +216,10 @@
         <h2 class="text-xl md:text-2xl font-black text-center mb-4 tracking-widest">天道報價連線設定</h2>
         <p class="text-xs text-gray-400 mb-6 leading-relaxed">預設採用全域代理爬蟲抓取真實台股。若有進階報價金鑰可於此輸入以獲取更穩定連線。</p>
         <div class="space-y-4">
-            <input id="api-key-input" type="text" placeholder="留空則使用預設公開連線" class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:border-yellow-500 outline-none font-mono text-sm">
-            <div class="flex gap-4">
-                <button onclick="closeApiSettings()" class="flex-1 bg-gray-700 hover:bg-gray-600 py-3 rounded-xl font-bold text-sm transition-all">關閉</button>
-                <button onclick="saveApiKey()" class="flex-1 bg-yellow-600 hover:bg-yellow-500 py-3 rounded-xl font-bold text-sm text-black transition-all">儲存設定</button>
+            <input id="api-key-input" type="text" placeholder="留空則使用預設公開連線" class="w-full bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none font-mono text-sm">
+            <div class="flex gap-4 pt-2">
+                <button onclick="closeApiSettings()" class="flex-1 bg-gray-700 hover:bg-gray-600 py-3.5 rounded-xl font-bold text-sm transition-all shadow-md">取消返回</button>
+                <button onclick="saveApiKey()" class="flex-1 bg-yellow-500 hover:bg-yellow-400 py-3.5 rounded-xl font-bold text-sm text-black transition-all shadow-[0_0_15px_rgba(234,179,8,0.4)]">儲存設定</button>
             </div>
         </div>
     </div>
@@ -203,30 +228,36 @@
 <!-- Custom Stock Manager Modal -->
 <div id="custom-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300">
     <div class="glass rounded-3xl p-6 md:p-8 max-w-md w-full mx-4 shadow-2xl border-yellow-500/20">
-        <h2 class="text-xl md:text-2xl font-black text-center mb-6 tracking-widest">統帥自選城池管理</h2>
-        <p class="text-xs text-gray-400 mb-4 text-center">僅限輸入台灣股市代號</p>
-        <div class="space-y-4 mb-6">
-            <input id="custom-symbol" type="text" placeholder="台股代號 如 貳陸零參" class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:border-yellow-500 outline-none font-mono text-sm uppercase">
-            <input id="custom-name" type="text" placeholder="城池名稱 如 長榮" class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:border-yellow-500 outline-none text-sm">
-            <button onclick="addCustomStock()" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-bold text-sm transition-all shadow-lg">新增至自選領域</button>
+        <div class="flex items-center justify-center gap-2 mb-2">
+            <span class="text-2xl">⚙️</span>
+            <h2 class="text-xl md:text-2xl font-black tracking-widest">統帥自選城池管理</h2>
         </div>
-        <div class="border-t border-white/10 pt-4">
-            <h3 class="text-xs text-gray-500 font-bold mb-2">已編制自選清單</h3>
-            <div id="custom-stock-list" class="space-y-2 max-h-40 overflow-y-auto scrollbar-hide"></div>
+        <p class="text-xs text-yellow-500/80 font-bold mb-6 text-center tracking-widest">僅限輸入台灣股市代號</p>
+        
+        <div class="space-y-3 mb-6 bg-black/30 p-4 rounded-2xl border border-white/5">
+            <input id="custom-symbol" type="text" placeholder="台股代號 如 貳陸零參" class="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none font-mono text-sm uppercase transition-colors">
+            <input id="custom-name" type="text" placeholder="城池名稱 如 長榮" class="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none text-sm transition-colors">
+            <button onclick="addCustomStock()" class="w-full bg-blue-600 hover:bg-blue-500 py-3.5 rounded-xl font-bold text-sm transition-all shadow-[0_0_15px_rgba(37,99,235,0.4)] mt-2">編列入軍</button>
         </div>
-        <button onclick="closeCustomManager()" class="mt-6 w-full bg-gray-700 hover:bg-gray-600 py-3 rounded-xl font-bold text-sm transition-all">完成並返回</button>
+        
+        <div class="border-t border-white/10 pt-5">
+            <h3 class="text-[11px] text-gray-400 font-bold uppercase tracking-widest mb-3 px-1">已編制自選陣列</h3>
+            <div id="custom-stock-list" class="space-y-2 max-h-48 overflow-y-auto pr-2 scrollbar-hide"></div>
+        </div>
+        <button onclick="closeCustomManager()" class="mt-6 w-full bg-gray-700 hover:bg-gray-600 py-3.5 rounded-xl font-bold text-sm transition-all shadow-md">完成配置</button>
     </div>
 </div>
 
 <!-- Report Modal -->
 <div id="report-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300">
-    <div id="modal-window" class="glass rounded-3xl p-6 md:p-8 max-w-2xl w-full mx-4 shadow-2xl border-yellow-500/20">
+    <div id="modal-window" class="glass rounded-3xl p-6 md:p-8 max-w-2xl w-full mx-4 shadow-2xl border-yellow-500/30 transform scale-95 transition-transform duration-300">
         <div id="modal-body"></div>
-        <button onclick="closeModal()" class="mt-8 w-full bg-yellow-600 hover:bg-yellow-500 py-4 rounded-2xl font-black text-xl shadow-lg transition-all active:scale-95 text-black">關閉報表</button>
+        <button onclick="closeModal()" class="mt-8 w-full bg-yellow-500 hover:bg-yellow-400 py-4 rounded-2xl font-black text-xl shadow-[0_0_20px_rgba(234,179,8,0.4)] transition-all active:scale-95 text-black">關閉軍情報表</button>
     </div>
 </div>
 
-<div id="msg-box" class="fixed bottom-32 left-1/2 -translate-x-1/2 glass px-6 py-3 rounded-full text-sm font-bold opacity-0 transition-all z-60 pointer-events-none text-center w-max max-w-[90vw]"></div>
+<!-- Toast Message -->
+<div id="msg-box" class="fixed top-24 md:bottom-32 md:top-auto left-1/2 -translate-x-1/2 glass px-6 py-3.5 rounded-full text-sm font-bold opacity-0 transition-all duration-300 z-[60] pointer-events-none text-center w-max max-w-[90vw] shadow-[0_10px_25px_rgba(0,0,0,0.5)] border-white/20 text-white tracking-wider"></div>
 
 <script>
 // --- 強制數值轉換防呆函式 (解決 NaN 崩潰問題) ---
@@ -278,14 +309,14 @@ let gameState = {
     pending: [], 
     currentTab: 'units',
     lastDividendDay: "",
-    pendingSimReward: 0 // 沙盤結算預備發放的獎勵
+    pendingSimReward: 0 
 };
 
 // 雙軌系統變數
 let isSimMode = false;
 let realStateSnapshot = null;
-let currentMarketState = "CLOSED"; // PRE, OPEN, CLOSED
-let lastPriceForAnim = 0; // 用於觸發攻擊動畫
+let currentMarketState = "CLOSED"; 
+let lastPriceForAnim = 0; 
 
 function saveState() {
     if (!isSimMode) {
@@ -298,7 +329,6 @@ function loadState() {
         const saved = localStorage.getItem('abula_gamestate');
         if (saved) {
             const parsed = JSON.parse(saved);
-            // 強制深層轉換數值，杜絕 NaN
             gameState.balance = safeNum(parsed.balance, 5000000);
             gameState.frozen = safeNum(parsed.frozen, 0);
             gameState.realizedPnl = safeNum(parsed.realizedPnl, 0);
@@ -321,80 +351,243 @@ function loadState() {
     } catch(e) { console.error("自選股讀取失敗", e); }
 }
 
-// --- Three.js 戰場渲染與立體戰棋武將 ---
+// --- 史詩級 3D 戰場渲染與粒子系統 ---
 let scene, camera, renderer, battleLine;
 let baseRedArmy = [], baseGreenArmy = [];
-let playerRedArmy = [], playerGreenArmy = []; // 專屬統帥入陣部隊
-let currentPrice = 0;
+let playerRedArmy = [], playerGreenArmy = []; 
+let particles;
 
-// 建立立體戰棋模型函式
-function createSoldier(colorHex, isPlayer) {
+// 建立具象化城池 (左側)
+function createCastle() {
+    const castleGroup = new THREE.Group();
+    const stoneMat = new THREE.MeshStandardMaterial({color: 0x3a404d, roughness: 0.9, metalness: 0.1});
+    const highlightMat = new THREE.MeshStandardMaterial({color: 0x556677, emissive: 0x112233, emissiveIntensity: 0.5});
+    
+    // 主城牆
+    const mainWall = new THREE.Mesh(new THREE.BoxGeometry(12, 18, 70), stoneMat);
+    mainWall.position.set(-45, 9, 0);
+    castleGroup.add(mainWall);
+    
+    // 城垛 (上方凹凸)
+    for(let z = -33; z <= 33; z += 6) {
+        const battlement = new THREE.Mesh(new THREE.BoxGeometry(12, 4, 3), highlightMat);
+        battlement.position.set(-45, 19, z);
+        castleGroup.add(battlement);
+    }
+    
+    // 防禦塔
+    for(let z of [-35, 0, 35]) {
+        const tower = new THREE.Mesh(new THREE.CylinderGeometry(5, 6, 26, 8), stoneMat);
+        tower.position.set(-42, 13, z);
+        const towerTop = new THREE.Mesh(new THREE.CylinderGeometry(6, 6, 3, 8), highlightMat);
+        towerTop.position.set(-42, 27.5, z);
+        castleGroup.add(tower);
+        castleGroup.add(towerTop);
+    }
+    return castleGroup;
+}
+
+// 建立立體森林 (右側)
+function createForest() {
+    const forestGroup = new THREE.Group();
+    const trunkMat = new THREE.MeshStandardMaterial({color: 0x2d1a11, roughness: 1.0});
+    const leafMat = new THREE.MeshStandardMaterial({color: 0x0f3818, roughness: 0.9, flatShading: true});
+    
+    for(let i=0; i<45; i++) {
+        const tree = new THREE.Group();
+        const height = 1 + Math.random()*0.5;
+        
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 1.2, 5*height, 5), trunkMat);
+        trunk.position.y = 2.5 * height;
+        
+        const leaves1 = new THREE.Mesh(new THREE.ConeGeometry(4*height, 8*height, 5), leafMat);
+        leaves1.position.y = 6 * height;
+        
+        const leaves2 = new THREE.Mesh(new THREE.ConeGeometry(3*height, 6*height, 5), leafMat);
+        leaves2.position.y = 9 * height;
+        
+        tree.add(trunk, leaves1, leaves2);
+        
+        // 散佈在右側
+        const x = 40 + Math.random() * 25;
+        const z = (Math.random() - 0.5) * 80;
+        tree.position.set(x, 0, z);
+        
+        // 隨機旋轉增加自然感
+        tree.rotation.y = Math.random() * Math.PI;
+        forestGroup.add(tree);
+    }
+    return forestGroup;
+}
+
+// 建立立體戰棋武將 (取代舊方塊)
+function createSoldier(colorHex, isPlayer, side) {
     const group = new THREE.Group();
-    const scale = isPlayer ? 1.5 : 0.8; // 統帥武將較大，市場士兵較小
+    const scale = isPlayer ? 1.6 : 0.8; 
 
     const mat = new THREE.MeshStandardMaterial({
         color: colorHex,
         emissive: isPlayer ? colorHex : 0x000000,
-        emissiveIntensity: isPlayer ? 0.6 : 0,
-        metalness: isPlayer ? 0.8 : 0.2,
-        roughness: 0.3
+        emissiveIntensity: isPlayer ? 0.8 : 0,
+        metalness: isPlayer ? 0.8 : 0.1,
+        roughness: 0.3,
+        flatShading: true
     });
 
-    // 身體 (圓柱體)
-    const bodyGeo = new THREE.CylinderGeometry(0.4 * scale, 0.6 * scale, 1.6 * scale, 8);
+    // 軀幹 (倒錐體)
+    const bodyGeo = new THREE.CylinderGeometry(0.8*scale, 0.3*scale, 1.8*scale, 4);
     const body = new THREE.Mesh(bodyGeo, mat);
-    body.position.y = 0.8 * scale;
+    body.rotation.y = Math.PI/4;
+    body.position.y = 1.0 * scale;
     group.add(body);
 
-    // 頭部 (球體)
-    const headGeo = new THREE.SphereGeometry(0.5 * scale, 8, 8);
+    // 頭部 (菱形體)
+    const headGeo = new THREE.OctahedronGeometry(0.5*scale);
     const head = new THREE.Mesh(headGeo, mat);
-    head.position.y = 1.9 * scale;
+    head.position.y = 2.3 * scale;
     group.add(head);
 
-    // 專屬發光長矛 (僅限統帥部隊)
+    // 統帥專屬發光武器
     if (isPlayer) {
-        const wpnGeo = new THREE.CylinderGeometry(0.05 * scale, 0.05 * scale, 2.5 * scale, 4);
-        const wpnMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.8 });
+        const wpnGeo = new THREE.BoxGeometry(0.1*scale, 3.5*scale, 0.2*scale);
+        const wpnMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1.0 });
         const wpn = new THREE.Mesh(wpnGeo, wpnMat);
-        wpn.position.set(0.6 * scale, 1.2 * scale, 0.5 * scale);
-        wpn.rotation.x = Math.PI / 4;
+        const dir = side === 'LONG' ? 1 : -1;
+        wpn.position.set(dir * 0.8 * scale, 1.5 * scale, 0.6 * scale);
+        wpn.rotation.x = Math.PI / 3;
         group.add(wpn);
+        
+        // 腳下光環
+        const ringGeo = new THREE.RingGeometry(1.2*scale, 1.4*scale, 16);
+        const ringMat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.rotation.x = Math.PI / 2;
+        ring.position.y = 0.1;
+        group.add(ring);
     }
 
-    // 記錄基礎高度供動畫使用
-    group.userData.isAttacking = false;
+    // 動畫參數
+    group.userData = { 
+        isAttacking: false, 
+        randomOffset: Math.random() * Math.PI * 2,
+        isPlayer: isPlayer
+    };
     return group;
+}
+
+// 建立粒子火花系統
+function initParticles() {
+    const particleCount = 150;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const velocities = [];
+    
+    for (let i = 0; i < particleCount; i++) {
+        positions[i*3] = 0; positions[i*3+1] = -100; positions[i*3+2] = 0; // 初始藏起來
+        velocities.push({x:0, y:0, z:0});
+    }
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    
+    const material = new THREE.PointsMaterial({ 
+        color: 0xffdd55, size: 0.6, transparent: true, opacity: 0, blending: THREE.AdditiveBlending 
+    });
+    
+    particles = new THREE.Points(geometry, material);
+    particles.userData = { velocities: velocities, active: false, life: 0 };
+    scene.add(particles);
+}
+
+// 引爆粒子特效
+function triggerClashParticles(xPos, side) {
+    particles.position.x = xPos;
+    particles.material.opacity = 1;
+    particles.material.color.setHex(side === 'LONG' ? 0xff4444 : 0x44ff44);
+    particles.userData.active = true;
+    particles.userData.life = 1.0;
+    
+    const positions = particles.geometry.attributes.position.array;
+    for (let i = 0; i < 150; i++) {
+        positions[i*3] = 0;
+        positions[i*3+1] = 1 + Math.random()*2; // 高度
+        positions[i*3+2] = (Math.random() - 0.5) * 40; // 沿著 Z 軸(戰線)分佈
+        
+        particles.userData.velocities[i] = {
+            x: (Math.random() - 0.5) * 1.5,
+            y: Math.random() * 1.5,
+            z: (Math.random() - 0.5) * 1.0
+        };
+    }
+    particles.geometry.attributes.position.needsUpdate = true;
+}
+
+// 更新粒子狀態 (需放入 animate 迴圈)
+function updateParticles() {
+    if (!particles || !particles.userData.active) return;
+    
+    particles.userData.life -= 0.03;
+    particles.material.opacity = Math.max(0, particles.userData.life);
+    
+    if (particles.userData.life <= 0) {
+        particles.userData.active = false;
+        return;
+    }
+    
+    const positions = particles.geometry.attributes.position.array;
+    for (let i = 0; i < 150; i++) {
+        positions[i*3] += particles.userData.velocities[i].x;
+        positions[i*3+1] += particles.userData.velocities[i].y;
+        positions[i*3+2] += particles.userData.velocities[i].z;
+        particles.userData.velocities[i].y -= 0.08; // 地心引力
+        
+        if (positions[i*3+1] < 0) positions[i*3+1] = 0; // 地板反彈阻擋
+    }
+    particles.geometry.attributes.position.needsUpdate = true;
 }
 
 function init3D() {
     scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x020202, 0.012);
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    // 增加霧氣讓邊界融合更自然
+    scene.fog = new THREE.FogExp2(0x02050a, 0.012);
+    
+    camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // 效能優化
     renderer.domElement.style.position = 'absolute';
     renderer.domElement.style.top = '0';
     renderer.domElement.style.left = '0';
     renderer.domElement.style.zIndex = '0';
     document.body.appendChild(renderer.domElement);
 
-    // 大幅調亮光線，解決「軍隊太暗」的問題
-    scene.add(new THREE.AmbientLight(0xffffff, 4.0));
-    const d = new THREE.DirectionalLight(0xffffff, 5.0);
-    d.position.set(20, 50, 20); scene.add(d);
+    // 大幅提升光線強度，解決太暗問題
+    scene.add(new THREE.AmbientLight(0xffffff, 1.5)); // 提升基礎亮度
+    const dLight = new THREE.DirectionalLight(0xffffff, 3.5);
+    dLight.position.set(10, 60, 20); 
+    scene.add(dLight);
     
-    scene.add(new THREE.GridHelper(300, 100, 0x222222, 0x111111));
+    // 具有科技感的地板網格
+    const grid = new THREE.GridHelper(400, 150, 0x113355, 0x0a1122);
+    grid.position.y = 0.01;
+    scene.add(grid);
+    
+    // 底部暗色反射板
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshBasicMaterial({color: 0x010205}));
+    plane.rotation.x = -Math.PI/2;
+    scene.add(plane);
 
-    battleLine = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.4, 50), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 }));
+    // 戰線 (發光體)
+    battleLine = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.2, 70), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 }));
     scene.add(battleLine);
 
-    camera.position.set(0, 35, 55); camera.lookAt(0, 0, 0);
+    // 調整視角，更具臨場感與深度
+    camera.position.set(0, 30, 70); 
+    camera.lookAt(0, 0, 0);
 
-    const castle = new THREE.Mesh(new THREE.BoxGeometry(10, 20, 80), new THREE.MeshStandardMaterial({ color: 0x444444 }));
-    castle.position.set(-65, 10, 0); scene.add(castle);
-    const forest = new THREE.Mesh(new THREE.CylinderGeometry(15, 15, 80, 8), new THREE.MeshStandardMaterial({ color: 0x0a2a0a }));
-    forest.rotation.z = Math.PI/2; forest.position.set(65, -5, 0); scene.add(forest);
+    // 加入具象化場景
+    scene.add(createCastle());
+    scene.add(createForest());
+    
+    initParticles();
 
     spawnBaseMarketTroops();
     syncPlayerTroopsFromState();
@@ -408,25 +601,22 @@ function onWindowResize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-// 產生暗色的「市場趨勢力道」大軍 (避免與統帥混淆)
+// 產生暗色的「市場趨勢力道」大軍
 function spawnBaseMarketTroops() {
     for(let i=0; i<25; i++){
-        // 紅軍
-        const r = createSoldier(0x882222, false);
-        r.position.set(-25 - Math.random()*15, 0, (Math.random()-0.5)*40);
+        const r = createSoldier(0x661111, false, 'LONG');
+        r.position.set(-20 - Math.random()*15, 0, (Math.random()-0.5)*50);
         baseRedArmy.push(r); scene.add(r);
         
-        // 綠軍
-        const g = createSoldier(0x226622, false);
-        g.position.set(25 + Math.random()*15, 0, (Math.random()-0.5)*40);
+        const g = createSoldier(0x115511, false, 'SHORT');
+        g.position.set(20 + Math.random()*15, 0, (Math.random()-0.5)*50);
         baseGreenArmy.push(g); scene.add(g);
     }
 }
 
-// 產生巨大的「統帥專屬」武將戰棋
 function spawnPlayerTroop(side) {
-    const m = createSoldier(side === 'LONG' ? 0xff2222 : 0x22ff22, true);
-    m.position.set(side === 'LONG' ? -15 : 15, 0, (Math.random()-0.5)*20);
+    const m = createSoldier(side === 'LONG' ? 0xff2222 : 0x22ff22, true, side);
+    m.position.set(side === 'LONG' ? -12 : 12, 0, (Math.random()-0.5)*30);
     scene.add(m);
     
     if (side === 'LONG') playerRedArmy.push(m);
@@ -454,76 +644,104 @@ function syncPlayerTroopsFromState() {
 // --- 動態躍擊動畫引擎 ---
 function triggerAttackAnim(side) {
     const attackers = side === 'LONG' ? [...playerRedArmy, ...baseRedArmy] : [...playerGreenArmy, ...baseGreenArmy];
-    const dir = side === 'LONG' ? 1 : -1; // 多軍往右衝，空軍往左衝
+    const dir = side === 'LONG' ? 1 : -1; 
     
     attackers.forEach(m => {
         if (m.userData.isAttacking) return;
         m.userData.isAttacking = true;
-        const origY = m.position.y;
+        const origX = m.position.x;
         
+        // 向前跳躍砍擊
         new TWEEN.Tween(m.position)
-            .to({ y: origY + 4, x: m.position.x + dir * 6 }, 200)
+            .to({ y: 3, x: origX + dir * 5 }, 150)
             .easing(TWEEN.Easing.Quadratic.Out)
-            .yoyo(true)
-            .repeat(1)
-            .onComplete(() => { m.userData.isAttacking = false; })
+            .onComplete(() => {
+                // 退回原位
+                new TWEEN.Tween(m.position)
+                    .to({ y: m.userData.baseY || 0, x: origX }, 250)
+                    .easing(TWEEN.Easing.Quadratic.In)
+                    .onComplete(() => { m.userData.isAttacking = false; })
+                    .start();
+            })
             .start();
+            
+        // 武器揮砍旋轉 (若有)
+        if(m.userData.isPlayer && m.children[2]) {
+            new TWEEN.Tween(m.children[2].rotation)
+                .to({ x: Math.PI/2 }, 150)
+                .yoyo(true).repeat(1).start();
+        }
     });
 
-    // 戰線閃爍碰撞特效
+    // 戰線閃爍與粒子特效
+    triggerClashParticles(battleLine.position.x, side);
     battleLine.material.color.setHex(0xffffff);
     setTimeout(() => {
         battleLine.material.color.setHex(side === 'LONG' ? 0xef4444 : 0x22c55e);
-    }, 300);
+    }, 200);
 }
 
 function updateVisuals() {
     const city = CITIES[gameState.activeCity];
     if(!city) return;
     
-    // 強制轉換防 NaN
     const p = safeNum(city.price, city.basePrice);
     const bP = safeNum(city.basePrice, 100);
     
     const diff = bP > 0 ? (p - bP) / bP : 0;
     const drift = safeNum(diff * 450, 0);
     
-    // 戰線位移
-    battleLine.position.x += (drift - battleLine.position.x) * 0.2;
-    if (!battleLine.material.color.equals(new THREE.Color(0xffffff))) { // 若非閃爍狀態
+    battleLine.position.x += (drift - battleLine.position.x) * 0.1;
+    if (!battleLine.material.color.equals(new THREE.Color(0xffffff))) { 
         battleLine.material.color.setHex(diff >= 0 ? 0xef4444 : 0x22c55e);
     }
 
-    // 更新非攻擊狀態下的部隊基準位移
+    // 基準位置計算
     baseRedArmy.forEach(m => {
-        const s = diff >= 0 ? 1 + Math.abs(diff)*8 : 1;
-        m.scale.set(s,s,s);
         if (!m.userData.isAttacking) {
-            const tx = Math.min(drift - (2*s) - 2, -8 + (diff >= 0 ? Math.abs(diff)*100 : 0));
-            m.position.x += (safeNum(tx, -8) - m.position.x) * 0.1;
+            const tx = Math.min(drift - 3, -6 + (diff >= 0 ? Math.abs(diff)*100 : 0));
+            m.position.x += (safeNum(tx, -6) - m.position.x) * 0.1;
         }
     });
     baseGreenArmy.forEach(m => {
-        const s = diff < 0 ? 1 + Math.abs(diff)*8 : 1;
-        m.scale.set(s,s,s);
         if (!m.userData.isAttacking) {
-            const tx = Math.max(drift + (2*s) + 2, 8 - (diff < 0 ? Math.abs(diff)*100 : 0));
-            m.position.x += (safeNum(tx, 8) - m.position.x) * 0.1;
+            const tx = Math.max(drift + 3, 6 - (diff < 0 ? Math.abs(diff)*100 : 0));
+            m.position.x += (safeNum(tx, 6) - m.position.x) * 0.1;
         }
     });
     
     playerRedArmy.forEach(m => {
         if (!m.userData.isAttacking) {
-            const tx = Math.min(drift - 6, -3 + (diff >= 0 ? Math.abs(diff)*120 : 0));
-            m.position.x += (safeNum(tx, -3) - m.position.x) * 0.15;
+            const tx = Math.min(drift - 8, -4 + (diff >= 0 ? Math.abs(diff)*120 : 0));
+            m.position.x += (safeNum(tx, -4) - m.position.x) * 0.15;
         }
     });
     playerGreenArmy.forEach(m => {
         if (!m.userData.isAttacking) {
-            const tx = Math.max(drift + 6, 3 - (diff < 0 ? Math.abs(diff)*120 : 0));
-            m.position.x += (safeNum(tx, 3) - m.position.x) * 0.15;
+            const tx = Math.max(drift + 8, 4 - (diff < 0 ? Math.abs(diff)*120 : 0));
+            m.position.x += (safeNum(tx, 4) - m.position.x) * 0.15;
         }
     });
+}
+
+// 動畫渲染主迴圈
+function animate() { 
+    requestAnimationFrame(animate); 
+    TWEEN.update(); 
+    
+    const time = Date.now() * 0.002;
+    
+    // 待命呼吸浮動動畫
+    const allTroops = [...baseRedArmy, ...baseGreenArmy, ...playerRedArmy, ...playerGreenArmy];
+    allTroops.forEach(m => {
+        if (!m.userData.isAttacking) {
+            // 平滑的上下浮動
+            m.position.y = Math.sin(time + m.userData.randomOffset) * 0.3 + (m.userData.isPlayer ? 0.3 : 0);
+        }
+    });
+    
+    updateParticles();
+    renderer.render(scene, camera); 
 }
 
 // --- 時間閘門與雙軌引擎 ---
@@ -543,18 +761,13 @@ function checkTimeEvents() {
     if (timeNum >= 855 && timeNum < 900) newStatus = "PRE";
     else if (timeNum >= 900 && timeNum < 1330) newStatus = "OPEN";
 
-    // 狀態轉變與防呆
     if (currentMarketState !== newStatus) {
-        
-        // 進入試撮 (08:55) -> 強制結束沙盤
         if (newStatus === "PRE" && isSimMode) forceCloseSimMode(true);
         
-        // 進入開盤 (09:00) 
         if (newStatus === "OPEN") {
             if (isSimMode) forceCloseSimMode(false); 
             processOvernightDividend(todayStr);
             
-            // 若有沙盤累積的獎勵，開盤瞬間發放天降甘霖
             if (gameState.pendingSimReward > 0) {
                 gameState.balance += gameState.pendingSimReward;
                 triggerGoldThunder();
@@ -571,24 +784,24 @@ function checkTimeEvents() {
     
     if (isSimMode) {
         label.innerText = "沙盤推演 無損練兵中";
-        label.className = "text-[10px] md:text-xs text-sky-400 font-bold uppercase tracking-widest bg-sky-400/20 px-2 py-1 rounded animate-pulse";
+        label.className = "text-[10px] md:text-xs text-sky-300 font-bold uppercase tracking-widest bg-sky-500/20 px-3 py-1.5 rounded-md border border-sky-500/30 animate-pulse";
         simBtn.innerText = "結束推演 迎接開盤";
-        simBtn.className = "bg-red-600 hover:bg-red-500 px-2 py-1 rounded text-[9px] text-white font-bold tracking-widest";
+        simBtn.className = "bg-red-600 hover:bg-red-500 px-3 py-1.5 rounded-md text-[10px] text-white font-bold tracking-widest shadow-[0_0_15px_rgba(220,38,38,0.5)] transition-all";
         simBtn.classList.remove('hidden');
     } else {
         if (currentMarketState === "OPEN") {
             label.innerText = "真實天道 運轉中";
-            label.className = "text-[10px] md:text-xs text-yellow-500 font-bold uppercase tracking-widest bg-yellow-500/10 px-2 py-1 rounded";
+            label.className = "text-[10px] md:text-xs text-yellow-400 font-bold uppercase tracking-widest bg-yellow-500/20 px-3 py-1.5 rounded-md border border-yellow-500/30";
             simBtn.classList.add('hidden');
         } else if (currentMarketState === "PRE") {
             label.innerText = "盤前試撮 準備開戰";
-            label.className = "text-[10px] md:text-xs text-orange-400 font-bold uppercase tracking-widest bg-orange-400/20 px-2 py-1 rounded";
+            label.className = "text-[10px] md:text-xs text-orange-400 font-bold uppercase tracking-widest bg-orange-500/20 px-3 py-1.5 rounded-md border border-orange-500/30";
             simBtn.classList.add('hidden');
         } else {
             label.innerText = "天道休市 盤後時段";
-            label.className = "text-[10px] md:text-xs text-gray-400 font-bold uppercase tracking-widest bg-gray-600/50 px-2 py-1 rounded";
+            label.className = "text-[10px] md:text-xs text-gray-400 font-bold uppercase tracking-widest bg-white/10 px-3 py-1.5 rounded-md border border-white/20";
             simBtn.innerText = "啟動沙盤推演";
-            simBtn.className = "bg-blue-600 hover:bg-blue-500 px-2 py-1 rounded text-[9px] text-white font-bold tracking-widest animate-pulse";
+            simBtn.className = "bg-sky-600 hover:bg-sky-500 px-3 py-1.5 rounded-md text-[10px] text-white font-bold tracking-widest shadow-[0_0_15px_rgba(2,132,199,0.5)] transition-all animate-pulse";
             simBtn.classList.remove('hidden');
         }
     }
@@ -626,6 +839,7 @@ function processOvernightDividend(todayStr) {
 function toggleSimMode() {
     if (currentMarketState === "OPEN" || currentMarketState === "PRE") {
         showMsg("真實天道運行中 禁止沙盤推演");
+        triggerThunder();
         return;
     }
     if (isSimMode) {
@@ -634,7 +848,6 @@ function toggleSimMode() {
         realStateSnapshot = JSON.parse(JSON.stringify(gameState));
         isSimMode = true;
         
-        // 切換獨立 UI
         document.getElementById('real-pnl-container').classList.add('hidden');
         document.getElementById('sim-pnl-container').classList.remove('hidden');
         
@@ -664,7 +877,7 @@ function forceCloseSimMode(isAuto) {
 
     let msg = "沙盤結束 本金無傷還原";
     if (simProfit > 0) {
-        const reward = simProfit * 0.005; // 獲利的千分之五
+        const reward = simProfit * 0.005; 
         gameState.pendingSimReward = safeNum(gameState.pendingSimReward) + reward;
         msg = `沙盤獲利！獲得獎勵 ${Math.floor(reward)} 天幣，將於明日開盤發放`;
         triggerGoldThunder();
@@ -679,7 +892,6 @@ function forceCloseSimMode(isAuto) {
     currentPrice = CITIES[gameState.activeCity].price;
     syncPlayerTroopsFromState();
 
-    // 恢復真實 UI
     document.getElementById('sim-pnl-container').classList.add('hidden');
     document.getElementById('real-pnl-container').classList.remove('hidden');
 
@@ -814,9 +1026,11 @@ function localTick() {
     }
 
     // 觸發躍擊動畫判定
-    if (currentPrice > lastPriceForAnim) triggerAttackAnim('LONG');
-    else if (currentPrice < lastPriceForAnim) triggerAttackAnim('SHORT');
-    lastPriceForAnim = currentPrice;
+    if (Math.abs(currentPrice - lastPriceForAnim) > 0.01) {
+        if (currentPrice > lastPriceForAnim) triggerAttackAnim('LONG');
+        else triggerAttackAnim('SHORT');
+        lastPriceForAnim = currentPrice;
+    }
 
     if (currentMarketState !== "PRE") {
         checkPendingOrders();
@@ -866,11 +1080,15 @@ function switchCity(code) {
     document.getElementById('chart-city-name').innerText = CITIES[code].name;
     showMsg(`軍令轉移 至 ${CITIES[code].name}`);
     syncPlayerTroopsFromState();
+    
+    // 清除畫面上先前的特效
+    if (battleLine) battleLine.material.color.setHex(0xffffff);
+    
     fetchRealMarketData();
 }
 
 function issueOrder(side) {
-    // 嚴格閘門：非營業時間且未啟動沙盤，絕對禁止下單
+    // 嚴防呆：休市期間且未進入沙盤，絕對阻擋下單！
     if (currentMarketState === "CLOSED" && !isSimMode) {
         showMsg("天道休市期間 僅開放沙盤練兵下單");
         triggerThunder();
@@ -1044,14 +1262,14 @@ function updateCharts() {
     const macd = (validCurrent * 0.03); 
     const macdEl = document.getElementById('macd-val');
     macdEl.innerText = safeNum(macd, 0).toFixed(2);
-    macdEl.className = `text-3xl font-mono font-bold ${macd >= 0 ? 'text-red-400' : 'text-green-400'}`;
+    macdEl.className = `text-4xl font-mono font-black drop-shadow-md ${macd >= 0 ? 'text-red-400' : 'text-green-400'}`;
 
     const vC = document.getElementById('volume-bars'); vC.innerHTML = '';
     const maxV = Math.max(...bars.map(b => safeNum(b.v, 1)), 1);
     const displayCount = window.innerWidth < 768 ? 40 : 80;
     bars.slice(-displayCount).forEach(b => {
         const vB = document.createElement('div'); 
-        vB.className = 'flex-1 bg-blue-500/60 rounded-t min-w-[2px] transition-all duration-300';
+        vB.className = `flex-1 rounded-t min-w-[2px] transition-all duration-300 ${macd >= 0 ? 'bg-red-500/60' : 'bg-green-500/60'}`;
         vB.style.height = `${Math.max((safeNum(b.v,0)/maxV)*100, 5)}%`; 
         vC.appendChild(vB);
     });
@@ -1060,22 +1278,23 @@ function updateCharts() {
 function showWarReport(d) {
     const body = document.getElementById('modal-body');
     const color = d.pnl >= 0 ? 'result-positive' : 'result-negative';
-    const tag1 = d.isSim ? '<span class="bg-sky-500/20 text-sky-400 px-2 py-1 rounded text-[10px] ml-2">沙盤推演</span>' : '';
-    const tag2 = d.isDayTrade ? '<span class="bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded text-[10px] ml-2">當沖降稅</span>' : '';
+    const tag1 = d.isSim ? '<span class="bg-sky-500/20 text-sky-400 px-2 py-1 rounded text-[10px] ml-2 border border-sky-500/30">沙盤推演</span>' : '';
+    const tag2 = d.isDayTrade ? '<span class="bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded text-[10px] ml-2 border border-yellow-500/30">當沖降稅</span>' : '';
     body.innerHTML = `
         <h2 class="text-2xl md:text-3xl font-black text-center mb-6 tracking-widest uppercase">結算紀實 ${tag1}${tag2}</h2>
-        <div class="grid grid-cols-2 gap-4 text-sm font-bold">
-            <div class="flex flex-col"><span class="text-[9px] text-gray-500">征戰地</span><span>${CITIES[d.city]?.name || d.city}</span></div>
-            <div class="flex flex-col text-right"><span class="text-[9px] text-gray-500">立場</span><span>${d.side==='LONG'?'護國多軍':'掠奪空軍'}</span></div>
-            <div class="border-t border-white/10 pt-2 flex flex-col"><span class="text-[9px] text-gray-500">入場均價</span><span>${safeNum(d.entry,0).toFixed(2)}</span></div>
-            <div class="border-t border-white/10 pt-2 flex flex-col text-right"><span class="text-[9px] text-gray-500">結算價位</span><span>${safeNum(d.exit,0).toFixed(2)}</span></div>
-            <div class="flex flex-col"><span class="text-[9px] text-gray-500">離場稅費</span><span class="font-mono">${Math.floor(safeNum(d.eTax)+safeNum(d.eFee)).toLocaleString()}</span></div>
+        <div class="grid grid-cols-2 gap-4 text-sm font-bold bg-black/30 p-5 rounded-2xl border border-white/5">
+            <div class="flex flex-col"><span class="text-[10px] text-gray-400 tracking-widest mb-1">征戰地</span><span class="text-base">${CITIES[d.city]?.name || d.city}</span></div>
+            <div class="flex flex-col text-right"><span class="text-[10px] text-gray-400 tracking-widest mb-1">立場</span><span class="text-base">${d.side==='LONG'?'護國多軍':'掠奪空軍'}</span></div>
+            <div class="border-t border-white/10 pt-3 flex flex-col"><span class="text-[10px] text-gray-400 tracking-widest mb-1">入場均價</span><span class="font-mono text-base">${safeNum(d.entry,0).toFixed(2)}</span></div>
+            <div class="border-t border-white/10 pt-3 flex flex-col text-right"><span class="text-[10px] text-gray-400 tracking-widest mb-1">結算價位</span><span class="font-mono text-base">${safeNum(d.exit,0).toFixed(2)}</span></div>
+            <div class="col-span-2 border-t border-white/10 pt-3 flex flex-col items-center"><span class="text-[10px] text-gray-400 tracking-widest mb-1">離場稅費</span><span class="font-mono text-gray-300">${Math.floor(safeNum(d.eTax)+safeNum(d.eFee)).toLocaleString()}</span></div>
         </div>
-        <div class="mt-6 p-4 md:p-6 bg-white/5 rounded-2xl text-center">
-            <div class="text-[9px] text-gray-400 uppercase font-black">本次戰果</div>
-            <div class="text-3xl md:text-4xl font-black ${color}">${d.pnl>=0?'加':'減'} ${Math.abs(Math.floor(safeNum(d.pnl,0))).toLocaleString()}</div>
+        <div class="mt-6 p-5 md:p-8 bg-gradient-to-b from-white/10 to-transparent rounded-3xl text-center border border-white/10 shadow-inner">
+            <div class="text-[10px] text-gray-400 uppercase font-black tracking-widest mb-2">本次戰果</div>
+            <div class="text-4xl md:text-5xl font-black ${color} drop-shadow-[0_0_15px_rgba(currentColor,0.5)]">${d.pnl>=0?'加':'減'} ${Math.abs(Math.floor(safeNum(d.pnl,0))).toLocaleString()}</div>
         </div>`;
     document.getElementById('report-modal').classList.remove('opacity-0','pointer-events-none');
+    document.getElementById('modal-window').classList.replace('scale-95', 'scale-100');
 }
 
 function showDailySummary() {
@@ -1084,16 +1303,20 @@ function showDailySummary() {
     const reals = gameState.history.filter(h => !h.isSim).length;
     const rate = reals === 0 ? 0 : (wins / reals * 100);
     body.innerHTML = `
-        <h2 class="text-2xl md:text-3xl font-black text-center mb-6 tracking-widest uppercase">今日總結大表</h2>
-        <div class="space-y-4">
-            <div class="flex justify-between border-b border-white/10 pb-2"><span>實戰派遣</span><span>${reals} 次</span></div>
-            <div class="flex justify-between border-b border-white/10 pb-2"><span>平均勝率</span><span class="text-yellow-500">${rate.toFixed(1)} 百分比</span></div>
-            <div class="flex justify-between border-b border-white/10 pb-2"><span>已實現戰果</span><span class="${gameState.realizedPnl>=0?'result-positive':'result-negative'}">${Math.floor(safeNum(gameState.realizedPnl,0)).toLocaleString()}</span></div>
-            <div class="flex justify-between border-b border-white/10 pb-2"><span>天道國庫餘額</span><span class="text-yellow-400 font-mono">${Math.floor(safeNum(gameState.treasury,0)).toLocaleString()}</span></div>
+        <h2 class="text-2xl md:text-3xl font-black text-center mb-6 tracking-widest uppercase text-purple-300">天道結算大表</h2>
+        <div class="space-y-4 bg-black/30 p-6 rounded-2xl border border-purple-500/20">
+            <div class="flex justify-between border-b border-white/10 pb-3"><span class="text-gray-300 font-bold">實戰派遣</span><span class="font-mono text-lg">${reals} 次</span></div>
+            <div class="flex justify-between border-b border-white/10 pb-3"><span class="text-gray-300 font-bold">平均勝率</span><span class="text-yellow-500 font-mono text-lg drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]">${rate.toFixed(1)} 百分比</span></div>
+            <div class="flex justify-between border-b border-white/10 pb-3"><span class="text-gray-300 font-bold">已實現戰果</span><span class="font-mono text-lg ${gameState.realizedPnl>=0?'result-positive':'result-negative'}">${Math.floor(safeNum(gameState.realizedPnl,0)).toLocaleString()}</span></div>
+            <div class="flex justify-between pt-1"><span class="text-purple-300 font-bold">天道國庫餘額</span><span class="text-purple-400 font-mono text-xl font-black drop-shadow-[0_0_10px_rgba(192,132,252,0.6)]">${Math.floor(safeNum(gameState.treasury,0)).toLocaleString()}</span></div>
         </div>`;
     document.getElementById('report-modal').classList.remove('opacity-0','pointer-events-none');
+    document.getElementById('modal-window').classList.replace('scale-95', 'scale-100');
 }
-function closeModal() { document.getElementById('report-modal').classList.add('opacity-0','pointer-events-none'); }
+function closeModal() { 
+    document.getElementById('report-modal').classList.add('opacity-0','pointer-events-none'); 
+    document.getElementById('modal-window').classList.replace('scale-100', 'scale-95');
+}
 
 function openApiSettings() { document.getElementById('api-modal').classList.remove('opacity-0', 'pointer-events-none'); document.getElementById('api-key-input').value = USER_API_KEY; }
 function closeApiSettings() { document.getElementById('api-modal').classList.add('opacity-0', 'pointer-events-none'); }
@@ -1129,7 +1352,7 @@ function removeCustomStock(sym) {
 function renderCustomList() {
     const list = document.getElementById('custom-stock-list'); list.innerHTML = '';
     SECTORS["CUSTOM"].cities.forEach(sym => {
-        list.innerHTML += `<div class="flex justify-between items-center bg-white/5 p-2 rounded"><div class="flex flex-col"><span class="text-xs font-bold text-yellow-500">${sym}</span><span class="text-[10px] text-gray-400">${CITIES[sym].name}</span></div><button onclick="removeCustomStock('${sym}')" class="text-[10px] bg-red-900/50 hover:bg-red-800 px-2 py-1 rounded text-red-200">移除</button></div>`;
+        list.innerHTML += `<div class="flex justify-between items-center bg-black/40 p-3 rounded-xl border border-white/5"><div class="flex flex-col"><span class="text-sm font-bold text-yellow-500">${sym}</span><span class="text-[10px] text-gray-400 mt-0.5">${CITIES[sym].name}</span></div><button onclick="removeCustomStock('${sym}')" class="text-[10px] bg-red-900/50 hover:bg-red-800 border border-red-500/30 px-3 py-1.5 rounded-lg text-red-200 transition-colors">移除</button></div>`;
     });
 }
 
@@ -1161,9 +1384,8 @@ function updateUI() {
     const pct = ((safeNum(currentPrice, validBase) - validBase)/validBase*100);
     const elPct = document.getElementById('price-change');
     elPct.innerText = `${pct >= 0 ? '正' : '負'} ${Math.abs(safeNum(pct,0)).toFixed(2)} 百分比`;
-    elPct.className = `text-[10px] md:text-xs font-bold ${pct >= 0 ? 'text-red-500' : 'text-green-500'}`;
+    elPct.className = `text-[11px] md:text-xs font-bold mt-1 ${pct >= 0 ? 'text-red-500' : 'text-green-500'}`;
 
-    // 分離帳務顯示邏輯
     let realUnrealized = 0;
     let simUnrealized = 0;
     
@@ -1177,15 +1399,13 @@ function updateUI() {
         }
     });
 
-    // 真實戰果
     const realTot = safeNum(gameState.realizedPnl) + realUnrealized;
     const elRealTot = document.getElementById('today-total-result');
     if (elRealTot) {
         elRealTot.innerText = `${realTot >= 0 ? '加' : '減'} ${Math.abs(Math.floor(realTot)).toLocaleString()}`;
-        elRealTot.className = `text-base md:text-lg font-black ${realTot >= 0 ? 'result-positive' : 'result-negative'}`;
+        elRealTot.className = `text-lg md:text-xl font-black font-mono drop-shadow-md ${realTot >= 0 ? 'text-red-500' : 'text-green-500'}`;
     }
 
-    // 沙盤戰果
     if (isSimMode) {
         const simNetValue = safeNum(gameState.balance) + safeNum(gameState.frozen);
         const realNetValue = safeNum(realStateSnapshot?.balance) + safeNum(realStateSnapshot?.frozen);
@@ -1194,7 +1414,6 @@ function updateUI() {
         const elSimTot = document.getElementById('sim-total-result');
         if (elSimTot) {
             elSimTot.innerText = `${simProfit >= 0 ? '加' : '減'} ${Math.abs(Math.floor(simProfit)).toLocaleString()}`;
-            elSimTot.className = `text-base md:text-lg font-black ${simProfit >= 0 ? 'text-sky-400' : 'text-red-400'}`;
         }
     }
 
@@ -1207,33 +1426,35 @@ function renderLists() {
     cont.innerHTML = '';
     
     if(gameState.currentTab === 'units'){
-        if(gameState.units.length === 0) cont.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-4">目前無駐紮部隊</div>';
+        if(gameState.units.length === 0) cont.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-8 font-bold tracking-widest">目前無駐紮部隊</div>';
         gameState.units.forEach(u => {
             const c = CITIES[u.city];
             const m = c ? safeNum(c.price, c.basePrice) : safeNum(u.entry, 0);
             const p = (u.side==='LONG' ? (m-u.cost) : (u.cost-m))*u.qty*1000;
-            const tag = u.isSim ? '<span class="bg-sky-500/20 text-sky-400 px-1 rounded text-[8px] ml-1">沙盤推演</span>' : '';
-            cont.innerHTML += `<div class="glass rounded-xl p-2 md:p-3 border-r-4 ${p>=0?'border-red-500':'border-green-500'} text-right mb-2">
-                <button onclick="settle(${u.id})" class="float-left text-[9px] bg-white/10 px-2 py-1 rounded">結算撤軍</button>
-                <div class="text-[10px] text-gray-500">${c?.name || u.city} ${u.side==='LONG'?'多':'空'} ${safeNum(u.qty).toFixed(1)} 營 ${tag}</div>
-                <div class="text-xs font-bold ${p>=0?'text-red-500':'text-green-500'}">戰功 ${Math.floor(safeNum(p)).toLocaleString()}</div>
+            const tag = u.isSim ? '<span class="bg-sky-500/20 border border-sky-500/30 text-sky-400 px-1.5 py-0.5 rounded text-[8px] ml-1">沙盤推演</span>' : '';
+            cont.innerHTML += `<div class="bg-black/40 rounded-xl p-3 border-r-4 ${p>=0?'border-red-500':'border-green-500'} text-right mb-2 shadow-inner">
+                <button onclick="settle(${u.id})" class="float-left text-[9px] bg-white/10 hover:bg-white/20 border border-white/20 px-3 py-1.5 rounded-lg transition-colors font-bold text-gray-300">結算撤軍</button>
+                <div class="text-[11px] text-gray-400 font-bold mb-1">${c?.name || u.city} <span class="${u.side==='LONG'?'text-red-400':'text-green-400'}">${u.side==='LONG'?'多':'空'}</span> ${safeNum(u.qty).toFixed(1)} 營 ${tag}</div>
+                <div class="text-sm font-black font-mono ${p>=0?'text-red-500':'text-green-500'}">戰功 ${Math.floor(safeNum(p)).toLocaleString()}</div>
             </div>`;
         });
     } else if(gameState.currentTab === 'history'){
-        if(gameState.history.length === 0) cont.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-4">尚無作戰紀錄</div>';
+        if(gameState.history.length === 0) cont.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-8 font-bold tracking-widest">尚無作戰紀錄</div>';
         gameState.history.slice(0, 15).forEach(h => {
-            const tag = h.isSim ? '<span class="text-sky-400">沙盤戰果</span>' : '實戰戰果';
-            cont.innerHTML += `<div class="bg-white/5 rounded-lg p-2 border-r-2 border-gray-600 text-right text-[10px] opacity-70 mb-2">
-                <span>${h.time} | ${CITIES[h.city]?.name || h.city} | ${tag} ${Math.floor(safeNum(h.pnl)).toLocaleString()}</span>
+            const tag = h.isSim ? '<span class="text-sky-400 font-bold">沙盤戰果</span>' : '<span class="text-gray-400 font-bold">實戰戰果</span>';
+            cont.innerHTML += `<div class="bg-black/30 rounded-lg p-2.5 border-r-2 border-gray-600 text-right text-[10px] mb-2 opacity-80">
+                <span class="text-gray-500 font-mono tracking-tighter mr-2">${h.time}</span>
+                <span class="text-gray-300 mr-2">${CITIES[h.city]?.name || h.city}</span>
+                ${tag} <span class="font-mono font-bold ${h.pnl>=0?'text-red-400':'text-green-400'} ml-1">${Math.floor(safeNum(h.pnl)).toLocaleString()}</span>
             </div>`;
         });
     } else if(gameState.currentTab === 'pending'){
-        if(gameState.pending.length === 0) cont.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-4">無待命軍令</div>';
+        if(gameState.pending.length === 0) cont.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-8 font-bold tracking-widest">無待命軍令</div>';
         gameState.pending.forEach(o => {
-            const tag = o.isSim ? '<span class="bg-sky-500/20 text-sky-400 px-1 rounded text-[8px] ml-1">沙盤推演</span>' : '';
-            cont.innerHTML += `<div class="glass rounded-xl p-2 border-r-4 border-gray-600 text-right mb-2 flex justify-between items-center">
-                <button onclick="cancelOrder(${o.id})" class="text-[9px] text-gray-500 hover:text-red-400">撤回</button>
-                <div class="text-[10px] text-gray-400">${CITIES[o.city]?.name || o.city} 待命 ${safeNum(o.price).toFixed(2)} ${tag}</div>
+            const tag = o.isSim ? '<span class="bg-sky-500/20 border border-sky-500/30 text-sky-400 px-1.5 py-0.5 rounded text-[8px] ml-1">沙盤推演</span>' : '';
+            cont.innerHTML += `<div class="bg-black/40 rounded-xl p-3 border-r-4 border-gray-500 text-right mb-2 flex justify-between items-center shadow-inner">
+                <button onclick="cancelOrder(${o.id})" class="text-[10px] bg-red-900/30 hover:bg-red-800/50 border border-red-500/30 text-red-300 px-3 py-1.5 rounded-lg transition-colors font-bold">撤回</button>
+                <div class="text-[11px] text-gray-300 font-bold">${CITIES[o.city]?.name || o.city} <span class="text-gray-500 ml-1 text-[9px]">待命價</span> <span class="font-mono">${safeNum(o.price).toFixed(2)}</span> ${tag}</div>
             </div>`;
         });
     }
@@ -1242,7 +1463,22 @@ function renderLists() {
 function triggerThunder() { const o = document.getElementById('thunder-overlay'); o.classList.remove('thunder-flash','gold-thunder-flash','sim-thunder-flash'); void o.offsetWidth; o.classList.add('thunder-flash'); setTimeout(()=>o.classList.remove('thunder-flash'), 500); }
 function triggerGoldThunder() { const o = document.getElementById('thunder-overlay'); o.classList.remove('thunder-flash','gold-thunder-flash','sim-thunder-flash'); void o.offsetWidth; o.classList.add('gold-thunder-flash'); setTimeout(()=>o.classList.remove('gold-thunder-flash'), 800); }
 function triggerSimThunder() { const o = document.getElementById('thunder-overlay'); o.classList.remove('thunder-flash','gold-thunder-flash','sim-thunder-flash'); void o.offsetWidth; o.classList.add('sim-thunder-flash'); setTimeout(()=>o.classList.remove('sim-thunder-flash'), 800); }
-function showMsg(t) { const el = document.getElementById('msg-box'); el.innerText = t; el.style.opacity = '1'; el.style.transform = 'translateX(-50%) translateY(-10px)'; setTimeout(()=>{el.style.opacity='0'; el.style.transform='translateX(-50%) translateY(0)';}, 3000); }
+
+// 優化 Toast 訊息提示
+let msgTimeout;
+function showMsg(t) { 
+    const el = document.getElementById('msg-box'); 
+    el.innerText = t; 
+    el.classList.remove('opacity-0', 'translate-y-4');
+    el.classList.add('opacity-100', 'translate-y-0');
+    
+    if(msgTimeout) clearTimeout(msgTimeout);
+    msgTimeout = setTimeout(()=>{
+        el.classList.remove('opacity-100', 'translate-y-0');
+        el.classList.add('opacity-0', 'translate-y-4');
+    }, 3500); 
+}
+
 function animate() { requestAnimationFrame(animate); TWEEN.update(); renderer.render(scene, camera); }
 
 window.onload = () => { 
