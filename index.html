@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三界戰場：傭兵統帥傳奇</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; overflow: hidden; background: #020202; font-family: 'Noto Sans TC', sans-serif; color: white; }
+        canvas { display: block; }
+        .glass { background: rgba(0, 0, 0, 0.88); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .ui-overlay { pointer-events: none; }
+        .ui-overlay > * { pointer-events: auto; }
+        .tab-btn { font-size: 10px; padding: 6px 12px; border-bottom: 2px solid transparent; transition: all 0.3s; color: #666; font-weight: bold; }
+        .tab-btn.active { color: #eab308; border-color: #eab308; }
+        @keyframes thunder {
+            0% { background: rgba(255, 255, 255, 0); }
+            10% { background: rgba(255, 255, 255, 0.3); }
+            20% { background: rgba(255, 255, 255, 0); }
+            100% { background: rgba(255, 255, 255, 0); }
+        }
+        .thunder-flash { animation: thunder 0.5s ease-out; }
+        .result-positive { color: #ef4444; }
+        .result-negative { color: #22c55e; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body>
+
+<div id="thunder-overlay" class="fixed inset-0 pointer-events-none z-50"></div>
+
+<!-- UI Overlay -->
+<div class="fixed inset-0 ui-overlay flex flex-col justify-between p-6 z-10">
+    <!-- Top Bar -->
+    <div class="flex justify-between items-start gap-4">
+        <div class="space-y-4">
+            <!-- Balance & Global Info -->
+            <div class="glass rounded-2xl p-5 w-96 shadow-2xl border-yellow-500/20">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs text-gray-400 font-bold uppercase tracking-widest">人界存銀 天幣</span>
+                    <div class="flex flex-col items-end">
+                        <span class="text-[10px] text-gray-500 font-bold uppercase">今日總戰果</span>
+                        <div id="today-total-result" class="text-lg font-black font-mono">加 零</div>
+                    </div>
+                </div>
+                <div id="user-balance" class="text-3xl font-mono font-black text-yellow-500">5,000,000</div>
+                <div id="frozen-balance" class="text-[10px] text-gray-500 mt-1">天道凍結中 待命軍費 零</div>
+                
+                <div class="mt-4 pt-4 border-t border-white/10 space-y-3">
+                    <div class="flex gap-2">
+                        <select id="sector-selector" onchange="switchSector(this.value)" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs font-bold text-gray-300 focus:outline-none">
+                            <option value="SEMICON">半導體 產業領域</option>
+                            <option value="DIGITAL">數位生活 產業領域</option>
+                            <option value="ENERGY">能源交通 產業領域</option>
+                        </select>
+                        <select id="city-selector" onchange="switchCity(this.value)" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs font-bold text-white focus:outline-none cursor-pointer">
+                            <!-- Options populated by JS -->
+                        </select>
+                    </div>
+                    
+                    <div class="flex justify-between items-end">
+                        <div class="flex flex-col">
+                            <span id="market-price" class="text-2xl font-mono font-bold text-white tracking-tighter">讀取中</span>
+                            <span id="price-change" class="text-xs font-bold text-gray-400">零點零零 百分比</span>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-[9px] text-gray-500 uppercase font-bold">昨日平盤價</div>
+                            <div id="base-price-display" class="text-sm font-mono font-bold text-gray-300">---</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Heavenly Ledger -->
+            <div class="glass rounded-2xl p-4 w-96 border-purple-500/30 flex justify-between items-center">
+                <div>
+                    <div class="text-[10px] text-purple-400 font-bold uppercase tracking-widest mb-1">天道總帳 累計稅收</div>
+                    <div id="total-tax-display" class="text-xl font-mono font-bold text-purple-300">0</div>
+                </div>
+                <button onclick="showDailySummary()" class="bg-purple-900/40 hover:bg-purple-800 text-[10px] font-bold px-3 py-2 rounded-lg border border-purple-500/30">檢視今日總結報表</button>
+            </div>
+        </div>
+
+        <!-- Sidebar Tabs -->
+        <div class="w-full max-w-sm flex flex-col gap-2">
+            <div class="glass rounded-t-2xl flex border-b border-white/10 overflow-hidden">
+                <button onclick="switchTab('units')" id="tab-units" class="tab-btn flex-1 active">未平倉部隊</button>
+                <button onclick="switchTab('history')" id="tab-history" class="tab-btn flex-1">今日戰史</button>
+                <button onclick="switchTab('pending')" id="tab-pending" class="tab-btn flex-1">待命軍令</button>
+            </div>
+            <div class="glass rounded-b-2xl p-4 min-h-[400px] max-h-[60vh] overflow-y-auto scrollbar-hide">
+                <div id="tab-content-units" class="space-y-3"></div>
+                <div id="tab-content-history" class="space-y-3 hidden"></div>
+                <div id="tab-content-pending" class="space-y-3 hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Bar -->
+    <div class="flex items-end gap-6 w-full max-w-6xl mx-auto">
+        <div class="glass rounded-2xl p-4 w-80 shadow-2xl flex flex-col gap-3 border-blue-500/20">
+            <div class="flex justify-between items-center">
+                <h2 class="text-[10px] text-yellow-500 font-bold uppercase tracking-widest">軍師作戰策略圖表</h2>
+                <div class="flex gap-1">
+                    <button onclick="setTimeframe('1m')" class="timeframe-btn active" id="tf-1m">一分</button>
+                    <button onclick="setTimeframe('5m')" class="timeframe-btn" id="tf-5m">五分</button>
+                    <button onclick="setTimeframe('1H')" class="timeframe-btn" id="tf-1H">一時</button>
+                    <button onclick="setTimeframe('1D')" class="timeframe-btn" id="tf-1D">日</button>
+                </div>
+            </div>
+            <div class="h-16 flex items-end gap-[1px] px-1 border-b border-white/5 overflow-hidden">
+                <div id="volume-bars" class="flex items-end gap-[2px] w-full h-full"></div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="flex flex-col"><span class="text-[9px] text-gray-500 font-bold uppercase">凱迪指標 K D</span>
+                    <div class="flex items-baseline gap-2"><span id="kd-k" class="text-sm font-mono font-bold text-blue-400">K --</span><span id="kd-d" class="text-sm font-mono font-bold text-orange-400">D --</span></div>
+                </div>
+                <div class="flex flex-col"><span class="text-[9px] text-gray-500 font-bold uppercase">動能指標 麥克滴</span>
+                    <div id="macd-val" class="text-sm font-mono font-bold text-white">---</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass rounded-3xl p-6 flex items-center gap-8 shadow-2xl border-white/20 flex-1">
+            <div class="flex flex-col"><span class="text-[10px] text-gray-500 font-bold uppercase mb-1">派遣數量 營</span>
+                <input id="order-qty" type="number" value="1" min="1" class="bg-white/5 border border-white/10 rounded-lg px-4 py-2 w-24 text-xl font-bold focus:border-yellow-500 outline-none">
+            </div>
+            <div class="flex flex-col"><span class="text-[10px] text-gray-500 font-bold uppercase mb-1">委託進場價位</span>
+                <input id="order-price" type="number" step="0.5" placeholder="市價成交" class="bg-white/5 border border-white/10 rounded-lg px-4 py-2 w-32 text-xl font-bold focus:border-yellow-500 outline-none">
+            </div>
+            <div class="h-12 w-px bg-white/10"></div>
+            <div class="flex gap-4 flex-1">
+                <button id="btn-long" onclick="issueOrder('LONG')" class="flex-1 bg-red-600 hover:bg-red-500 active:scale-95 transition-all rounded-2xl py-4 flex flex-col items-center"><span class="text-xs font-bold text-red-200">護國多軍</span><span class="text-lg font-black uppercase tracking-widest">派遣入城</span></button>
+                <button id="btn-short" onclick="issueOrder('SHORT')" class="flex-1 bg-green-600 hover:bg-green-500 active:scale-95 transition-all rounded-2xl py-4 flex flex-col items-center"><span class="text-xs font-bold text-green-200">掠奪空軍</span><span class="text-lg font-black uppercase tracking-widest">派遣攻掠</span></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Container -->
+<div id="modal-overlay" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300">
+    <div id="modal-window" class="glass rounded-3xl p-8 max-w-2xl w-full mx-4 shadow-2xl border-yellow-500/20">
+        <div id="modal-body"></div>
+        <button onclick="closeModal()" class="mt-8 w-full bg-yellow-600 hover:bg-yellow-500 py-4 rounded-2xl font-black text-xl shadow-lg transition-all active:scale-95">班師回朝</button>
+    </div>
+</div>
+
+<div id="msg-box" class="fixed bottom-32 left-1/2 -translate-x-1/2 glass px-6 py-3 rounded-full text-sm font-bold opacity-0 transition-all z-20 pointer-events-none"></div>
+
+<script>
+// --- 核心變數與領域資料 ---
+const TAX_RATE = 0.003;
+const FEE_RATE = 0.001425;
+const SECTORS = {
+    "SEMICON": { name: "半導體 產業領域", cities: ["2330", "NVDA", "2454"] },
+    "DIGITAL": { name: "數位生活 產業領域", cities: ["AAPL", "6758", "7974"] },
+    "ENERGY": { name: "能源交通 產業領域", cities: ["TSLA", "7203", "2317"] }
+};
+const CITIES = {
+    "2330": { name: "台積電", price: 825.0, basePrice: 825.0, vol: 3.5, bars: [] },
+    "2317": { name: "鴻海", price: 180.0, basePrice: 180.0, vol: 1.5, bars: [] },
+    "2454": { name: "聯發科", price: 1150.0, basePrice: 1150.0, vol: 12.0, bars: [] },
+    "NVDA": { name: "輝達", price: 900.0, basePrice: 900.0, vol: 15.0, bars: [] },
+    "AAPL": { name: "蘋果", price: 175.0, basePrice: 175.0, vol: 2.0, bars: [] },
+    "TSLA": { name: "特斯拉", price: 160.0, basePrice: 160.0, vol: 8.0, bars: [] },
+    "6758": { name: "索尼", price: 12500.0, basePrice: 12500.0, vol: 200.0, bars: [] },
+    "7203": { name: "豐田", price: 3500.0, basePrice: 3500.0, vol: 50.0, bars: [] },
+    "7974": { name: "任天堂", price: 7800.0, basePrice: 7800.0, vol: 120.0, bars: [] }
+};
+
+let gameState = {
+    balance: 5000000, frozen: 0, taxTotal: 0, realizedPnl: 0,
+    activeSector: "SEMICON", activeCity: "2330", timeframe: "1m",
+    units: [], history: [], pending: [], currentTab: 'units'
+};
+
+// --- Three.js 戰場渲染 ---
+let scene, camera, renderer, battleLine;
+let redArmy = [], greenArmy = [];
+let currentPrice = 0;
+
+function init3D() {
+    scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x020202, 0.015);
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    scene.add(new THREE.AmbientLight(0x444444, 2));
+    const d = new THREE.DirectionalLight(0xffffff, 2);
+    d.position.set(0, 50, 0); scene.add(d);
+
+    const grid = new THREE.GridHelper(300, 100, 0x151515, 0x0a0a0a);
+    scene.add(grid);
+
+    battleLine = new THREE.Mesh(new THREE.BoxGeometry(1, 0.4, 50), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }));
+    scene.add(battleLine);
+
+    camera.position.set(0, 30, 55); camera.lookAt(0, 0, 0);
+
+    // 背景：左城右森
+    const castle = new THREE.Mesh(new THREE.BoxGeometry(10, 20, 80), new THREE.MeshStandardMaterial({ color: 0x333333 }));
+    castle.position.set(-65, 10, 0); scene.add(castle);
+    const forest = new THREE.Mesh(new THREE.CylinderGeometry(15, 15, 80, 8), new THREE.MeshStandardMaterial({ color: 0x052205 }));
+    forest.rotation.z = Math.PI/2; forest.position.set(65, -5, 0); scene.add(forest);
+
+    spawnInitialTroops();
+    animate();
+}
+
+function spawnInitialTroops() {
+    const geo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
+    for(let i=0; i<35; i++){
+        const r = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+        r.position.set(-25 - Math.random()*10, 0.75, (Math.random()-0.5)*40);
+        redArmy.push(r); scene.add(r);
+        const g = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x22c55e }));
+        g.position.set(25 + Math.random()*10, 0.75, (Math.random()-0.5)*40);
+        greenArmy.push(g); scene.add(g);
+    }
+}
+
+function updateVisuals() {
+    const city = CITIES[gameState.activeCity];
+    const diff = (city.price - city.basePrice) / city.basePrice;
+    const drift = diff * 450;
+    battleLine.position.x = drift;
+    battleLine.material.color.setHex(diff >= 0 ? 0xef4444 : 0x22c55e);
+
+    redArmy.forEach((m, i) => {
+        const s = diff >= 0 ? 1 + Math.abs(diff)*25 : 1;
+        m.scale.set(s,s,s); m.position.y = (0.75*s);
+        const tx = Math.min(drift - (2*s), -10 + (diff >= 0 ? Math.abs(diff)*180 : 0));
+        m.position.x += (tx - m.position.x) * 0.1;
+    });
+    greenArmy.forEach((m, i) => {
+        const s = diff < 0 ? 1 + Math.abs(diff)*25 : 1;
+        m.scale.set(s,s,s); m.position.y = (0.75*s);
+        const tx = Math.max(drift + (2*s), 10 - (diff < 0 ? Math.abs(diff)*180 : 0));
+        m.position.x += (tx - m.position.x) * 0.1;
+    });
+}
+
+// --- 數據邏輯與指標演算 ---
+
+function preloadHistory(cityCode) {
+    const city = CITIES[cityCode];
+    city.bars = { "1m": [], "5m": [], "1H": [], "1D": [] };
+    let tempPrice = city.basePrice;
+    for(let i=0; i<100; i++){
+        tempPrice += (Math.random()-0.5) * city.vol;
+        const bar = { p: tempPrice, v: 100 + Math.random()*900 };
+        Object.keys(city.bars).forEach(tf => city.bars[tf].push(bar));
+    }
+}
+
+function switchSector(code) {
+    gameState.activeSector = code;
+    const sel = document.getElementById('city-selector');
+    sel.innerHTML = '';
+    SECTORS[code].cities.forEach(c => {
+        const opt = document.createElement('option'); opt.value = c; opt.innerText = CITIES[c].name;
+        sel.appendChild(opt);
+    });
+    switchCity(SECTORS[code].cities[0]);
+}
+
+function switchCity(code) {
+    gameState.activeCity = code;
+    if (CITIES[code].bars.length === 0) preloadHistory(code);
+    currentPrice = CITIES[code].price;
+    showMsg(`軍令轉移 至 ${CITIES[code].name}`);
+    updateUI();
+}
+
+function setTimeframe(tf) {
+    gameState.timeframe = tf;
+    document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(`tf-${tf}`).classList.add('active');
+    showMsg(`軍師切換至 ${tf === '1D' ? '日' : tf} 戰略圖`);
+}
+
+function tickMarket() {
+    const city = CITIES[gameState.activeCity];
+    city.price += (Math.random()-0.5) * city.vol;
+    currentPrice = city.price;
+
+    const bars = city.bars[gameState.timeframe];
+    bars.push({ p: city.price, v: 100 + Math.random()*900 });
+    if(bars.length > 100) bars.shift();
+
+    checkPendingOrders();
+    updateVisuals();
+    updateCharts();
+    updateUI();
+}
+
+function updateCharts() {
+    const bars = CITIES[gameState.activeCity].bars[gameState.timeframe] || [];
+    if(bars.length < 9) return;
+    const recentPrices = bars.slice(-9).map(b => b.p);
+    const low = Math.min(...recentPrices), high = Math.max(...recentPrices);
+    const rsv = high === low ? 50 : ((currentPrice - low)/(high - low))*100;
+    const k = 50 * (2/3) + rsv * (1/3), d = 50 * (2/3) + k * (1/3);
+    document.getElementById('kd-k').innerText = `K ${k.toFixed(1)}`;
+    document.getElementById('kd-d').innerText = `D ${d.toFixed(1)}`;
+    const macd = (currentPrice * 0.03); // 模擬
+    document.getElementById('macd-val').innerText = macd.toFixed(2);
+    const vC = document.getElementById('volume-bars'); vC.innerHTML = '';
+    const maxV = Math.max(...bars.map(b => b.v), 1);
+    bars.slice(-30).forEach(b => {
+        const vB = document.createElement('div'); vB.className = 'w-1 bg-blue-500/40 rounded-t';
+        vB.style.height = `${(b.v/maxV)*100}%`; vC.appendChild(vB);
+    });
+}
+
+function issueOrder(side) {
+    const qty = parseInt(document.getElementById('order-qty').value) || 0;
+    const tPrice = parseFloat(document.getElementById('order-price').value) || currentPrice;
+    if(qty <= 0) return;
+    const pos = gameState.units.find(u => u.city === gameState.activeCity);
+    if(pos && pos.side !== side){ showMsg("立場衝突！請先結算目前兵力"); triggerThunder(); return; }
+
+    const vol = tPrice * qty * 1000;
+    const tax = vol * TAX_RATE, fee = vol * FEE_RATE, total = vol + tax + fee;
+    if(gameState.balance < total){ showMsg("存銀不足 無法派遣"); triggerThunder(); return; }
+
+    if((side === 'LONG' && tPrice >= currentPrice) || (side === 'SHORT' && tPrice <= currentPrice)){
+        gameState.balance -= total;
+        executeOrder({ city: gameState.activeCity, side, qty, tax, fee }, currentPrice);
+    } else {
+        gameState.balance -= total; gameState.frozen += total;
+        gameState.pending.push({ id: Date.now(), city: gameState.activeCity, side, qty, price: tPrice, total, tax, fee });
+    }
+}
+
+function checkPendingOrders() {
+    for(let i=gameState.pending.length-1; i>=0; i--){
+        const o = gameState.pending[i];
+        const m = CITIES[o.city].price;
+        if((o.side==='LONG' && m<=o.price) || (o.side==='SHORT' && m>=o.price)){
+            gameState.pending.splice(i,1); executeOrder(o, m);
+        }
+    }
+}
+
+function executeOrder(o, fP) {
+    if(o.total) gameState.frozen -= o.total;
+    const vol = fP * o.qty * 1000;
+    const aTax = vol * TAX_RATE, aFee = vol * FEE_RATE;
+    gameState.taxTotal += (aTax + aFee);
+    gameState.units.push({
+        id: Date.now() + Math.random(), city: o.city, side: o.side, qty: o.qty,
+        cost: (vol + aTax + aFee) / (o.qty * 1000),
+        entry: fP, tax: aTax, fee: aFee,
+        time: new Date().toLocaleTimeString('zh-TW', { hour12: false })
+    });
+}
+
+function settle(id) {
+    const idx = gameState.units.findIndex(u => u.id === id);
+    const u = gameState.units[idx];
+    const city = CITIES[u.city];
+    const vol = city.price * u.qty * 1000;
+    const tax = vol * TAX_RATE, fee = vol * FEE_RATE;
+    const pnl = u.side === 'LONG' ? (city.price - u.cost)*u.qty*1000 : (u.cost - city.price)*u.qty*1000;
+    gameState.balance += (vol - tax - fee); gameState.taxTotal += (tax + fee); gameState.realizedPnl += pnl;
+    const rep = { ...u, exit: city.price, eTax: tax, eFee: fee, pnl };
+    gameState.history.unshift(rep); gameState.units.splice(idx,1);
+    showWarReport(rep); updateUI();
+}
+
+// --- 報表與 UI ---
+
+function switchTab(t) {
+    gameState.currentTab = t;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(`tab-${t}`).classList.add('active');
+    ['units','history','pending'].forEach(x => document.getElementById(`tab-content-${x}`).classList.add('hidden'));
+    document.getElementById(`tab-content-${t}`).classList.remove('hidden');
+    renderLists();
+}
+
+function showWarReport(d) {
+    const body = document.getElementById('modal-body');
+    const color = d.pnl >= 0 ? 'result-positive' : 'result-negative';
+    body.innerHTML = `
+        <h2 class="text-3xl font-black text-center mb-6 tracking-widest uppercase">單一戰役 結算紀實</h2>
+        <div class="grid grid-cols-2 gap-4 text-sm font-bold">
+            <div class="flex flex-col"><span class="text-[9px] text-gray-500">征戰地</span><span>${CITIES[d.city].name}</span></div>
+            <div class="flex flex-col text-right"><span class="text-[9px] text-gray-500">立場</span><span>${d.side==='LONG'?'護國多軍':'掠奪空軍'}</span></div>
+            <div class="border-t border-white/10 pt-2 flex flex-col"><span class="text-[9px] text-gray-500">入場均價</span><span>${d.entry.toFixed(1)}</span></div>
+            <div class="border-t border-white/10 pt-2 flex flex-col text-right"><span class="text-[9px] text-gray-500">結算價位</span><span>${d.exit.toFixed(1)}</span></div>
+        </div>
+        <div class="mt-6 p-6 bg-white/5 rounded-2xl text-center">
+            <div class="text-[9px] text-gray-400 uppercase font-black">本次戰果</div>
+            <div class="text-4xl font-black ${color}">${d.pnl>=0?'加':'減'} ${Math.abs(Math.floor(d.pnl)).toLocaleString()}</div>
+        </div>`;
+    document.getElementById('modal-overlay').classList.remove('opacity-0','pointer-events-none');
+}
+
+function showDailySummary() {
+    const body = document.getElementById('modal-body');
+    const wins = gameState.history.filter(h => h.pnl > 0).length;
+    const rate = gameState.history.length === 0 ? 0 : (wins / gameState.history.length * 100);
+    body.innerHTML = `
+        <h2 class="text-3xl font-black text-center mb-6 tracking-widest uppercase">今日三界總結大表</h2>
+        <div class="space-y-4">
+            <div class="flex justify-between border-b border-white/10 pb-2"><span>累計派遣次數</span><span>${gameState.history.length + gameState.units.length} 次</span></div>
+            <div class="flex justify-between border-b border-white/10 pb-2"><span>平均作戰勝率</span><span class="text-yellow-500">${rate.toFixed(1)} 百分比</span></div>
+            <div class="flex justify-between border-b border-white/10 pb-2"><span>已實現總戰果</span><span class="${gameState.realizedPnl>=0?'result-positive':'result-negative'}">${Math.floor(gameState.realizedPnl).toLocaleString()}</span></div>
+            <div class="flex justify-between border-b border-white/10 pb-2"><span>天界累計稅賦</span><span class="text-purple-400">${Math.floor(gameState.taxTotal).toLocaleString()}</span></div>
+        </div>`;
+    document.getElementById('modal-overlay').classList.remove('opacity-0','pointer-events-none');
+}
+
+function closeModal() { document.getElementById('modal-overlay').classList.add('opacity-0','pointer-events-none'); }
+
+function updateUI() {
+    const city = CITIES[gameState.activeCity];
+    document.getElementById('user-balance').innerText = Math.floor(gameState.balance).toLocaleString();
+    document.getElementById('frozen-balance').innerText = `天道凍結中 待命軍費 ${Math.floor(gameState.frozen).toLocaleString()}`;
+    document.getElementById('total-tax-display').innerText = Math.floor(gameState.taxTotal).toLocaleString();
+    document.getElementById('market-price').innerText = currentPrice.toFixed(2);
+    document.getElementById('base-price-display').innerText = city.basePrice.toFixed(2);
+    
+    const pct = ((currentPrice - city.basePrice)/city.basePrice*100).toFixed(2);
+    const elPct = document.getElementById('price-change');
+    elPct.innerText = `${pct >= 0 ? '正' : '負'} ${Math.abs(pct)} 百分比`;
+    elPct.className = `text-xs font-bold ${pct >= 0 ? 'text-red-500' : 'text-green-500'}`;
+
+    let unreal = 0;
+    gameState.units.forEach(u => { unreal += (u.side==='LONG' ? (CITIES[u.city].price - u.cost) : (u.cost - CITIES[u.city].price)) * u.qty * 1000; });
+    const tot = gameState.realizedPnl + unreal;
+    const elTot = document.getElementById('today-total-result');
+    elTot.innerText = `${tot >= 0 ? '加' : '減'} ${Math.abs(Math.floor(tot)).toLocaleString()}`;
+    elTot.className = `text-lg font-black ${tot >= 0 ? 'result-positive' : 'result-negative'}`;
+
+    renderLists();
+}
+
+function renderLists() {
+    const cont = document.getElementById(`tab-content-${gameState.currentTab}`);
+    if(!cont) return; cont.innerHTML = '';
+    if(gameState.currentTab === 'units'){
+        gameState.units.forEach(u => {
+            const p = (u.side==='LONG' ? (CITIES[u.city].price-u.cost) : (u.cost-CITIES[u.city].price))*u.qty*1000;
+            cont.innerHTML += `<div class="glass rounded-xl p-3 border-r-4 ${p>=0?'border-red-500':'border-green-500'} text-right">
+                <button onclick="settle(${u.id})" class="float-left text-[9px] bg-red-900/40 px-2 py-1 rounded">結算撤軍</button>
+                <div class="text-[10px] text-gray-500">${CITIES[u.city].name}</div>
+                <div class="text-xs font-bold ${p>=0?'text-red-500':'text-green-500'}">戰功 ${Math.floor(p).toLocaleString()}</div>
+            </div>`;
+        });
+    } else if(gameState.currentTab === 'history'){
+        gameState.history.slice(0, 10).forEach(h => {
+            cont.innerHTML += `<div class="bg-white/5 rounded-lg p-2 border-r-2 border-gray-600 text-right text-[10px] opacity-70">
+                <span>${h.time} | ${CITIES[h.city].name} 戰果 ${Math.floor(h.pnl).toLocaleString()}</span>
+            </div>`;
+        });
+    } else if(gameState.currentTab === 'pending'){
+        gameState.pending.forEach(o => {
+            cont.innerHTML += `<div class="glass rounded-xl p-2 border-r-4 border-gray-600 text-right"><div class="text-[9px] text-gray-500">${CITIES[o.city].name} 待命 ${o.price}</div></div>`;
+        });
+    }
+}
+
+function triggerThunder() { const o = document.getElementById('thunder-overlay'); o.classList.add('thunder-flash'); setTimeout(()=>o.classList.remove('thunder-flash'), 500); }
+function showMsg(t) { const el = document.getElementById('msg-box'); el.innerText = t; el.style.opacity = '1'; el.style.transform = 'translateX(-50%) translateY(-10px)'; setTimeout(()=>{el.style.opacity='0'; el.style.transform='translateX(-50%) translateY(0)';}, 3000); }
+function animate() { requestAnimationFrame(animate); TWEEN.update(); renderer.render(scene, camera); }
+
+window.onload = () => { init3D(); switchSector("SEMICON"); setInterval(tickMarket, 1000); };
+</script>
+</body>
+</html>
