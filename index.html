@@ -19,6 +19,7 @@
         body { margin: 0; overflow: hidden; background: #02050a; font-family: 'Noto Sans TC', sans-serif; color: white; touch-action: none; }
         canvas.three-canvas { display: block; position: absolute; top: 0; left: 0; z-index: 0; }
         
+        /* 玻璃擬態面板優化，增加層次感 */
         .glass { background: rgba(10, 15, 25, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         .glass-sim { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(56, 189, 248, 0.3); box-shadow: 0 0 20px rgba(56, 189, 248, 0.1); }
         
@@ -49,8 +50,8 @@
         .timeframe-btn { font-size: 11px; padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; cursor: pointer; }
         .timeframe-btn.active { background: #eab308; color: black; border-color: #eab308; font-weight: 900; }
         
-        input[type=number] { background: rgba(0,0,0,0.4); box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); transition: all 0.3s; }
-        input[type=number]:focus { background: rgba(255,255,255,0.1); box-shadow: 0 0 10px rgba(234,179,8,0.3), inset 0 2px 4px rgba(0,0,0,0.5); }
+        input[type=number], input[type=text] { background: rgba(0,0,0,0.4); box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); transition: all 0.3s; }
+        input[type=number]:focus, input[type=text]:focus { background: rgba(255,255,255,0.1); box-shadow: 0 0 10px rgba(234,179,8,0.3), inset 0 2px 4px rgba(0,0,0,0.5); }
 
         .btn-disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(100%); pointer-events: none; }
     </style>
@@ -190,7 +191,7 @@
         
         <!-- 主圖：K線蠟燭圖 -->
         <div class="flex-1 min-h-[30vh] md:min-h-[40vh] bg-black/50 border border-white/10 p-2 rounded-xl relative flex flex-col shadow-inner">
-            <span class="text-[10px] text-gray-400 font-bold uppercase absolute top-2 left-3 z-10 tracking-widest">價格走勢</span>
+            <span class="text-[10px] text-gray-400 font-bold uppercase absolute top-2 left-3 z-10 tracking-widest">價格走勢 (紅漲綠跌)</span>
             <div class="flex-1 relative w-full h-full mt-4">
                 <canvas id="mainChartCanvas"></canvas>
             </div>
@@ -278,15 +279,15 @@
 
 <script>
 // ==========================================
-// 1. 全域工具函式與防呆機制 (強制頂層宣告)
+// 1. 全域工具函式與防呆機制 (強制宣告為標準函式)
 // ==========================================
-window.safeNum = function(val, fallback = 0) {
+function safeNum(val, fallback = 0) {
     const n = Number(val);
     return (isNaN(n) || !isFinite(n)) ? fallback : n;
-};
+}
 
 let msgTimeout;
-window.showMsg = function(t) { 
+function showMsg(t) { 
     const el = document.getElementById('msg-box'); 
     if(!el) return;
     el.innerText = t; 
@@ -297,28 +298,28 @@ window.showMsg = function(t) {
         el.classList.remove('opacity-100', 'translate-y-0'); 
         el.classList.add('opacity-0', 'translate-y-4'); 
     }, 3000); 
-};
+}
 
-window.triggerThunder = function() { 
+function triggerThunder() { 
     const o = document.getElementById('thunder-overlay'); if(!o) return;
     o.classList.remove('thunder-flash','gold-thunder-flash','sim-thunder-flash'); 
     void o.offsetWidth; o.classList.add('thunder-flash'); 
     setTimeout(()=>o.classList.remove('thunder-flash'), 500); 
-};
+}
 
-window.triggerGoldThunder = function() { 
+function triggerGoldThunder() { 
     const o = document.getElementById('thunder-overlay'); if(!o) return;
     o.classList.remove('thunder-flash','gold-thunder-flash','sim-thunder-flash'); 
     void o.offsetWidth; o.classList.add('gold-thunder-flash'); 
     setTimeout(()=>o.classList.remove('gold-thunder-flash'), 800); 
-};
+}
 
-window.triggerSimThunder = function() { 
+function triggerSimThunder() { 
     const o = document.getElementById('thunder-overlay'); if(!o) return;
     o.classList.remove('thunder-flash','gold-thunder-flash','sim-thunder-flash'); 
     void o.offsetWidth; o.classList.add('sim-thunder-flash'); 
     setTimeout(()=>o.classList.remove('sim-thunder-flash'), 800); 
-};
+}
 
 // ==========================================
 // 2. 核心變數、領域資料與本地記憶體 (LocalStorage)
@@ -392,7 +393,6 @@ function loadState() {
     try {
         const customSaved = JSON.parse(localStorage.getItem('abula_custom_stocks') || '[]');
         customSaved.forEach(s => {
-            // 自選股若無暫存檔，預設為 0 以觸發手動輸入
             if (!CITIES[s.symbol]) CITIES[s.symbol] = { name: s.name, price: 0, basePrice: 0, realPrice: 0, simBasePrice: 0, vol: 2, chartData: {}, autoSimTriggered: false };
             if (!SECTORS["CUSTOM"].cities.includes(s.symbol)) SECTORS["CUSTOM"].cities.push(s.symbol);
         });
@@ -410,29 +410,31 @@ const MAX_PHALANX_SIZE = 40;
 
 function createCastle() {
     const group = new THREE.Group();
-    const mat = new THREE.MeshStandardMaterial({color: 0x556677, roughness: 0.8, metalness: 0.2});
-    const wall = new THREE.Mesh(new THREE.BoxGeometry(10, 18, 60), mat);
-    wall.position.set(-35, 9, 0);
+    const mat = new THREE.MeshStandardMaterial({color: 0x64748b, roughness: 0.9, metalness: 0.1}); // 較亮的灰色
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(8, 16, 50), mat);
+    wall.position.set(-25, 8, 0); // 往中央靠攏，適配手機
     group.add(wall);
-    for(let z = -28; z <= 28; z+=8) {
-        const battlement = new THREE.Mesh(new THREE.BoxGeometry(10, 4, 4), mat);
-        battlement.position.set(-35, 20, z); group.add(battlement);
+    for(let z = -20; z <= 20; z+=8) {
+        const battlement = new THREE.Mesh(new THREE.BoxGeometry(8, 3, 3), mat);
+        battlement.position.set(-25, 17.5, z); group.add(battlement);
     }
     return group;
 }
 
 function createForest() {
     const group = new THREE.Group();
-    const trunkMat = new THREE.MeshStandardMaterial({color: 0x4a2e15, roughness: 1.0});
-    const leafMat = new THREE.MeshStandardMaterial({color: 0x1c592c, roughness: 0.9, flatShading: true});
+    const trunkMat = new THREE.MeshStandardMaterial({color: 0x5c4033, roughness: 1.0}); // 棕色
+    const leafMat = new THREE.MeshStandardMaterial({color: 0x2e8b57, roughness: 0.8, flatShading: true}); // 較亮的綠色
     for(let i=0; i<40; i++) {
         const tree = new THREE.Group();
         const scale = 0.8 + Math.random()*0.6;
-        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.2, 5), trunkMat); trunk.position.y = 2.5;
-        const leaves1 = new THREE.Mesh(new THREE.ConeGeometry(4, 9, 5), leafMat); leaves1.position.y = 7;
-        const leaves2 = new THREE.Mesh(new THREE.ConeGeometry(3, 7, 5), leafMat); leaves2.position.y = 11;
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 3), trunkMat); trunk.position.y = 1.5;
+        const leaves1 = new THREE.Mesh(new THREE.ConeGeometry(3.5, 6, 6), leafMat); leaves1.position.y = 5;
+        const leaves2 = new THREE.Mesh(new THREE.ConeGeometry(2.5, 5, 6), leafMat); leaves2.position.y = 8;
         tree.add(trunk, leaves1, leaves2);
-        tree.scale.set(scale, scale, scale); tree.position.set(30 + Math.random()*20, 0, (Math.random()-0.5)*70);
+        tree.scale.set(scale, scale, scale); 
+        // 往中央靠攏
+        tree.position.set(22 + Math.random()*15, 0, (Math.random()-0.5)*60);
         group.add(tree);
     }
     return group;
@@ -500,8 +502,9 @@ function init3D() {
     renderer.domElement.className = 'three-canvas';
     document.body.appendChild(renderer.domElement);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 3.0));
-    const dLight = new THREE.DirectionalLight(0xffffff, 4.0); dLight.position.set(20, 100, 40); scene.add(dLight);
+    // 提升亮度
+    scene.add(new THREE.AmbientLight(0xffffff, 4.0));
+    const dLight = new THREE.DirectionalLight(0xffffff, 5.0); dLight.position.set(20, 100, 40); scene.add(dLight);
     
     const grid = new THREE.GridHelper(200, 80, 0x223344, 0x0a1122); grid.position.y = 0.01; scene.add(grid);
     battleLine = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 60), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })); scene.add(battleLine);
@@ -522,8 +525,10 @@ function spawnBasePhalanx() {
     const cols = Math.floor(MAX_PHALANX_SIZE / 4);
     for(let i=0; i<MAX_PHALANX_SIZE; i++) {
         const r = Math.floor(i / cols), c = i % cols, zPos = (c - cols/2 + 0.5) * 5;
-        const rm = createSoldier(0x882222, false); rm.userData.baseX = -12 - r*3; rm.position.set(rm.userData.baseX, 0, zPos); baseRedArmy.push(rm); scene.add(rm);
-        const gm = createSoldier(0x226622, false); gm.userData.baseX = 12 + r*3; gm.position.set(gm.userData.baseX, 0, zPos); baseGreenArmy.push(gm); scene.add(gm);
+        const rm = createSoldier(0xbb3333, false); // 提亮紅色
+        rm.userData.baseX = -12 - r*3; rm.position.set(rm.userData.baseX, 0, zPos); baseRedArmy.push(rm); scene.add(rm);
+        const gm = createSoldier(0x33bb33, false); // 提亮綠色
+        gm.userData.baseX = 12 + r*3; gm.position.set(gm.userData.baseX, 0, zPos); baseGreenArmy.push(gm); scene.add(gm);
     }
 }
 
@@ -609,7 +614,7 @@ function checkTimeEvents() {
             processOvernightDividend(todayStr);
             if (gameState.pendingSimReward > 0) {
                 gameState.balance += gameState.pendingSimReward; triggerGoldThunder();
-                window.showMsg(`開盤天降甘霖！發放沙盤獎勵 ${Math.floor(gameState.pendingSimReward)} 天幣！`);
+                showMsg(`開盤天降甘霖！發放沙盤獎勵 ${Math.floor(gameState.pendingSimReward)} 天幣！`);
                 gameState.pendingSimReward = 0; saveState();
             }
         }
@@ -645,28 +650,25 @@ function processOvernightDividend(todayStr) {
     if (gameState.lastDividendDay === todayStr) return; 
     let div = 0;
     gameState.units.forEach(u => { if (u.entryDate && u.entryDate !== todayStr && !u.isSim) { const city = CITIES[u.city]; if (city) div += (safeNum(city.price, city.basePrice) * u.qty * 1000 * 0.005); }});
-    if (div > 0) { gameState.balance += div; triggerGoldThunder(); window.showMsg(`持久戰甘霖 榮獲 ${Math.floor(div).toLocaleString()} 天幣`); }
+    if (div > 0) { gameState.balance += div; triggerGoldThunder(); showMsg(`持久戰甘霖 榮獲 ${Math.floor(div).toLocaleString()} 天幣`); }
     gameState.lastDividendDay = todayStr; saveState();
 }
 
-window.toggleSimMode = function(isAutoFallback = false) {
-    if (!isAutoFallback && (currentMarketState === "OPEN" || currentMarketState === "PRE")) { window.showMsg("真實天道運行中 禁止手動啟動沙盤"); return; }
+function toggleSimMode(isAutoFallback = false) {
+    if (!isAutoFallback && (currentMarketState === "OPEN" || currentMarketState === "PRE")) { showMsg("真實天道運行中 禁止手動啟動沙盤"); return; }
     if (isSimMode) forceCloseSimMode(false);
     else {
         realStateSnapshot = JSON.parse(JSON.stringify(gameState)); isSimMode = true;
         Object.keys(CITIES).forEach(c => {
-            // 如果連線失敗被迫進入，保留現有的 basePrice 作為 simBasePrice
-            if(!isAutoFallback) {
-                CITIES[c].simBasePrice = safeNum(CITIES[c].price, CITIES[c].basePrice);
-            }
+            if(!isAutoFallback) { CITIES[c].simBasePrice = safeNum(CITIES[c].price, CITIES[c].basePrice); }
         });
         document.getElementById('real-pnl-container').classList.add('hidden'); document.getElementById('sim-pnl-container').classList.remove('hidden'); document.getElementById('base-price-label').innerText = '沙盤基準';
         ['main-dashboard','tab-container','order-panel'].forEach(id => document.getElementById(id).classList.replace('glass', 'glass-sim'));
         triggerSimThunder(); 
-        window.showMsg(isAutoFallback ? "連線中斷 自動進入沙盤時空" : "進入沙盤時空 資金獨立計算"); 
+        showMsg(isAutoFallback ? "連線中斷 自動進入沙盤時空" : "進入沙盤時空 資金獨立計算"); 
         updateOrderButtonsUI(); updateUI();
     }
-};
+}
 
 function forceCloseSimMode(isAuto) {
     if (!isSimMode || !realStateSnapshot) return;
@@ -680,38 +682,31 @@ function forceCloseSimMode(isAuto) {
     currentPrice = safeNum(CITIES[gameState.activeCity].price); syncPlayerTroopsFromState();
     document.getElementById('sim-pnl-container').classList.add('hidden'); document.getElementById('real-pnl-container').classList.remove('hidden'); document.getElementById('base-price-label').innerText = '昨收';
     ['main-dashboard','tab-container','order-panel'].forEach(id => document.getElementById(id).classList.replace('glass-sim', 'glass'));
-    window.showMsg(msg); saveState(); updateOrderButtonsUI(); updateUI();
+    showMsg(msg); saveState(); updateOrderButtonsUI(); updateUI();
 }
 
-// 手動基準報價
-window.openPricePrompt = function(cityCode) {
+function openPricePrompt(cityCode) {
     pendingPriceCity = cityCode;
     document.getElementById('prompt-city-name').innerText = CITIES[cityCode].name;
     document.getElementById('manual-price-input').value = '';
     document.getElementById('price-prompt-modal').classList.remove('opacity-0', 'pointer-events-none');
-};
+}
 
-window.closePricePrompt = function() {
+function closePricePrompt() {
     document.getElementById('price-prompt-modal').classList.add('opacity-0', 'pointer-events-none');
-};
+}
 
-window.submitManualPrice = function() {
+function submitManualPrice() {
     const val = parseFloat(document.getElementById('manual-price-input').value);
-    if(isNaN(val) || val <= 0) {
-        window.showMsg("請輸入有效的基準價格");
-        return;
-    }
+    if(isNaN(val) || val <= 0) { showMsg("請輸入有效的基準價格"); return; }
     const city = CITIES[pendingPriceCity];
     if(city) {
         city.basePrice = val; city.simBasePrice = val; city.price = val; city.realPrice = val;
         initKbars(city);
     }
-    window.closePricePrompt();
-    if(!isSimMode) {
-        window.showMsg("基準價已設定 系統自動導入沙盤");
-        window.toggleSimMode(true);
-    }
-};
+    closePricePrompt();
+    if(!isSimMode) { showMsg("基準價已設定 系統自動導入沙盤"); toggleSimMode(true); }
+}
 
 async function fetchRealMarketData() {
     const cityCode = gameState.activeCity; const city = CITIES[cityCode]; if (!city) return;
@@ -740,15 +735,10 @@ async function fetchRealMarketData() {
         city.realPrice = p; city.basePrice = parseFloat(fetchedBase) || city.realPrice;
         if (!isSimMode) { city.price = city.realPrice; currentPrice = city.price; }
     } else {
-        // 連線失敗，啟動容錯機制
         if (!city.basePrice || city.basePrice === 0) {
-            if (!document.getElementById('price-prompt-modal').classList.contains('opacity-100') && !isSimMode) {
-                window.openPricePrompt(cityCode);
-            }
+            if (!document.getElementById('price-prompt-modal').classList.contains('opacity-100') && !isSimMode) { openPricePrompt(cityCode); }
         } else if (!isSimMode && !city.autoSimTriggered) {
-            window.showMsg("天道連線失敗 自動導入沙盤");
-            window.toggleSimMode(true);
-            city.autoSimTriggered = true; // 防止無限迴圈
+            showMsg("天道連線失敗 自動導入沙盤"); toggleSimMode(true); city.autoSimTriggered = true; 
         }
     }
 }
@@ -770,6 +760,7 @@ function initKbars(city) {
             if(curC <= 0.1) curC = 0.1;
             let h = Math.max(o, curC) + Math.random() * (volBase*0.5);
             let l = Math.min(o, curC) - Math.random() * (volBase*0.5);
+            // x 必須為 timestamp
             fakeData.push({ x: time + i*60000, o: o, h: h, l: l, c: curC, v: 100+Math.random()*900 });
         }
         city.chartData[tf] = fakeData;
@@ -817,37 +808,37 @@ function localTick() {
 // 5. 介面操作與交易撮合
 // ==========================================
 
-window.switchSector = function(code) {
+function switchSector(code) {
     gameState.activeSector = code; const sel = document.getElementById('city-selector'); sel.innerHTML = '';
     if (SECTORS[code].cities.length === 0) { sel.appendChild(new Option("尚無城池", "")); currentPrice = 0; lastPriceForAnim = 0; document.getElementById('market-price').innerText = "---"; return; }
     SECTORS[code].cities.forEach(c => sel.appendChild(new Option(CITIES[c]?.name || c, c)));
-    window.switchCity(SECTORS[code].cities[0]);
-};
+    switchCity(SECTORS[code].cities[0]);
+}
 
-window.switchCity = function(code) {
+function switchCity(code) {
     if (!code || !CITIES[code]) return;
     gameState.activeCity = code;
-    CITIES[code].autoSimTriggered = false; // 切換城池時重置觸發鎖
+    CITIES[code].autoSimTriggered = false; 
     currentPrice = safeNum(CITIES[code].price, CITIES[code].basePrice); lastPriceForAnim = currentPrice;
     document.getElementById('chart-city-name').innerText = CITIES[code].name;
-    window.showMsg(`軍令轉移 至 ${CITIES[code].name}`);
+    showMsg(`軍令轉移 至 ${CITIES[code].name}`);
     syncPlayerTroopsFromState();
     if(battleLine) battleLine.material.color.setHex(0xffffff);
     if(!isSimMode) fetchRealMarketData();
-    window.fetchFullChartData();
-};
+    fetchFullChartData();
+}
 
-window.issueOrder = function(side) {
-    if (currentMarketState === "CLOSED" && !isSimMode) { window.showMsg("天道休市期間 僅開放沙盤練兵下單"); triggerThunder(); return; }
+function issueOrder(side) {
+    if (currentMarketState === "CLOSED" && !isSimMode) { showMsg("天道休市期間 僅開放沙盤練兵下單"); triggerThunder(); return; }
     const qty = parseInt(document.getElementById('order-qty').value) || 0;
     const tPrice = parseFloat(document.getElementById('order-price').value) || currentPrice;
     if(qty <= 0 || !gameState.activeCity) return;
     const validCurrentPrice = safeNum(currentPrice, safeNum(CITIES[gameState.activeCity]?.basePrice, 100));
-    if(gameState.units.find(u => u.city === gameState.activeCity && u.side !== side)){ window.showMsg("立場衝突 請先結算目前兵力"); triggerThunder(); return; }
+    if(gameState.units.find(u => u.city === gameState.activeCity && u.side !== side)){ showMsg("立場衝突 請先結算目前兵力"); triggerThunder(); return; }
 
     const vol = tPrice * qty * 1000;
     const tax = vol * TAX_RATE, fee = vol * FEE_RATE, total = vol + tax + fee;
-    if(gameState.balance < total){ window.showMsg("存銀不足 無法派遣"); triggerThunder(); return; }
+    if(gameState.balance < total){ showMsg("存銀不足 無法派遣"); triggerThunder(); return; }
 
     let immediate = false;
     if(isSimMode || currentMarketState !== "PRE") {
@@ -856,20 +847,20 @@ window.issueOrder = function(side) {
     }
 
     if(immediate){
-        gameState.balance -= total; executeOrder({ city: gameState.activeCity, side, qty, tax, fee, isSim: isSimMode }, validCurrentPrice); window.showMsg("市價滿足 立即出征");
+        gameState.balance -= total; executeOrder({ city: gameState.activeCity, side, qty, tax, fee, isSim: isSimMode }, validCurrentPrice); showMsg("市價滿足 立即出征");
     } else {
         gameState.balance -= total; gameState.frozen += total;
-        gameState.pending.push({ id: Date.now(), city: gameState.activeCity, side, qty, price: tPrice, totalCost: total, tax, fee, isSim: isSimMode }); window.showMsg("進入埋伏 等候滿足價位");
+        gameState.pending.push({ id: Date.now(), city: gameState.activeCity, side, qty, price: tPrice, totalCost: total, tax, fee, isSim: isSimMode }); showMsg("進入埋伏 等候滿足價位");
     }
     saveState(); updateUI();
-};
+}
 
 function checkPendingOrders() {
     for(let i=gameState.pending.length-1; i>=0; i--){
         const o = gameState.pending[i]; const m = safeNum(CITIES[o.city]?.price, 0);
         if (m <= 0.1) continue;
         if((o.side === 'LONG' && m <= o.price) || (o.side === 'SHORT' && m >= o.price)){
-            gameState.pending.splice(i,1); executeOrder(o, m); window.showMsg(`天道撮合 ${CITIES[o.city].name} 入城`); saveState();
+            gameState.pending.splice(i,1); executeOrder(o, m); showMsg(`天道撮合 ${CITIES[o.city].name} 入城`); saveState();
         }
     }
 }
@@ -888,7 +879,7 @@ function executeOrder(o, fP) {
     saveState();
 }
 
-window.settle = function(id) {
+function settle(id) {
     const idx = gameState.units.findIndex(u => u.id === id); if (idx === -1) return;
     const u = gameState.units[idx]; const city = CITIES[u.city];
     const validPrice = safeNum(city.price, city.basePrice);
@@ -905,15 +896,15 @@ window.settle = function(id) {
     gameState.history.unshift(rep); gameState.units.splice(idx,1);
     
     if(u.city === gameState.activeCity) removePlayerTroop(u.side);
-    saveState(); window.showWarReport(rep); updateUI();
-};
+    saveState(); showWarReport(rep); updateUI();
+}
 
-window.cancelOrder = function(id) {
+function cancelOrder(id) {
     const idx = gameState.pending.findIndex(o => o.id === id); if (idx === -1) return;
     const o = gameState.pending[idx];
     gameState.balance += safeNum(o.totalCost); gameState.frozen -= safeNum(o.totalCost);
-    gameState.pending.splice(idx, 1); window.showMsg("撤回軍令 資金歸庫"); saveState(); updateUI();
-};
+    gameState.pending.splice(idx, 1); showMsg("撤回軍令 資金歸庫"); saveState(); updateUI();
+}
 
 // ==========================================
 // 6. 專業 Chart.js 金融圖表引擎 (含 K線蠟燭圖)
@@ -982,7 +973,7 @@ function calcBIAS(data, period) {
     return data.map((v, i) => sma[i] > 0 ? ((v - sma[i]) / sma[i]) * 100 : 0);
 }
 
-window.fetchFullChartData = async function() {
+async function fetchFullChartData() {
     const cityCode = gameState.activeCity; const city = CITIES[cityCode]; if (!city) return;
     
     const map = { "1m":{i:"1m",r:"1d"}, "5m":{i:"5m",r:"5d"}, "15m":{i:"15m",r:"5d"}, "30m":{i:"30m",r:"1mo"}, "60m":{i:"60m",r:"1mo"}, "1d":{i:"1d",r:"6mo"}, "1wk":{i:"1wk",r:"2y"}, "1mo":{i:"1mo",r:"5y"} };
@@ -1027,9 +1018,9 @@ window.fetchFullChartData = async function() {
     }
 
     if(!document.getElementById('chart-page').classList.contains('hidden')) renderChartInstance();
-};
+}
 
-window.renderChartInstance = function() {
+function renderChartInstance() {
     const city = CITIES[gameState.activeCity]; if(!city || !city.chartData[gameState.timeframe]) return;
     const rawData = city.chartData[gameState.timeframe];
     if (rawData.length < 10) return;
@@ -1039,7 +1030,8 @@ window.renderChartInstance = function() {
         return gameState.timeframe.includes('m') ? date.toLocaleTimeString('zh-TW', {hour: '2-digit', minute:'2-digit'}) : date.toLocaleDateString('zh-TW', {month:'2-digit', day:'2-digit'});
     });
     
-    const candleData = rawData.map((d, i) => ({ x: labels[i], o: d.o, h: d.h, l: d.l, c: d.c }));
+    // K 線的 X 軸必須給予時間戳記
+    const candleData = rawData.map(d => ({ x: d.x, o: d.o, h: d.h, l: d.l, c: d.c }));
     const twColors = { up: 'rgba(239, 68, 68, 1)', down: 'rgba(34, 197, 94, 1)', unchanged: 'rgba(156, 163, 175, 1)' };
 
     const ctxMain = document.getElementById('mainChartCanvas').getContext('2d');
@@ -1048,8 +1040,9 @@ window.renderChartInstance = function() {
         type: 'candlestick',
         data: { datasets: [{ label: 'Price', data: candleData, color: twColors, borderColor: twColors }] },
         options: { 
+            animation: false, // 關閉動畫，解決跳閃問題
             responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, 
-            scales: { x: { display: false }, y: { position: 'right', grid: { color: 'rgba(255,255,255,0.1)' } } } 
+            scales: { x: { type: 'time', display: false }, y: { position: 'right', grid: { color: 'rgba(255,255,255,0.1)' } } } 
         }
     });
 
@@ -1060,6 +1053,7 @@ window.renderChartInstance = function() {
         type: 'bar',
         data: { labels: labels, datasets: [{ data: rawData.map(d => d.v), backgroundColor: volumeColors, barPercentage: 0.8 }] },
         options: { 
+            animation: false,
             responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, 
             scales: { x: { display: false }, y: { position: 'right', grid: { display: false }, ticks: { display: false } } } 
         }
@@ -1106,43 +1100,44 @@ window.renderChartInstance = function() {
     indChart = new Chart(ctxInd, {
         data: { labels: labels, datasets: datasets },
         options: { 
+            animation: false,
             responsive: true, maintainAspectRatio: false, 
             plugins: { legend: { display: true, position: 'top', labels: { color: '#ccc', font: { size: 9 } } } }, 
             scales: { x: { display: false }, y: { position: 'right', grid: { color: 'rgba(255,255,255,0.1)' } } } 
         }
     });
-};
+}
 
-window.setIndicator = function(ind) {
+function setIndicator(ind) {
     gameState.activeIndicator = ind; 
     document.querySelectorAll('.ind-btn').forEach(b => b.classList.remove('active')); 
     document.getElementById(`btn-ind-${ind}`).classList.add('active');
-    window.renderChartInstance();
-};
+    renderChartInstance();
+}
 
-window.openChartPage = function() {
+function openChartPage() {
     document.getElementById('main-ui').classList.add('hidden');
     document.getElementById('chart-city-name').innerText = CITIES[gameState.activeCity]?.name || "未知城池";
     const p = document.getElementById('chart-page'); p.classList.remove('hidden');
-    setTimeout(() => { p.classList.remove('translate-y-full'); window.fetchFullChartData(); }, 10);
-};
+    setTimeout(() => { p.classList.remove('translate-y-full'); fetchFullChartData(); }, 10);
+}
 
-window.closeChartPage = function() {
+function closeChartPage() {
     const p = document.getElementById('chart-page'); p.classList.add('translate-y-full');
     setTimeout(() => { p.classList.add('hidden'); document.getElementById('main-ui').classList.remove('hidden'); }, 300);
-};
+}
 
-window.setTimeframe = function(tf) {
+function setTimeframe(tf) {
     gameState.timeframe = tf; 
     document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active')); 
     document.getElementById(`tf-${tf}`).classList.add('active');
-    window.showMsg(`資料頻率切換至 ${tf}`); window.fetchFullChartData();
-};
+    showMsg(`資料頻率切換至 ${tf}`); fetchFullChartData();
+}
 
 // ==========================================
 // 7. 結算與報表
 // ==========================================
-window.showWarReport = function(d) {
+function showWarReport(d) {
     const color = d.pnl >= 0 ? 'result-positive' : 'result-negative';
     const tag1 = d.isSim ? '<span class="bg-sky-500/20 text-sky-400 px-1.5 py-0.5 rounded text-[10px] ml-1 border border-sky-500/30 tracking-widest">沙盤推演</span>' : '';
     const tag2 = d.isDayTrade ? '<span class="bg-yellow-500/20 text-yellow-400 px-1.5 py-0.5 rounded text-[10px] ml-1 border border-yellow-500/30 tracking-widest">當沖降稅</span>' : '';
@@ -1161,9 +1156,9 @@ window.showWarReport = function(d) {
         </div>`;
     document.getElementById('report-modal').classList.remove('opacity-0','pointer-events-none');
     document.getElementById('modal-window').classList.replace('scale-95', 'scale-100');
-};
+}
 
-window.showDailySummary = function() {
+function showDailySummary() {
     const wins = gameState.history.filter(h => h.pnl > 0 && !h.isSim).length;
     const reals = gameState.history.filter(h => !h.isSim).length;
     const rate = reals === 0 ? 0 : (wins / reals * 100);
@@ -1190,36 +1185,33 @@ window.showDailySummary = function() {
         </div>`;
     document.getElementById('report-modal').classList.remove('opacity-0','pointer-events-none');
     document.getElementById('modal-window').classList.replace('scale-95', 'scale-100');
-};
+}
 
-window.closeModal = function() { 
-    document.getElementById('report-modal').classList.add('opacity-0','pointer-events-none'); 
-    document.getElementById('modal-window').classList.replace('scale-100', 'scale-95'); 
-};
+function closeModal() { document.getElementById('report-modal').classList.add('opacity-0','pointer-events-none'); document.getElementById('modal-window').classList.replace('scale-100', 'scale-95'); }
 
-window.openApiSettings = function() { document.getElementById('api-modal').classList.remove('opacity-0', 'pointer-events-none'); document.getElementById('api-key-input').value = USER_API_KEY; };
-window.closeApiSettings = function() { document.getElementById('api-modal').classList.add('opacity-0', 'pointer-events-none'); };
-window.saveApiKey = function() { 
+function openApiSettings() { document.getElementById('api-modal').classList.remove('opacity-0', 'pointer-events-none'); document.getElementById('api-key-input').value = USER_API_KEY; }
+function closeApiSettings() { document.getElementById('api-modal').classList.add('opacity-0', 'pointer-events-none'); }
+function saveApiKey() { 
     USER_API_KEY = String(document.getElementById('api-key-input').value).trim().replace(/[^a-zA-Z0-9_\-]/g, ''); 
-    localStorage.setItem('abula_api_key', USER_API_KEY); closeApiSettings(); window.showMsg("設定已儲存"); fetchRealMarketData(); 
-};
+    localStorage.setItem('abula_api_key', USER_API_KEY); closeApiSettings(); showMsg("設定已儲存"); fetchRealMarketData(); 
+}
 
-window.openCustomManager = function() { document.getElementById('custom-modal').classList.remove('opacity-0', 'pointer-events-none'); renderCustomList(); };
-window.closeCustomManager = function() { document.getElementById('custom-modal').classList.add('opacity-0', 'pointer-events-none'); if(gameState.activeSector === 'CUSTOM') switchSector('CUSTOM'); };
-window.addCustomStock = function() {
+function openCustomManager() { document.getElementById('custom-modal').classList.remove('opacity-0', 'pointer-events-none'); renderCustomList(); }
+function closeCustomManager() { document.getElementById('custom-modal').classList.add('opacity-0', 'pointer-events-none'); if(gameState.activeSector === 'CUSTOM') switchSector('CUSTOM'); }
+function addCustomStock() {
     const cleanSym = String(document.getElementById('custom-symbol').value).trim().toUpperCase().replace(/[^A-Z0-9\.]/g, ''); 
     const cleanName = String(document.getElementById('custom-name').value).trim().replace(/[<>]/g, '');
-    if (!cleanSym || !cleanName) { window.showMsg("請輸入有效台股代號"); return; }
+    if (!cleanSym || !cleanName) { showMsg("請輸入有效台股代號"); return; }
     if (!CITIES[cleanSym]) CITIES[cleanSym] = { name: cleanName, price: 0, basePrice: 0, realPrice: 0, simBasePrice: 0, vol: 2.0, chartData: {}, autoSimTriggered: false };
     else CITIES[cleanSym].name = cleanName;
     if (!SECTORS["CUSTOM"].cities.includes(cleanSym)) SECTORS["CUSTOM"].cities.push(cleanSym);
     localStorage.setItem('abula_custom_stocks', JSON.stringify(SECTORS["CUSTOM"].cities.map(sym => ({ symbol: sym, name: CITIES[sym].name }))));
-    document.getElementById('custom-symbol').value = ''; document.getElementById('custom-name').value = ''; window.showMsg(`已編列 ${cleanName}`); renderCustomList();
-};
-window.removeCustomStock = function(sym) {
+    document.getElementById('custom-symbol').value = ''; document.getElementById('custom-name').value = ''; showMsg(`已編列 ${cleanName}`); renderCustomList();
+}
+function removeCustomStock(sym) {
     const idx = SECTORS["CUSTOM"].cities.indexOf(sym);
-    if (idx > -1) { SECTORS["CUSTOM"].cities.splice(idx, 1); localStorage.setItem('abula_custom_stocks', JSON.stringify(SECTORS["CUSTOM"].cities.map(s => ({ symbol: s, name: CITIES[s].name })))); window.showMsg(`已移出 ${sym}`); renderCustomList(); }
-};
+    if (idx > -1) { SECTORS["CUSTOM"].cities.splice(idx, 1); localStorage.setItem('abula_custom_stocks', JSON.stringify(SECTORS["CUSTOM"].cities.map(s => ({ symbol: s, name: CITIES[s].name })))); showMsg(`已移出 ${sym}`); renderCustomList(); }
+}
 function renderCustomList() {
     const list = document.getElementById('custom-stock-list'); list.innerHTML = '';
     SECTORS["CUSTOM"].cities.forEach(sym => {
@@ -1227,11 +1219,11 @@ function renderCustomList() {
     });
 }
 
-window.switchTab = function(t) {
+function switchTab(t) {
     gameState.currentTab = t; document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.getElementById(`tab-${t}`).classList.add('active');
     ['units','history','pending'].forEach(x => { const el = document.getElementById(`tab-content-${x}`); if(el) el.classList.add('hidden'); });
     const content = document.getElementById(`tab-content-${t}`); if(content) content.classList.remove('hidden'); renderLists();
-};
+}
 
 function updateUI() {
     const city = CITIES[gameState.activeCity]; if(!city) return;
@@ -1357,7 +1349,7 @@ function renderLists() {
     }
 }
 
-window.onload = () => { loadState(); init3D(); window.switchSector("SEMICON"); startMarketPolling(); setInterval(localTick, 1000); updateOrderButtonsUI(); };
+window.onload = () => { loadState(); init3D(); switchSector("SEMICON"); startMarketPolling(); setInterval(localTick, 1000); updateOrderButtonsUI(); };
 </script>
 </body>
 </html>
