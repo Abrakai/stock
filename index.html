@@ -1278,11 +1278,15 @@ function startMarketPolling() {
 // 模擬引擎 (供斷線或啟動沙盤時產生平滑假資料用)
 function localTick() {
     const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Taipei"}));
+    const day = now.getDay();
     const timeNum = now.getHours() * 100 + now.getMinutes();
     let newStatus = "CLOSED";
     
-    if (timeNum >= 855 && timeNum < 900) newStatus = "PRE";
-    else if (timeNum >= 900 && timeNum < 1330) newStatus = "OPEN";
+    // 嚴格休市判斷：確保週末六日絕對鎖定為休市 (0 = 週日, 6 = 週六)
+    if (day >= 1 && day <= 5) {
+        if (timeNum >= 855 && timeNum < 900) newStatus = "PRE";
+        else if (timeNum >= 900 && timeNum < 1330) newStatus = "OPEN";
+    }
 
     // 狀態機切換與按鈕鎖定控制
     if (currentMarketState !== newStatus) {
@@ -1290,20 +1294,7 @@ function localTick() {
             window.forceCloseSimMode(false);
         }
         currentMarketState = newStatus;
-        const btnL = document.getElementById('btn-long'); 
-        const btnS = document.getElementById('btn-short');
-        
-        if (currentMarketState === "CLOSED" && !isSimMode) {
-            btnL.classList.add('btn-disabled'); 
-            btnS.classList.add('btn-disabled');
-            document.getElementById('btn-long-text').innerText = "休市禁令"; 
-            document.getElementById('btn-short-text').innerText = "休市禁令";
-        } else {
-            btnL.classList.remove('btn-disabled'); 
-            btnS.classList.remove('btn-disabled');
-            document.getElementById('btn-long-text').innerText = "入城"; 
-            document.getElementById('btn-short-text').innerText = "攻掠";
-        }
+        updateOrderButtonsUI();
     }
 
     if(!isSimMode) return;
@@ -1350,8 +1341,28 @@ function initKbars(city) {
     city.chartData["1m"] = fakeData;
 }
 
+// 統一管理下單按鈕的休市鎖定邏輯
+function updateOrderButtonsUI() {
+    const btnL = document.getElementById('btn-long'); 
+    const btnS = document.getElementById('btn-short');
+    
+    if (!btnL || !btnS) return;
+
+    if (currentMarketState === "CLOSED" && !isSimMode) {
+        btnL.classList.add('btn-disabled'); 
+        btnS.classList.add('btn-disabled');
+        document.getElementById('btn-long-text').innerText = "休市禁令"; 
+        document.getElementById('btn-short-text').innerText = "休市禁令";
+    } else {
+        btnL.classList.remove('btn-disabled'); 
+        btnS.classList.remove('btn-disabled');
+        document.getElementById('btn-long-text').innerText = "入城"; 
+        document.getElementById('btn-short-text').innerText = "攻掠";
+    }
+}
+
 // ==========================================
-// 6. UI 更新與玩家指令 (加權整編)
+// 6. UI 更新與玩家指令 (加權整編與防呆攔截)
 // ==========================================
 function updateUI() {
     document.getElementById('user-balance').innerText = Math.floor(gameState.balance).toLocaleString();
@@ -1442,11 +1453,19 @@ window.switchSector = function(code) {
 };
 
 window.issueOrder = function(side) {
+    // 【終極防護鎖】：若真實世界休市且不在沙盤模式中，強制攔截交易。
+    if (currentMarketState === "CLOSED" && !isSimMode) { 
+        window.showMsg("天道休市期間 僅開放沙盤練兵下單"); 
+        window.triggerThunder(); 
+        return; 
+    }
+
     const qty = parseInt(document.getElementById('order-qty').value) || 1;
     const vol = currentPrice * qty * 1000;
     
     if(gameState.balance < vol) { 
         window.showMsg("天道存銀不足"); 
+        window.triggerThunder();
         return; 
     }
     
@@ -1510,6 +1529,8 @@ window.toggleSimMode = function(isAuto = false) {
         
         window.triggerSimThunder(); 
         window.showMsg(isAuto ? "連線異常 啟動沙盤" : "啟動沙盤"); 
+        
+        updateOrderButtonsUI();
         updateUI();
     }
 };
@@ -1538,6 +1559,7 @@ window.forceCloseSimMode = function(auto) {
         document.getElementById(id).classList.replace('glass-sim', 'glass');
     });
     
+    updateOrderButtonsUI();
     updateUI(); 
     window.fetchFullChartData();
 };
@@ -1619,6 +1641,10 @@ window.onload = function() {
     }
     
     window.switchSector("SEMICON"); 
+    
+    // 初始化執行一次時間判定，確保開啟時立刻根據時間點鎖定按鈕
+    localTick(); 
+    
     startMarketPolling(); 
     setInterval(localTick, 1000);
 };
