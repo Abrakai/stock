@@ -180,16 +180,29 @@
             </div>
             
             <div class="grid grid-cols-2 gap-3 relative z-10">
-                <div class="bg-black/40 border border-white/5 p-3 rounded-xl shadow-inner">
+                <!-- KD & MACD 模塊 -->
+                <div class="bg-black/40 border border-white/5 p-3 rounded-xl shadow-inner flex flex-col justify-center">
                     <span class="text-[9px] text-gray-400 font-bold uppercase tracking-widest mb-1 block">凱迪指標 Ｋ Ｄ</span>
                     <div class="flex items-baseline justify-around">
                         <span id="kd-k" class="text-lg font-mono font-black text-sky-400">K --</span>
                         <span id="kd-d" class="text-lg font-mono font-black text-orange-400">D --</span>
                     </div>
                 </div>
-                <div class="bg-black/40 border border-white/5 p-3 rounded-xl shadow-inner text-center">
+                <div class="bg-black/40 border border-white/5 p-3 rounded-xl shadow-inner text-center flex flex-col justify-center">
                     <span class="text-[9px] text-gray-400 font-bold uppercase tracking-widest mb-1 block">動能指標 麥克滴</span>
                     <div id="macd-val" class="text-xl font-mono font-black text-white">---</div>
+                </div>
+                
+                <!-- 新增 RSI & BIAS 模塊 -->
+                <div class="bg-black/40 border border-white/5 p-3 rounded-xl shadow-inner flex flex-col justify-center">
+                    <span class="text-[9px] text-gray-400 font-bold uppercase tracking-widest mb-1 block">相對強弱 Ｒ Ｓ Ｉ</span>
+                    <div class="text-center">
+                        <span id="rsi-val" class="text-xl font-mono font-black text-purple-400">---</span>
+                    </div>
+                </div>
+                <div class="bg-black/40 border border-white/5 p-3 rounded-xl shadow-inner text-center flex flex-col justify-center">
+                    <span class="text-[9px] text-gray-400 font-bold uppercase tracking-widest mb-1 block">乖離率 Ｂ Ｉ Ａ Ｓ</span>
+                    <div id="bias-val" class="text-xl font-mono font-black text-white">---</div>
                 </div>
             </div>
         </div>
@@ -319,11 +332,12 @@ function loadState() {
     } catch(e) {}
 }
 
-// --- 正規方陣 3D 戰場渲染 ---
+// --- 正規方陣 3D 戰場渲染與籌碼動態 ---
 let scene, camera, renderer, battleLine;
 let baseRedArmy = [], baseGreenArmy = [];
 let playerRedArmy = [], playerGreenArmy = []; 
 let particles;
+const MAX_PHALANX_SIZE = 40; // 每軍最大陣型數量
 
 function createCastle() {
     const group = new THREE.Group();
@@ -358,7 +372,6 @@ function createForest() {
     return group;
 }
 
-// 建立戰棋模型 (圓柱 + 球)
 function createSoldier(colorHex, isPlayer) {
     const group = new THREE.Group();
     const scale = isPlayer ? 1.4 : 0.8; 
@@ -381,17 +394,17 @@ function createSoldier(colorHex, isPlayer) {
         group.add(wpn);
     }
 
-    group.userData = { isAttacking: false, isPlayer: isPlayer };
+    group.userData = { isAttacking: false, isPlayer: isPlayer, active: true };
     return group;
 }
 
 function initParticles() {
     const geom = new THREE.BufferGeometry();
-    const pos = new Float32Array(100 * 3);
+    const pos = new Float32Array(150 * 3);
     const vel = [];
-    for (let i=0; i<100; i++) { pos[i*3]=0; pos[i*3+1]=-100; pos[i*3+2]=0; vel.push({x:0,y:0,z:0}); }
+    for (let i=0; i<150; i++) { pos[i*3]=0; pos[i*3+1]=-100; pos[i*3+2]=0; vel.push({x:0,y:0,z:0}); }
     geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    particles = new THREE.Points(geom, new THREE.PointsMaterial({color: 0xffcc00, size: 0.5, transparent: true, opacity: 0, blending: THREE.AdditiveBlending}));
+    particles = new THREE.Points(geom, new THREE.PointsMaterial({color: 0xffcc00, size: 0.6, transparent: true, opacity: 0, blending: THREE.AdditiveBlending}));
     particles.userData = { vel: vel, active: false, life: 0 };
     scene.add(particles);
 }
@@ -404,9 +417,9 @@ function triggerClashParticles(x, side) {
     particles.userData.life = 1;
     
     const pos = particles.geometry.attributes.position.array;
-    for (let i=0; i<100; i++) {
-        pos[i*3]=0; pos[i*3+1]=1+Math.random()*3; pos[i*3+2]=(Math.random()-0.5)*30;
-        particles.userData.vel[i] = { x:(Math.random()-0.5)*2, y:Math.random()*2, z:(Math.random()-0.5)*1 };
+    for (let i=0; i<150; i++) {
+        pos[i*3]=0; pos[i*3+1]=1+Math.random()*4; pos[i*3+2]=(Math.random()-0.5)*40;
+        particles.userData.vel[i] = { x:(Math.random()-0.5)*2.5, y:Math.random()*3, z:(Math.random()-0.5)*1.5 };
     }
     particles.geometry.attributes.position.needsUpdate = true;
 }
@@ -418,11 +431,11 @@ function updateParticles() {
     if(particles.userData.life <= 0) { particles.userData.active = false; return; }
     
     const pos = particles.geometry.attributes.position.array;
-    for (let i=0; i<100; i++) {
+    for (let i=0; i<150; i++) {
         pos[i*3] += particles.userData.vel[i].x;
         pos[i*3+1] += particles.userData.vel[i].y;
         pos[i*3+2] += particles.userData.vel[i].z;
-        particles.userData.vel[i].y -= 0.1;
+        particles.userData.vel[i].y -= 0.15;
         if(pos[i*3+1]<0) pos[i*3+1]=0;
     }
     particles.geometry.attributes.position.needsUpdate = true;
@@ -469,20 +482,23 @@ function onWindowResize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
+// 產生最大陣型，透過 opacity/visibility 模擬掛單厚度
 function spawnBasePhalanx() {
-    const rows = 3, cols = 8;
-    for(let r=0; r<rows; r++) {
-        for(let c=0; c<cols; c++) {
-            const zPos = (c - cols/2 + 0.5) * 4;
-            const rm = createSoldier(0x882222, false);
-            rm.userData.baseX = -12 - r*3;
-            rm.position.set(rm.userData.baseX, 0, zPos);
-            baseRedArmy.push(rm); scene.add(rm);
-            const gm = createSoldier(0x226622, false);
-            gm.userData.baseX = 12 + r*3;
-            gm.position.set(gm.userData.baseX, 0, zPos);
-            baseGreenArmy.push(gm); scene.add(gm);
-        }
+    const cols = Math.floor(MAX_PHALANX_SIZE / 4);
+    for(let i=0; i<MAX_PHALANX_SIZE; i++) {
+        const r = Math.floor(i / cols);
+        const c = i % cols;
+        const zPos = (c - cols/2 + 0.5) * 5;
+        
+        const rm = createSoldier(0x882222, false);
+        rm.userData.baseX = -12 - r*3;
+        rm.position.set(rm.userData.baseX, 0, zPos);
+        baseRedArmy.push(rm); scene.add(rm);
+        
+        const gm = createSoldier(0x226622, false);
+        gm.userData.baseX = 12 + r*3;
+        gm.position.set(gm.userData.baseX, 0, zPos);
+        baseGreenArmy.push(gm); scene.add(gm);
     }
 }
 
@@ -500,30 +516,56 @@ function syncPlayerTroopsFromState() {
     gameState.units.forEach(u => { if(u.city === gameState.activeCity) spawnPlayerTroop(u.side); });
 }
 
-function triggerAttackAnim(side) {
-    const attackers = side === 'LONG' ? [...playerRedArmy, ...baseRedArmy] : [...playerGreenArmy, ...baseGreenArmy];
+// 實質成交：剝離部隊衝鋒動畫
+function triggerAttackAnim(side, magnitude = 1) {
+    // 依據跳動幅度決定衝鋒數量 (模擬內外盤成交量)
+    const attackCount = Math.max(3, Math.min(15, Math.floor(magnitude * 10)));
+    
+    // 從現有掛單中抽出士兵衝鋒
+    const baseArmy = side === 'LONG' ? baseRedArmy : baseGreenArmy;
+    const available = baseArmy.filter(m => m.userData.active && !m.userData.isAttacking);
+    
+    // 優先挑選最前排的士兵
+    available.sort((a, b) => side === 'LONG' ? b.position.x - a.position.x : a.position.x - b.position.x);
+    
+    const attackers = available.slice(0, attackCount);
     const dir = side === 'LONG' ? 1 : -1; 
     
     attackers.forEach(m => {
-        if (m.userData.isAttacking) return;
         m.userData.isAttacking = true;
         const origX = m.position.x;
         
         new TWEEN.Tween(m.position)
-            .to({ x: origX + dir*4 }, 150)
+            .to({ x: battleLine.position.x - (dir*1.5), y: 2 }, 150) // 衝向中央戰線
             .easing(TWEEN.Easing.Quadratic.Out)
             .onComplete(() => {
                 new TWEEN.Tween(m.position)
-                    .to({ x: m.userData.baseX + (battleLine.position.x * 0.5) }, 300)
+                    .to({ x: m.userData.baseX, y: 0 }, 400) // 砍完退回掛單區
                     .easing(TWEEN.Easing.Quadratic.In)
                     .onComplete(() => m.userData.isAttacking = false)
                     .start();
             }).start();
     });
 
-    triggerClashParticles(battleLine.position.x, side);
-    battleLine.material.color.setHex(0xffffff);
-    setTimeout(() => battleLine.material.color.setHex(side==='LONG'?0xef4444:0x22c55e), 200);
+    // 若有統帥部隊，跟著突刺
+    const playerArmy = side === 'LONG' ? playerRedArmy : playerGreenArmy;
+    playerArmy.forEach(m => {
+        if (m.userData.isAttacking) return;
+        m.userData.isAttacking = true;
+        const origX = m.position.x;
+        new TWEEN.Tween(m.position)
+            .to({ x: origX + dir*4, y: 1 }, 150)
+            .easing(TWEEN.Easing.Quadratic.Out)
+            .yoyo(true).repeat(1)
+            .onComplete(() => m.userData.isAttacking = false).start();
+    });
+
+    // 依據成交量放大火花
+    if(attackers.length > 0) {
+        triggerClashParticles(battleLine.position.x, side);
+        battleLine.material.color.setHex(0xffffff);
+        setTimeout(() => battleLine.material.color.setHex(side==='LONG'?0xef4444:0x22c55e), 200);
+    }
 }
 
 function updateVisuals() {
@@ -533,8 +575,22 @@ function updateVisuals() {
     const p = safeNum(city.price, city.basePrice);
     const bP = safeNum(city.basePrice, 100);
     const diff = bP>0 ? (p-bP)/bP : 0;
-    const drift = safeNum(diff * 350, 0);
     
+    // 依據漲跌幅模擬五檔掛單厚度 (動態顯示兵力)
+    // 預設各半(20營)。大漲時紅軍變多，綠軍變少。
+    const redActiveCount = Math.floor(Math.min(MAX_PHALANX_SIZE, Math.max(5, (MAX_PHALANX_SIZE/2) + diff * 500)));
+    const greenActiveCount = Math.floor(Math.min(MAX_PHALANX_SIZE, Math.max(5, (MAX_PHALANX_SIZE/2) - diff * 500)));
+    
+    baseRedArmy.forEach((m, i) => {
+        m.userData.active = (i < redActiveCount);
+        m.visible = m.userData.active;
+    });
+    baseGreenArmy.forEach((m, i) => {
+        m.userData.active = (i < greenActiveCount);
+        m.visible = m.userData.active;
+    });
+
+    const drift = safeNum(diff * 350, 0);
     battleLine.position.x += (drift - battleLine.position.x) * 0.15;
     if(!battleLine.material.color.equals(new THREE.Color(0xffffff))) 
         battleLine.material.color.setHex(diff>=0?0xef4444:0x22c55e);
@@ -747,9 +803,11 @@ function localTick() {
         city.price = newPrice; currentPrice = city.price;
     }
 
-    if (Math.abs(currentPrice - lastPriceForAnim) > 0.01) {
-        if (currentPrice > lastPriceForAnim) triggerAttackAnim('LONG');
-        else triggerAttackAnim('SHORT');
+    // 觸發躍擊動畫判定 (成交剝離陣型)
+    const jumpMag = Math.abs(currentPrice - lastPriceForAnim);
+    if (jumpMag > 0.01) {
+        if (currentPrice > lastPriceForAnim) triggerAttackAnim('LONG', jumpMag);
+        else triggerAttackAnim('SHORT', jumpMag);
         lastPriceForAnim = currentPrice;
     }
 
@@ -905,6 +963,14 @@ function updateCharts() {
     const macd = (validCurrent * 0.03); 
     const mEl = document.getElementById('macd-val'); mEl.innerText = safeNum(macd, 0).toFixed(2);
     mEl.className = `text-xl font-mono font-black ${macd >= 0 ? 'text-red-400' : 'text-green-400'}`;
+
+    // 新增 RSI 模擬計算
+    const rsi = Math.min(100, Math.max(0, 50 + (validCurrent - city.basePrice) * 10));
+    document.getElementById('rsi-val').innerText = safeNum(rsi, 50).toFixed(1);
+    
+    // 新增 乖離率 BIAS 模擬計算
+    const bias = ((validCurrent - low) / low) * 100;
+    document.getElementById('bias-val').innerText = safeNum(bias, 0).toFixed(2) + " %";
 
     const vC = document.getElementById('volume-bars'); vC.innerHTML = '';
     const maxV = Math.max(...bars.map(b => safeNum(b.v, 1)), 1);
