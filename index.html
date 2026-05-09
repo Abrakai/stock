@@ -4,52 +4,186 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>三界戰場 傭兵統帥傳奇</title>
+    <!-- 引入 Tailwind CSS 進行快速 UI 佈局 -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Three.js 作為 3D 渲染核心引擎 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- 引入 Tween.js 處理流暢的動畫補間 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
     
+    <!-- 引入 Chart.js 與相關金融圖表插件，構建軍師圖表引擎 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0/build/global/luxon.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.1.1/dist/chartjs-chart-financial.min.js"></script>
 
+    <!-- 載入 Noto Sans TC 字體 -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    
     <style>
-        body { margin: 0; overflow: hidden; background: #02050a; font-family: 'Noto Sans TC', sans-serif; color: white; touch-action: none; }
-        canvas.three-canvas { display: block; position: absolute; top: 0; left: 0; z-index: 0; }
+        /* 基礎重置與字體設定 */
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: #02050a; 
+            font-family: 'Noto Sans TC', sans-serif; 
+            color: white; 
+            touch-action: none; 
+        }
         
-        .glass { background: rgba(10, 15, 25, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        .glass-sim { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(56, 189, 248, 0.3); box-shadow: 0 0 20px rgba(56, 189, 248, 0.1); }
+        /* 3D 畫布置於底層 */
+        canvas.three-canvas { 
+            display: block; 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            z-index: 0; 
+        }
         
-        .ui-scroll-container { position: fixed; inset: 0; overflow-y: auto; overflow-x: hidden; z-index: 10; pointer-events: auto; }
-        .ui-content-wrapper { display: flex; flex-direction: column; justify-content: space-between; min-height: 100%; padding: 0.5rem; gap: 0.5rem; padding-bottom: 2rem; }
-        @media (min-width: 768px) { .ui-content-wrapper { padding: 1.5rem; gap: 1rem; } }
+        /* 玻璃擬態 UI 面板風格 */
+        .glass { 
+            background: rgba(10, 15, 25, 0.75); 
+            backdrop-filter: blur(12px); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
+        }
         
-        .tab-btn { font-size: 12px; padding: 6px 12px; border-bottom: 2px solid transparent; transition: all 0.3s; color: #888; font-weight: bold; white-space: nowrap; flex: 1; text-align: center; cursor: pointer; }
-        .tab-btn.active { color: #eab308; border-color: #eab308; text-shadow: 0 0 10px rgba(234,179,8,0.5); }
+        /* 沙盤模式專屬 UI 面板風格 */
+        .glass-sim { 
+            background: rgba(15, 23, 42, 0.85); 
+            backdrop-filter: blur(12px); 
+            border: 1px solid rgba(56, 189, 248, 0.3); 
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.1); 
+        }
+        
+        /* 自然捲動版面設計，防止擠壓遮擋 */
+        .ui-scroll-container { 
+            position: fixed; 
+            inset: 0; 
+            overflow-y: auto; 
+            overflow-x: hidden; 
+            z-index: 10; 
+            pointer-events: auto; 
+        }
+        .ui-content-wrapper { 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: space-between; 
+            min-height: 100%; 
+            padding: 0.5rem; 
+            gap: 0.5rem; 
+            padding-bottom: 2rem; 
+        }
+        @media (min-width: 768px) { 
+            .ui-content-wrapper { padding: 1.5rem; gap: 1rem; } 
+        }
+        
+        /* 頁籤按鈕樣式 */
+        .tab-btn { 
+            font-size: 12px; 
+            padding: 6px 12px; 
+            border-bottom: 2px solid transparent; 
+            transition: all 0.3s; 
+            color: #888; 
+            font-weight: bold; 
+            white-space: nowrap; 
+            flex: 1; 
+            text-align: center; 
+            cursor: pointer; 
+        }
+        .tab-btn.active { 
+            color: #eab308; 
+            border-color: #eab308; 
+            text-shadow: 0 0 10px rgba(234,179,8,0.5); 
+        }
 
-        .ind-btn { font-size: 10px; padding: 4px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); transition: all 0.2s; cursor: pointer; color: #aaa; background: rgba(0,0,0,0.3); }
-        .ind-btn.active { background: #3b82f6; color: white; border-color: #3b82f6; font-weight: bold; box-shadow: 0 0 10px rgba(59,130,246,0.5); }
+        /* 圖表技術指標按鈕樣式 */
+        .ind-btn { 
+            font-size: 10px; 
+            padding: 4px 12px; 
+            border-radius: 6px; 
+            border: 1px solid rgba(255,255,255,0.2); 
+            transition: all 0.2s; 
+            cursor: pointer; 
+            color: #aaa; 
+            background: rgba(0,0,0,0.3); 
+        }
+        .ind-btn.active { 
+            background: #3b82f6; 
+            color: white; 
+            border-color: #3b82f6; 
+            font-weight: bold; 
+            box-shadow: 0 0 10px rgba(59,130,246,0.5); 
+        }
         
-        .timeframe-btn { font-size: 11px; padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; cursor: pointer; }
-        .timeframe-btn.active { background: #eab308; color: black; border-color: #eab308; font-weight: 900; }
+        /* 週期切換按鈕樣式 */
+        .timeframe-btn { 
+            font-size: 11px; 
+            padding: 4px 8px; 
+            border-radius: 4px; 
+            border: 1px solid rgba(255,255,255,0.1); 
+            transition: all 0.2s; 
+            cursor: pointer; 
+        }
+        .timeframe-btn.active { 
+            background: #eab308; 
+            color: black; 
+            border-color: #eab308; 
+            font-weight: 900; 
+        }
         
-        input[type=number], input[type=text] { background: rgba(0,0,0,0.4); box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); transition: all 0.3s; color: white; border: 1px solid rgba(255,255,255,0.1); }
-        input[type=number]:focus, input[type=text]:focus { background: rgba(255,255,255,0.1); box-shadow: 0 0 10px rgba(234,179,8,0.3), inset 0 2px 4px rgba(0,0,0,0.5); border-color: #eab308; outline: none; }
+        /* 共通輸入框樣式 */
+        input[type=number], input[type=text] { 
+            background: rgba(0,0,0,0.4); 
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); 
+            transition: all 0.3s; 
+            color: white; 
+            border: 1px solid rgba(255,255,255,0.1); 
+        }
+        input[type=number]:focus, input[type=text]:focus { 
+            background: rgba(255,255,255,0.1); 
+            box-shadow: 0 0 10px rgba(234,179,8,0.3), inset 0 2px 4px rgba(0,0,0,0.5); 
+            border-color: #eab308; 
+            outline: none; 
+        }
 
-        .btn-disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(100%); pointer-events: none; }
+        /* 按鈕禁用狀態 */
+        .btn-disabled { 
+            opacity: 0.4; 
+            cursor: not-allowed; 
+            filter: grayscale(100%); 
+            pointer-events: none; 
+        }
         
-        @keyframes thunder { 0% { background: rgba(255, 255, 255, 0); } 10% { background: rgba(255, 255, 255, 0.3); } 20% { background: rgba(255, 255, 255, 0); } 100% { background: rgba(255, 255, 255, 0); } }
-        @keyframes goldThunder { 0% { background: rgba(234, 179, 8, 0); } 10% { background: rgba(234, 179, 8, 0.4); } 20% { background: rgba(234, 179, 8, 0); } 100% { background: rgba(234, 179, 8, 0); } }
-        @keyframes simThunder { 0% { background: rgba(56, 189, 248, 0); } 10% { background: rgba(56, 189, 248, 0.4); } 20% { background: rgba(56, 189, 248, 0); } 100% { background: rgba(56, 189, 248, 0); } }
+        /* 全螢幕特效定義 */
+        @keyframes thunder { 
+            0% { background: rgba(255, 255, 255, 0); } 
+            10% { background: rgba(255, 255, 255, 0.3); } 
+            20% { background: rgba(255, 255, 255, 0); } 
+            100% { background: rgba(255, 255, 255, 0); } 
+        }
+        @keyframes goldThunder { 
+            0% { background: rgba(234, 179, 8, 0); } 
+            10% { background: rgba(234, 179, 8, 0.4); } 
+            20% { background: rgba(234, 179, 8, 0); } 
+            100% { background: rgba(234, 179, 8, 0); } 
+        }
+        @keyframes simThunder { 
+            0% { background: rgba(56, 189, 248, 0); } 
+            10% { background: rgba(56, 189, 248, 0.4); } 
+            20% { background: rgba(56, 189, 248, 0); } 
+            100% { background: rgba(56, 189, 248, 0); } 
+        }
         
         .thunder-flash { animation: thunder 0.5s ease-out; }
         .gold-thunder-flash { animation: goldThunder 0.8s ease-out; }
         .sim-thunder-flash { animation: simThunder 0.8s ease-out; }
         
+        /* 隱藏原生捲軸 */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
+        /* 天降甘霖 (金幣雨) 特效定義 */
         .gold-coin {
             position: fixed;
             font-size: 24px;
@@ -64,63 +198,80 @@
 </head>
 <body>
 
+<!-- 特效遮罩層 -->
 <div id="thunder-overlay" class="fixed inset-0 pointer-events-none z-50 transition-colors duration-500"></div>
 <div id="gold-rain-container" class="fixed inset-0 pointer-events-none z-[60] overflow-hidden"></div>
 
+<!-- 主 UI 佈局 (可自然捲動，保護 3D 視窗) -->
 <div id="main-ui" class="ui-scroll-container scrollbar-hide transition-all duration-500">
     <div class="ui-content-wrapper">
         
+        <!-- 頂部指揮區：包含帳戶資訊與大盤狀態 -->
         <div class="w-full flex-none flex flex-col md:flex-row gap-2 justify-between items-start">
             <div id="main-dashboard" class="glass rounded-xl p-3 w-full md:w-[26rem] shadow-lg transition-all duration-500">
                 <div class="flex justify-between items-center mb-2">
-                    <span id="market-status-label" class="text-[10px] md:text-xs text-yellow-400 font-bold uppercase bg-yellow-500/20 px-2 py-1 rounded border border-yellow-500/30">判讀中</span>
+                    <span id="market-status-label" class="text-[10px] md:text-xs text-yellow-400 font-bold uppercase tracking-widest bg-yellow-500/20 px-2 py-1 rounded border border-yellow-500/30">判讀時區中</span>
                     <div class="flex gap-1.5">
+                        <!-- 修復：常駐顯示沙盤按鈕，不被隱藏 -->
                         <button onclick="window.toggleSimMode()" id="sim-btn" class="bg-gray-700 px-2.5 py-1.5 rounded text-[10px] text-gray-400 font-bold transition-all shadow-md cursor-not-allowed">檢測中</button>
-                        <button onclick="window.openChartPage()" class="bg-white/10 hover:bg-white/20 px-2.5 py-1.5 rounded text-[10px] text-white font-bold transition-all cursor-pointer">軍師圖表</button>
-                        <button onclick="window.showDailySummary()" class="bg-purple-900/50 hover:bg-purple-800 px-2.5 py-1.5 rounded text-[10px] text-purple-200 font-bold transition-all cursor-pointer">戰績大表</button>
+                        <button onclick="window.openChartPage()" class="bg-white/10 hover:bg-white/20 border border-white/20 px-2.5 py-1.5 rounded text-[10px] text-white font-bold transition-all cursor-pointer">軍師圖表</button>
+                        <button onclick="window.showDailySummary()" class="bg-purple-900/50 hover:bg-purple-800 border border-purple-500/40 px-2.5 py-1.5 rounded text-[10px] text-purple-200 font-bold tracking-widest transition-all cursor-pointer">戰績大表</button>
                     </div>
                 </div>
                 
                 <div class="flex justify-between items-end mt-2">
                     <div>
-                        <div class="text-[10px] text-gray-400 mb-0.5">人界存銀 天幣</div>
+                        <div class="text-[10px] text-gray-400 mb-0.5 tracking-wider">人界存銀 天幣</div>
                         <div id="user-balance" class="text-2xl md:text-3xl font-mono font-black text-white">讀取中</div>
                         <div id="frozen-balance" class="text-[9px] text-gray-500 mt-0.5">凍結 0</div>
                     </div>
                     
+                    <!-- 真實世界戰果 -->
                     <div id="real-pnl-container" class="flex flex-col items-end">
-                        <span class="text-[10px] text-gray-400 font-bold uppercase">已實現淨利</span>
+                        <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">已實現淨利</span>
                         <div id="today-total-result" class="text-xl md:text-2xl font-black font-mono">加 0</div>
                     </div>
                     
+                    <!-- 沙盤推演戰果 -->
                     <div id="sim-pnl-container" class="hidden flex flex-col items-end">
-                        <span class="text-[10px] text-sky-400 font-bold uppercase animate-pulse">沙盤推演淨利</span>
+                        <span class="text-[10px] text-sky-400 font-bold uppercase animate-pulse mb-0.5">沙盤預備甘霖</span>
                         <div id="sim-total-result" class="text-xl md:text-2xl font-black font-mono text-sky-400 drop-shadow-[0_0_5px_rgba(56,189,248,0.5)]">加 0</div>
                     </div>
                 </div>
                 
+                <!-- 城池切換區 -->
                 <div class="mt-3 pt-3 border-t border-white/10 flex gap-2 items-center">
-                    <select id="sector-selector" onchange="window.switchSector(this.value)" class="bg-black/50 border border-white/20 rounded-lg px-2 py-1.5 text-[10px] font-bold text-gray-200 w-24 cursor-pointer"></select>
-                    <select id="city-selector" onchange="window.switchCity(this.value)" class="flex-1 bg-black/50 border border-white/20 rounded-lg px-2 py-1.5 text-[11px] font-bold text-white cursor-pointer"></select>
-                    <button onclick="window.openCustomManager()" class="bg-white/10 hover:bg-white/20 px-2 py-1.5 rounded-lg text-white font-bold text-[10px] cursor-pointer">設定</button>
+                    <select id="sector-selector" onchange="window.switchSector(this.value)" class="bg-black/50 border border-white/20 rounded-lg px-2 py-1.5 text-[10px] md:text-xs font-bold text-gray-200 focus:outline-none w-24 md:w-auto truncate cursor-pointer">
+                        <option value="SEMICON">半導體</option>
+                        <option value="COMPUTER">電腦週邊</option>
+                        <option value="NETWORK">通信</option>
+                        <option value="CUSTOM">自選</option>
+                    </select>
+                    <select id="city-selector" onchange="window.switchCity(this.value)" class="flex-1 bg-black/50 border border-white/20 rounded-lg px-2 py-1.5 text-[11px] md:text-sm font-bold text-white focus:outline-none truncate cursor-pointer"></select>
+                    <button onclick="window.openCustomManager()" class="bg-white/10 hover:bg-white/20 p-1.5 rounded-lg text-white font-bold text-[10px] cursor-pointer">設定</button>
                 </div>
                 
+                <!-- 即時報價面板 -->
                 <div class="flex justify-between items-center bg-black/40 p-2.5 rounded-lg mt-3 border border-white/10 shadow-inner">
                     <div class="flex items-baseline gap-2">
-                        <span id="market-price" class="text-2xl md:text-3xl font-mono font-black text-white">--</span>
+                        <span id="market-price" class="text-2xl md:text-3xl font-mono font-black text-white">連線中</span>
                         <span id="price-change" class="text-[10px] md:text-[11px] font-bold text-gray-400">0.00 %</span>
                     </div>
                     <div class="text-right flex flex-col items-end">
                         <span id="base-price-label" class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-0.5">昨收</span>
-                        <span id="base-price-display" class="text-sm md:text-base font-mono font-bold text-gray-300">--</span>
+                        <span id="base-price-display" class="text-sm md:text-base font-mono font-bold text-gray-300">---</span>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- 中央戰區 (高度解鎖，保持視窗穿透力不遮擋) -->
         <div class="flex-1 min-h-[40vh] w-full pointer-events-none"></div>
 
+        <!-- 底部：列表與發兵操作區 -->
         <div class="w-full flex-none flex flex-col md:flex-row gap-2">
+            
+            <!-- 戰情報表清單 -->
             <div class="glass rounded-xl flex flex-col w-full md:w-96 flex-none h-[35vh] md:h-[40vh]">
                 <div class="flex border-b border-white/10 flex-none">
                     <button onclick="window.switchTab('units')" id="tab-units" class="tab-btn active">戰力整編</button>
@@ -134,6 +285,7 @@
                 </div>
             </div>
 
+            <!-- 下單發兵面板 -->
             <div id="order-panel" class="glass rounded-xl p-3 md:p-4 flex flex-col w-full md:flex-1 justify-center gap-3">
                 <div class="flex gap-3">
                     <div class="flex flex-col flex-1">
@@ -146,11 +298,11 @@
                     </div>
                 </div>
                 <div class="flex gap-3 mt-1">
-                    <button id="btn-long" onclick="window.issueOrder('LONG')" class="flex-1 bg-gradient-to-b from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 rounded-xl py-3 flex flex-col items-center shadow-lg active:scale-95 transition-all cursor-pointer">
+                    <button id="btn-long" onclick="window.issueOrder('LONG')" class="flex-1 bg-gradient-to-b from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 rounded-xl py-3 md:py-4 flex flex-col items-center shadow-lg active:scale-95 transition-all cursor-pointer">
                         <span class="text-[10px] font-bold text-red-200 tracking-widest mb-0.5">護國多軍 (漲獲利)</span>
                         <span id="btn-long-text" class="text-lg md:text-xl font-black text-white">入城</span>
                     </button>
-                    <button id="btn-short" onclick="window.issueOrder('SHORT')" class="flex-1 bg-gradient-to-b from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 rounded-xl py-3 flex flex-col items-center shadow-lg active:scale-95 transition-all cursor-pointer">
+                    <button id="btn-short" onclick="window.issueOrder('SHORT')" class="flex-1 bg-gradient-to-b from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 rounded-xl py-3 md:py-4 flex flex-col items-center shadow-lg active:scale-95 transition-all cursor-pointer">
                         <span class="text-[10px] font-bold text-green-200 tracking-widest mb-0.5">掠奪空軍 (跌獲利)</span>
                         <span id="btn-short-text" class="text-lg md:text-xl font-black text-white">攻掠</span>
                     </button>
@@ -160,6 +312,7 @@
     </div>
 </div>
 
+<!-- 軍師分析圖頁 (全屏獨立顯示) -->
 <div id="chart-page" class="fixed inset-0 z-40 bg-[#02050a] flex flex-col hidden transition-all duration-300 transform translate-y-full">
     <div class="flex justify-between items-center p-3 bg-gray-900/80 border-b border-white/10">
         <h2 class="text-base font-black text-white tracking-widest">軍師戰略室</h2>
@@ -181,16 +334,19 @@
                 </div>
             </div>
             
-            <div class="flex-1 min-h-[30vh] bg-black/30 rounded-xl p-2 relative">
+            <!-- 主圖：連續 K 線圖 -->
+            <div class="flex-1 min-h-[30vh] md:min-h-[40vh] bg-black/30 rounded-xl p-2 relative">
                 <span class="text-[10px] text-gray-400 font-bold uppercase absolute top-2 left-3 z-10">連續價格走勢</span>
                 <canvas id="mainChartCanvas"></canvas>
             </div>
             
+            <!-- 副圖一：成交量 -->
             <div class="h-[12vh] bg-black/30 rounded-xl p-2 relative">
                 <span class="text-[10px] text-gray-400 font-bold uppercase absolute top-2 left-3 z-10">成交量矩陣</span>
                 <canvas id="volumeChartCanvas"></canvas>
             </div>
             
+            <!-- 副圖二：專業技術指標切換區 -->
             <div class="h-[25vh] bg-black/30 rounded-xl p-2 flex flex-col relative">
                 <div class="flex gap-2 mb-1 absolute top-2 left-3 z-10">
                     <button onclick="window.setIndicator('MACD')" id="btn-ind-MACD" class="ind-btn active">MACD</button>
@@ -206,6 +362,7 @@
     </div>
 </div>
 
+<!-- Modal 彈窗：自選城池設定 -->
 <div id="custom-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300 p-4">
     <div class="glass rounded-2xl p-5 w-full max-w-sm shadow-2xl border-yellow-500/20">
         <h2 class="text-xl font-black tracking-widest text-center mb-1 text-yellow-400">統帥自選城池</h2>
@@ -222,6 +379,7 @@
     </div>
 </div>
 
+<!-- Modal 彈窗：報表展示 -->
 <div id="report-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300 p-4">
     <div id="modal-window" class="glass rounded-2xl p-6 w-full max-w-md border-purple-500/40 transform scale-95 transition-transform duration-300">
         <div id="modal-body"></div>
@@ -229,10 +387,11 @@
     </div>
 </div>
 
+<!-- Modal 彈窗：手動報價 (斷線應急) -->
 <div id="price-prompt-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300 p-4">
     <div class="glass rounded-2xl p-6 w-full max-w-sm border-sky-500/40 shadow-2xl">
         <h2 class="text-xl font-black text-center mb-2 tracking-widest text-sky-400">天道休市 請求支援</h2>
-        <p class="text-[11px] text-gray-400 mb-5 text-center leading-relaxed">請手動輸入 <span id="prompt-city-name" class="text-white font-bold"></span> 基準股價，以啟動沙盤演練。</p>
+        <p class="text-[11px] text-gray-400 mb-5 text-center leading-relaxed">無法取得 <span id="prompt-city-name" class="text-white font-bold"></span> 的真實報價。<br>請手動輸入基準股價 以啟動沙盤演練。</p>
         <div class="space-y-4">
             <input id="manual-price-input" type="number" step="0.5" placeholder="基準價 如 150.5" class="w-full bg-black/60 border border-white/20 rounded-lg px-4 py-3 text-white focus:border-sky-500 outline-none font-mono text-sm text-center">
             <button onclick="window.submitManualPrice()" class="w-full bg-sky-600 hover:bg-sky-500 py-3 rounded-xl font-bold text-sm text-white shadow-lg transition-colors cursor-pointer tracking-widest">進入沙盤</button>
@@ -241,17 +400,24 @@
     </div>
 </div>
 
+<!-- 吐司訊息系統 -->
 <div id="msg-box" class="fixed top-16 md:bottom-24 md:top-auto left-1/2 -translate-x-1/2 bg-gray-900/95 backdrop-blur-md px-5 py-2.5 rounded-full text-xs md:text-sm font-bold opacity-0 transition-all duration-300 z-[60] pointer-events-none text-center w-max max-w-[85vw] border border-white/20 text-white tracking-widest shadow-[0_10px_25px_rgba(0,0,0,0.8)] whitespace-nowrap"></div>
 
 <script>
 // ==========================================
-// 1. 全域變數、防護系統與特效
+// 1. 全域變數、資料定義與數值防護引擎
 // ==========================================
+
+/**
+ * 數值免疫系統
+ * 強制過濾任何可能導致系統崩潰的 NaN 或 undefined
+ */
 window.safeNum = function(v, f = 0) { 
     const n = Number(v); 
     return (isNaN(n) || !isFinite(n)) ? f : n; 
 };
 
+// 吐司訊息與畫面特效控制器
 let msgTimeout;
 window.showMsg = function(t) { 
     const el = document.getElementById('msg-box'); 
@@ -266,6 +432,7 @@ window.showMsg = function(t) {
     }, 3000); 
 };
 
+// 戰場落雷特效
 window.triggerThunder = function() { 
     const o = document.getElementById('thunder-overlay'); 
     if(!o) return; 
@@ -291,9 +458,10 @@ window.triggerSimThunder = function() {
     setTimeout(() => o.classList.remove('sim-thunder-flash'), 800); 
 };
 
+// 史詩級天降甘霖 (金幣雨) 特效
 window.triggerGoldRain = function() {
     const container = document.getElementById('gold-rain-container');
-    for(let i=0; i<60; i++) {
+    for(let i = 0; i < 60; i++) {
         const coin = document.createElement('div');
         coin.innerText = '💰';
         coin.className = 'gold-coin';
@@ -308,16 +476,20 @@ window.triggerGoldRain = function() {
     }
 };
 
-const MAX_PHALANX_SIZE = 50;
-const TAX_RATE = 0.003;
-const FEE_RATE = 0.001425;
+// 遊戲常量設定
+const MAX_PHALANX_SIZE = 50;  // 戰場單側最大陣列數
+const TAX_RATE = 0.003;       // 交易稅率
+const FEE_RATE = 0.001425;    // 手續費率
 
+// 台股板塊與城池資料字典
 const SECTORS = {
     "SEMICON": { name: "半導體", cities: ["2330", "2454", "2303"] },
     "COMPUTER": { name: "電腦週邊", cities: ["2317", "2382", "3231"] },
     "NETWORK": { name: "通信網路", cities: ["2412", "3045", "4904"] },
     "CUSTOM": { name: "統帥自選", cities: [] }
 };
+
+// 【修復】注入真實基準歷史預設價，避免 100 -> 2290 的暴衝跳動
 const CITIES = {
     "2330": { name: "台積電", price: 2290, basePrice: 2290, realPrice: 2290, simBasePrice: 2290, vol: 15, chartData: {}, autoSimTriggered: false },
     "2454": { name: "聯發科", price: 1150, basePrice: 1150, realPrice: 1150, simBasePrice: 1150, vol: 10, chartData: {}, autoSimTriggered: false },
@@ -330,6 +502,7 @@ const CITIES = {
     "4904": { name: "遠傳", price: 105, basePrice: 105, realPrice: 105, simBasePrice: 105, vol: 1, chartData: {}, autoSimTriggered: false }
 };
 
+// 系統全域狀態紀錄器
 let gameState = { 
     balance: 5000000, 
     frozen: 0, 
@@ -347,6 +520,7 @@ let gameState = {
     activeIndicator: "MACD" 
 };
 
+// 輪詢與動畫控制變數
 let isSimMode = false;
 let realStateSnapshot = null;
 let currentMarketState = "CLOSED"; 
@@ -354,16 +528,19 @@ let currentPrice = 0;
 let lastPriceForAnim = 0;
 let pendingPriceCity = "";
 
+// 3D Three.js 關聯實體
 let scene, camera, renderer, battleLine, castleGroup, forestGroup, decorationsGroup;
 let snowParticles;
 let fireworks = [];
 let baseRedArmy = [], baseGreenArmy = [];
 let playerRedArmy = [], playerGreenArmy = [];
 
+// Chart.js 圖表實體
 let mainChart = null, volChart = null, indChart = null;
 
+
 // ==========================================
-// 2. 狀態管理與會計引擎
+// 2. 狀態管理與獨立會計核算引擎
 // ==========================================
 function loadState() {
     try {
@@ -371,6 +548,8 @@ function loadState() {
         if (saved) {
             Object.assign(gameState, JSON.parse(saved));
         }
+        
+        // 讀取自選清單
         const customSaved = JSON.parse(localStorage.getItem('abula_custom_stocks') || '[]');
         customSaved.forEach(s => {
             if (!CITIES[s.symbol]) {
@@ -380,25 +559,39 @@ function loadState() {
                 SECTORS["CUSTOM"].cities.push(s.symbol);
             }
         });
-    } catch(e) {}
+    } catch(e) {
+        console.warn("狀態讀取錯誤", e);
+    }
 }
 
 function saveState() { 
+    // 沙盤推演期間，凍結對本機空間的寫入，避免污染真實數據
     if (!isSimMode) {
         localStorage.setItem('abula_gamestate', JSON.stringify(gameState)); 
     }
 }
 
+/**
+ * 會計引擎：嚴謹計算淨利
+ * 遵循軍費分離原則，從總價差中扣除所有稅費與規費
+ */
 function calcProfit(side, entryPrice, currentMarketPrice, qty) {
-    const diff = side === 'LONG' ? (currentMarketPrice - entryPrice) : (entryPrice - currentMarketPrice);
+    const diff = side === 'LONG' 
+        ? (currentMarketPrice - entryPrice) 
+        : (entryPrice - currentMarketPrice);
+    
     const grossProfit = diff * qty * 1000;
-    const fees = (currentMarketPrice * qty * 1000) * (FEE_RATE + TAX_RATE);
+    const transactionVolume = currentMarketPrice * qty * 1000;
+    const fees = transactionVolume * (FEE_RATE + TAX_RATE);
+    
     return grossProfit - fees;
 }
 
+
 // ==========================================
-// 3. 史詩級 3D 戰鬥渲染引擎 (修復城門與攻城戰車)
+// 3. 史詩級 3D 渲染 (四季場景、五階武裝、兵向公平性)
 // ==========================================
+
 function getSeason() { 
     const m = new Date().getMonth() + 1; 
     if (m >= 3 && m <= 5) return 'SPRING'; 
@@ -430,19 +623,19 @@ function createCastle(tier, season) {
     wall.position.set(-35, height / 2, 0); 
     group.add(wall);
     
-    // 城門 (為您的要求添加)
+    // 【新增】城池入口大門
     const gate = new THREE.Mesh(new THREE.BoxGeometry(13, 8, 10), new THREE.MeshStandardMaterial({color: 0x111111, metalness: 0.8, roughness: 0.2}));
     gate.position.set(-34, 4, 0);
     group.add(gate);
     
-    // 城垛陣列
+    // 中高階擴建：城垛
     for(let z = -25; z <= 25; z += 10) {
         const battlement = new THREE.Mesh(new THREE.BoxGeometry(12, 4, 5), mat);
         battlement.position.set(-35, height + 2, z); 
         group.add(battlement);
     }
 
-    // 尊爵高科技要塞防禦
+    // 第四與第五階：尊爵科幻防禦機制
     if (tier >= 4) {
         const glowColor = tier === 5 ? 0x00ffff : 0xffaa00;
         const glowMat = new THREE.MeshStandardMaterial({
@@ -451,23 +644,33 @@ function createCastle(tier, season) {
             emissiveIntensity: tier === 5 ? 3 : 1.5
         });
         
+        // 發光能量線
         const line = new THREE.Mesh(new THREE.BoxGeometry(13, 1, 66), glowMat); 
         line.position.set(-35, height * 0.8, 0); 
         group.add(line);
         
-        // 城牆重型加農砲 (修復大砲)
+        // 增設防禦砲塔與光束砲管
         for(let z of [-20, 0, 20]) {
             const turret = new THREE.Mesh(new THREE.CylinderGeometry(2, 2.5, 5, 8), mat); 
             turret.position.set(-32, height, z);
+            
             const cannon = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 8, 8), glowMat); 
             cannon.rotation.x = Math.PI / 2; 
             cannon.position.set(3, 1.5, 0);
+            
             turret.add(cannon); 
             group.add(turret);
         }
         
+        // 千金股 (第五階) 獨佔：全像能量防禦護盾
         if (tier === 5) {
-            const shield = new THREE.Mesh(new THREE.BoxGeometry(20, height + 15, 80), new THREE.MeshBasicMaterial({color: 0x00ffff, transparent: true, opacity: 0.1, wireframe: true}));
+            const shieldMat = new THREE.MeshBasicMaterial({
+                color: 0x00ffff, 
+                transparent: true, 
+                opacity: 0.1, 
+                wireframe: true
+            });
+            const shield = new THREE.Mesh(new THREE.BoxGeometry(20, height + 15, 80), shieldMat);
             shield.position.set(-35, (height + 15) / 2, 0); 
             group.add(shield);
         }
@@ -507,22 +710,29 @@ function createForest(season) {
 function createSnowman() {
     const group = new THREE.Group();
     const snowMat = new THREE.MeshStandardMaterial({color: 0xffffff});
-    const body = new THREE.Mesh(new THREE.DodecahedronGeometry(1.5, 1), snowMat); body.position.y = 1.5;
-    const head = new THREE.Mesh(new THREE.DodecahedronGeometry(1.0, 1), snowMat); head.position.y = 3.5;
-    const scarf = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.4), new THREE.MeshStandardMaterial({color: 0xcc2222})); scarf.position.y = 2.8;
+    
+    const body = new THREE.Mesh(new THREE.DodecahedronGeometry(1.5, 1), snowMat); 
+    body.position.y = 1.5;
+    const head = new THREE.Mesh(new THREE.DodecahedronGeometry(1.0, 1), snowMat); 
+    head.position.y = 3.5;
+    
+    const scarf = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.4), new THREE.MeshStandardMaterial({color: 0xcc2222})); 
+    scarf.position.y = 2.8;
+    
     group.add(body, head, scarf); 
     return group;
 }
 
 /**
  * 單位產生器
- * 修正：高階股不分多空，皆生成重裝攻城戰車。紅軍向右瞄準，綠軍向左瞄準。
+ * 【修復重點】：第四階以上，多軍與空軍皆全面配備「重裝攻城戰車」。
+ * 同時修正朝向，紅軍向右瞄準、綠軍向左瞄準，公平對壘。
  */
 function createSoldier(color, isPlayer, tier = 1, side = 'LONG') {
     const group = new THREE.Group();
     
-    // 第四階以上：重裝攻城戰車
     if (tier >= 4) {
+        // 重裝攻城戰車模組
         let sc = isPlayer ? 1.8 : 1.2;
         const tankMat = new THREE.MeshStandardMaterial({color: color, metalness: 0.8, roughness: 0.2});
         
@@ -534,19 +744,17 @@ function createSoldier(color, isPlayer, tier = 1, side = 'LONG') {
         top.position.y = 1.6*sc; 
         group.add(top);
         
-        // 戰車加農砲 (發光)
         const cannonColor = side === 'LONG' ? 0xff4444 : 0x44ff44;
         const cannon = new THREE.Mesh(new THREE.CylinderGeometry(0.15*sc, 0.15*sc, 3.5*sc), new THREE.MeshStandardMaterial({color: cannonColor, emissive: cannonColor, emissiveIntensity: 2}));
         cannon.rotation.x = Math.PI / 2;
-        cannon.position.set(0, 1.6*sc, 1.5*sc); // 預設指向 +Z
+        cannon.position.set(0, 1.6*sc, 1.5*sc); 
         group.add(cannon);
         
-        // 戰車轉向：紅軍(LONG) 面右(+X) => 從 +Z 轉向 +X = -90度 (-Math.PI/2)
-        // 戰車轉向：綠軍(SHORT) 面左(-X) => 從 +Z 轉向 -X = 90度 (Math.PI/2)
+        // 戰車轉向：紅軍(LONG) 面右 => 轉向 +X (-90度), 綠軍(SHORT) 面左 => 轉向 -X (90度)
         group.rotation.y = side === 'LONG' ? -Math.PI / 2 : Math.PI / 2;
 
     } else {
-        // 第一~三階：高科技步兵
+        // 常規步兵模組
         let sc = (isPlayer ? 2.4 : 1.5) * (1 + (tier - 1) * 0.12);
         const mat = new THREE.MeshStandardMaterial({color: color, emissive: isPlayer ? color : 0x000000, emissiveIntensity: 0.6, roughness: 0.2});
         
@@ -561,18 +769,20 @@ function createSoldier(color, isPlayer, tier = 1, side = 'LONG') {
         // 步兵轉向：紅軍面右(+X)，綠軍面左(-X)
         group.rotation.y = side === 'LONG' ? Math.PI / 2 : -Math.PI / 2;
 
-        const wColor = color === 0xdd3333 ? 0xff4444 : 0x44ff44;
-        const wpn = new THREE.Mesh(new THREE.CylinderGeometry(0.06*sc, 0.06*sc, 5.5*sc, 4), new THREE.MeshStandardMaterial({color: wColor, emissive: wColor, emissiveIntensity: 2}));
-        // 預設將武器往前放 (+Z軸方向)
-        wpn.position.set(0, 1.5 * sc, 1.5 * sc); 
-        wpn.rotation.x = Math.PI / 2; 
-        group.add(wpn);
+        if (isPlayer || tier >= 4) {
+            const wColor = color === 0xdd3333 ? 0xff4444 : 0x44ff44;
+            const wpn = new THREE.Mesh(new THREE.CylinderGeometry(0.06*sc, 0.06*sc, 5.5*sc, 4), new THREE.MeshStandardMaterial({color: wColor, emissive: wColor, emissiveIntensity: 2}));
+            wpn.position.set(0, 1.5 * sc, 1.5 * sc); 
+            wpn.rotation.x = Math.PI / 2; 
+            group.add(wpn);
+        }
     }
     
     group.userData = { isAttacking: false, baseX: 0, active: true };
     return group;
 }
 
+// 漲跌停全螢幕煙火慶祝大典
 function triggerFireworks() {
     for (let i = 0; i < 5; i++) {
         setTimeout(() => {
@@ -585,14 +795,8 @@ function triggerFireworks() {
             const pos = new Float32Array(100 * 3);
             const vels = [];
             for(let j = 0; j < 100; j++) {
-                pos[j*3] = x; 
-                pos[j*3+1] = y; 
-                pos[j*3+2] = z;
-                vels.push({ 
-                    x: (Math.random() - 0.5) * 1.5, 
-                    y: (Math.random() - 0.5) * 1.5, 
-                    z: (Math.random() - 0.5) * 1.5 
-                });
+                pos[j*3] = x; pos[j*3+1] = y; pos[j*3+2] = z;
+                vels.push({ x: (Math.random() - 0.5) * 1.5, y: (Math.random() - 0.5) * 1.5, z: (Math.random() - 0.5) * 1.5 });
             }
             geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
             
@@ -640,7 +844,10 @@ function rebuildEnvironment() {
         decorationsGroup.add(snm);
         
         for(let i = 0; i < 8; i++) {
-            const patch = new THREE.Mesh(new THREE.CylinderGeometry(4, 5, 0.1), new THREE.MeshBasicMaterial({color: 0xdddddd}));
+            const patch = new THREE.Mesh(
+                new THREE.CylinderGeometry(4, 5, 0.1), 
+                new THREE.MeshBasicMaterial({color: 0xdddddd})
+            );
             patch.position.set((Math.random() - 0.5) * 100, 0.05, (Math.random() - 0.5) * 100); 
             decorationsGroup.add(patch);
         }
@@ -648,7 +855,10 @@ function rebuildEnvironment() {
     
     if(season === 'AUTUMN') {
         for(let i = 0; i < 40; i++) {
-            const lf = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, 0.6), new THREE.MeshBasicMaterial({color: 0xc96b1e}));
+            const lf = new THREE.Mesh(
+                new THREE.BoxGeometry(0.6, 0.05, 0.6), 
+                new THREE.MeshBasicMaterial({color: 0xc96b1e})
+            );
             lf.position.set(20 + Math.random() * 45, 0.05, (Math.random() - 0.5) * 95); 
             lf.rotation.y = Math.random() * Math.PI;
             decorationsGroup.add(lf);
@@ -657,8 +867,10 @@ function rebuildEnvironment() {
     
     scene.add(decorationsGroup);
     
+    // 重新佈署基礎交鋒方陣
     [...baseRedArmy, ...baseGreenArmy].forEach(m => scene.remove(m)); 
-    baseRedArmy = []; baseGreenArmy = [];
+    baseRedArmy = []; 
+    baseGreenArmy = [];
     
     const cols = 10;
     for(let i = 0; i < MAX_PHALANX_SIZE; i++) {
@@ -701,7 +913,10 @@ function init3D() {
     grid.position.y = 0.01; 
     scene.add(grid);
     
-    battleLine = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 75), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })); 
+    battleLine = new THREE.Mesh(
+        new THREE.BoxGeometry(0.8, 0.2, 75), 
+        new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })
+    ); 
     scene.add(battleLine);
     
     camera.position.set(0, 45, 80); 
@@ -742,7 +957,11 @@ function animate() {
             p[j*3+2] += fw.userData.vels[j].z; 
         }
         fw.geometry.attributes.position.needsUpdate = true;
-        if(fw.userData.life <= 0) { scene.remove(fw); fireworks.splice(i, 1); }
+        
+        if(fw.userData.life <= 0) { 
+            scene.remove(fw); 
+            fireworks.splice(i, 1); 
+        }
     }
     
     updateVisuals(); 
@@ -751,7 +970,8 @@ function animate() {
 
 function syncPlayerTroopsFromState(tier) {
     [...playerRedArmy, ...playerGreenArmy].forEach(m => scene.remove(m)); 
-    playerRedArmy = []; playerGreenArmy = [];
+    playerRedArmy = []; 
+    playerGreenArmy = [];
     
     if(!tier) tier = getPriceTier(window.safeNum(CITIES[gameState.activeCity]?.basePrice, 100));
     
@@ -761,6 +981,7 @@ function syncPlayerTroopsFromState(tier) {
             m.userData.baseX = u.side === 'LONG' ? -8 : 8; 
             m.position.set(m.userData.baseX, 0, (Math.random() - 0.5) * 30);
             scene.add(m); 
+            
             if (u.side === 'LONG') playerRedArmy.push(m);
             else playerGreenArmy.push(m);
         }
@@ -768,12 +989,13 @@ function syncPlayerTroopsFromState(tier) {
 }
 
 function updateVisuals() {
-    const city = CITIES[gameState.activeCity]; if(!city) return;
+    const city = CITIES[gameState.activeCity]; 
+    if(!city) return;
     
     const base = isSimMode ? city.simBasePrice : city.basePrice;
     const diff = base > 0 ? (currentPrice - base) / base : 0;
     
-    // 兵力多寡的感應係數調高
+    // 兵力多寡的感應係數調高 (擴大戰場推進視覺張力)
     const drift = window.safeNum(diff * 600, 0);
     
     battleLine.position.x += (drift - battleLine.position.x) * 0.15;
@@ -809,41 +1031,57 @@ function triggerAttackAnim(side) {
 }
 
 // ==========================================
-// 4. 市場資料與無斷層連續圖表引擎 (含全按鈕)
+// 4. 市場資料與無斷層連續圖表引擎 (含技術指標)
 // ==========================================
+
 function calcEMA(data, period) { 
     if(data.length === 0) return []; 
-    let k = 2 / (period + 1); let ema = [data[0]]; 
-    for(let i = 1; i < data.length; i++) { ema.push(data[i] * k + ema[i - 1] * (1 - k)); } 
+    let k = 2 / (period + 1);
+    let ema = [data[0]]; 
+    for(let i = 1; i < data.length; i++) {
+        ema.push(data[i] * k + ema[i - 1] * (1 - k));
+    }
     return ema; 
 }
+
 function calcSMA(data, period) { 
     let sma = []; 
     for(let i = 0; i < data.length; i++) { 
         if(i < period - 1) { sma.push(data[i]); continue; } 
-        let sum = 0; for(let j = 0; j < period; j++) sum += data[i - j]; 
+        let sum = 0; 
+        for(let j = 0; j < period; j++) sum += data[i - j]; 
         sma.push(sum / period); 
     } 
     return sma; 
 }
+
 function calcMACD(data) { 
     if(data.length < 26) return {macd: [], signal: [], hist: []}; 
-    let ema12 = calcEMA(data, 12); let ema26 = calcEMA(data, 26); 
-    let macd = ema12.map((v, i) => v - ema26[i]); let signal = calcEMA(macd, 9); let hist = macd.map((v, i) => v - signal[i]); 
+    let ema12 = calcEMA(data, 12);
+    let ema26 = calcEMA(data, 26); 
+    let macd = ema12.map((v, i) => v - ema26[i]);
+    let signal = calcEMA(macd, 9);
+    let hist = macd.map((v, i) => v - signal[i]); 
     return {macd, signal, hist}; 
 }
+
 function calcKD(data, period = 9) { 
     if(data.length < period) return {k: [], d: []}; 
     let k = [], dv = [], pk = 50, pd = 50; 
     for(let i = 0; i < data.length; i++) { 
-        let st = Math.max(0, i - period + 1); let sl = data.slice(st, i + 1); 
-        let hi = Math.max(...sl); let lo = Math.min(...sl); 
+        let st = Math.max(0, i - period + 1);
+        let sl = data.slice(st, i + 1); 
+        let hi = Math.max(...sl);
+        let lo = Math.min(...sl); 
         let rsv = (hi === lo) ? 50 : ((data[i] - lo) / (hi - lo)) * 100; 
-        let ck = (2 / 3) * pk + (1 / 3) * rsv; let cd = (2 / 3) * pd + (1 / 3) * ck; 
-        k.push(ck); dv.push(cd); pk = ck; pd = cd; 
+        let ck = (2 / 3) * pk + (1 / 3) * rsv;
+        let cd = (2 / 3) * pd + (1 / 3) * ck; 
+        k.push(ck); dv.push(cd); 
+        pk = ck; pd = cd; 
     } 
     return {k, dv}; 
 }
+
 function calcRSI(data, period) { 
     if(data.length < period) return new Array(data.length).fill(50); 
     let rsi = [], g = 0, l = 0; 
@@ -851,9 +1089,10 @@ function calcRSI(data, period) {
         let df = data[i] - data[i - 1]; 
         if(df >= 0) g += df; else l -= df; 
     } 
-    let ag = g / period; let al = l / period; 
+    let ag = g / period;
+    let al = l / period; 
     rsi.push(100 - (100 / (1 + (al === 0 ? 999 : ag / al)))); 
-    for(let i = period + 1; i < data.length; i++) { 
+    for(let i = period + 1; i < data.length; i++) {
         let df = data[i] - data[i - 1]; 
         ag = (ag * (period - 1) + (df >= 0 ? df : 0)) / period; 
         al = (al * (period - 1) + (df < 0 ? -df : 0)) / period; 
@@ -861,6 +1100,7 @@ function calcRSI(data, period) {
     } 
     return new Array(period).fill(50).concat(rsi); 
 }
+
 function calcBIAS(data, period) { 
     if(data.length < period) return new Array(data.length).fill(0); 
     let s = calcSMA(data, period); 
@@ -872,7 +1112,7 @@ window.fetchFullChartData = async function() {
     const city = CITIES[cityCode]; 
     if(!city) return;
     
-    // 如果在沙盤模式，就不去呼叫 API，直接重繪現有的沙盤 K 線
+    // 【修復】如果在沙盤模式，就不去呼叫遠端 API 覆蓋，保留模擬連續線圖
     if(isSimMode) {
         if(!document.getElementById('chart-page').classList.contains('hidden')) {
             window.renderChartInstance();
@@ -887,7 +1127,8 @@ window.fetchFullChartData = async function() {
         "30m": {i: "30m", r: "5d"}, 
         "60m": {i: "60m", r: "1mo"}, 
         "1d": {i: "1d", r: "6mo"}, 
-        "1wk": {i: "1wk", r: "2y"} 
+        "1wk": {i: "1wk", r: "2y"},
+        "1mo": {i: "1mo", r: "5y"}
     };
     const prm = map[gameState.timeframe] || map["1d"];
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${cityCode}.TW?interval=${prm.i}&range=${prm.r}`;
@@ -903,7 +1144,7 @@ window.fetchFullChartData = async function() {
             let ohlc = [];
             
             for(let i = 0; i < ts.length; i++) {
-                // 剔除 null 以解決 K 線斷層
+                // 剔除所有 null 的收盤資料，根絕 K 線縫隙斷層
                 if(quote.close[i] !== null && quote.close[i] !== undefined) {
                     ohlc.push({ 
                         x: ts[i] * 1000, 
@@ -930,7 +1171,7 @@ window.renderChartInstance = function() {
     
     const raw = city.chartData[gameState.timeframe];
     
-    // 使用分類軸強制連貫
+    // 透過 category 分類軸來徹底消除盤後與週末沒交易的空白時段
     const labels = raw.map(d => new Date(d.x).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}));
     const candleData = raw.map((d, i) => ({ x: labels[i], o: d.o, h: d.h, l: d.l, c: d.c }));
     const closePrices = raw.map(d => d.c);
@@ -1030,7 +1271,7 @@ window.renderChartInstance = function() {
             responsive: true, 
             maintainAspectRatio: false, 
             scales: { 
-                x: { type: 'category', labels: labels, display: false }, 
+                x: { display: false }, 
                 y: { position: 'right', ticks: { color: '#888', font: { size: 8 } } } 
             }, 
             plugins: { 
@@ -1098,7 +1339,7 @@ function localTick() {
 
     if(!isSimMode) return;
     
-    // 沙盤推演心跳
+    // 【修復】沙盤推演連續跳動心跳
     const city = CITIES[gameState.activeCity]; 
     if(!city) return;
     
@@ -1117,15 +1358,31 @@ function localTick() {
         lastPriceForAnim = currentPrice; 
     }
     
-    // 沙盤動態繪製 K 線 (修復線圖不動的問題)
+    // 【修復】沙盤動態繪製連續 K 線
     if(city.chartData && city.chartData[gameState.timeframe]) {
         let chartArr = city.chartData[gameState.timeframe];
         if(chartArr.length > 0) {
             let lastBar = chartArr[chartArr.length - 1];
-            lastBar.c = newPrice;
-            lastBar.h = Math.max(lastBar.h, newPrice);
-            lastBar.l = Math.min(lastBar.l, newPrice);
-            lastBar.v += Math.random() * 50;
+            let timeNow = Date.now();
+            
+            // 每過一段虛擬時間(或真實60秒)，長出一根新 K 棒
+            if (timeNow - lastBar.x > 60000) {
+                chartArr.push({
+                    x: timeNow,
+                    o: newPrice,
+                    h: newPrice,
+                    l: newPrice,
+                    c: newPrice,
+                    v: Math.random() * 50
+                });
+                // 保持陣列大小，避免過長
+                if (chartArr.length > 150) chartArr.shift();
+            } else {
+                lastBar.c = newPrice;
+                lastBar.h = Math.max(lastBar.h, newPrice);
+                lastBar.l = Math.min(lastBar.l, newPrice);
+                lastBar.v += Math.random() * 10;
+            }
         } else {
             initKbars(city);
         }
@@ -1147,16 +1404,22 @@ function initKbars(city) {
         let o = tempC; 
         tempC += (Math.random() - 0.5) * (tempC * 0.01);
         fakeData.push({ 
-            x: time + i * 60000, o: o, h: Math.max(o, tempC) + Math.random(), l: Math.min(o, tempC) - Math.random(), c: tempC, v: 100 + Math.random() * 900 
+            x: time + i * 60000, 
+            o: o, 
+            h: Math.max(o, tempC) + Math.random(), 
+            l: Math.min(o, tempC) - Math.random(), 
+            c: tempC, 
+            v: 100 + Math.random() * 900 
         });
     }
-    // 為沙盤填充初始陣列
+    
     const tfs = ["1m", "5m", "15m", "30m", "60m", "1d", "1wk", "1mo"];
     tfs.forEach(tf => {
         city.chartData[tf] = JSON.parse(JSON.stringify(fakeData));
     });
 }
 
+// 【修復】永遠常駐顯示啟動沙盤按鈕
 function updateOrderButtonsUI() {
     const btnL = document.getElementById('btn-long'); 
     const btnS = document.getElementById('btn-short');
@@ -1196,16 +1459,16 @@ function updateOrderButtonsUI() {
 // 6. UI 更新與獨立戰報整編
 // ==========================================
 function updateUI() {
-    document.getElementById('market-price').innerText = window.safeNum(currentPrice).toFixed(2);
-    document.getElementById('user-balance').innerText = Math.floor(gameState.balance).toLocaleString();
-    document.getElementById('today-total-result').innerText = `加 ${Math.floor(gameState.realizedPnl).toLocaleString()}`;
-    
     const city = CITIES[gameState.activeCity];
     const activeBasePrice = isSimMode ? window.safeNum(city?.simBasePrice, city?.basePrice) : window.safeNum(city?.basePrice);
     
+    document.getElementById('market-price').innerText = window.safeNum(currentPrice).toFixed(2);
     document.getElementById('base-price-display').innerText = activeBasePrice.toFixed(2);
     
-    // 修復沙盤跳動 %
+    document.getElementById('user-balance').innerText = Math.floor(gameState.balance).toLocaleString();
+    document.getElementById('today-total-result').innerText = `加 ${Math.floor(gameState.realizedPnl).toLocaleString()}`;
+    
+    // 【修復】沙盤 % 跳動計算
     const pct = activeBasePrice > 0 ? ((window.safeNum(currentPrice, activeBasePrice) - activeBasePrice) / activeBasePrice * 100) : 0;
     const elPct = document.getElementById('price-change');
     elPct.innerText = `${Math.abs(window.safeNum(pct, 0)).toFixed(2)} %`;
@@ -1257,7 +1520,7 @@ function renderUnits() {
                     <span class="text-white">${avgCost.toFixed(2)}</span>
                 </div>
                 <div class="flex justify-between text-sm font-black">
-                    <span>淨利戰功</span>
+                    <span>預估淨利戰功</span>
                     <span class="${totalProfit >= 0 ? 'text-red-400' : 'text-green-400'}">
                         ${Math.floor(totalProfit).toLocaleString()}
                     </span>
@@ -1383,7 +1646,7 @@ window.toggleSimMode = function(isAuto = false) {
         });
         
         window.triggerSimThunder(); 
-        window.showMsg(isAuto ? "週末休市 自動進入沙盤" : "啟動沙盤"); 
+        window.showMsg(isAuto ? "週末休市 自動進入沙盤" : "啟動沙盤練兵"); 
         
         updateOrderButtonsUI();
         updateUI();
@@ -1430,6 +1693,7 @@ window.submitManualPrice = function() {
     window.toggleSimMode(true);
 };
 
+// UI 導航
 window.openChartPage = function() { 
     document.getElementById('chart-page').classList.remove('hidden'); 
     setTimeout(() => {
@@ -1447,8 +1711,11 @@ window.closeChartPage = function() {
 };
 window.setTimeframe = function(tf) { 
     gameState.timeframe = tf; 
-    document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.toggle('active', b.id === 'tf-' + tf)); 
-    if (isSimMode) window.renderChartInstance(); else window.fetchFullChartData(); 
+    document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(`tf-${tf}`).classList.add('active');
+    
+    if (isSimMode) window.renderChartInstance(); 
+    else window.fetchFullChartData(); 
 };
 window.setIndicator = function(ind) { 
     gameState.activeIndicator = ind; 
@@ -1461,6 +1728,24 @@ window.switchTab = function(t) {
 };
 window.openCustomManager = function() { document.getElementById('custom-modal').classList.remove('opacity-0', 'pointer-events-none'); };
 window.closeCustomManager = function() { document.getElementById('custom-modal').classList.add('opacity-0', 'pointer-events-none'); if(gameState.activeSector === 'CUSTOM') window.switchSector('CUSTOM'); };
+window.addCustomStock = function() {
+    const sym = document.getElementById('custom-symbol').value.toUpperCase(); 
+    const name = document.getElementById('custom-name').value;
+    
+    if(!sym || !name) return;
+    
+    if(!CITIES[sym]) {
+        CITIES[sym] = { name, price: 0, basePrice: 0, vol: 2, chartData: {} };
+    }
+    
+    if(!SECTORS["CUSTOM"].cities.includes(sym)) {
+        SECTORS["CUSTOM"].cities.push(sym);
+    }
+    
+    document.getElementById('custom-symbol').value = ''; 
+    document.getElementById('custom-name').value = '';
+    window.showMsg(`編列 ${name}`);
+};
 
 window.onload = function() { 
     loadState(); 
