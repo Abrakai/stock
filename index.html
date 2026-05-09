@@ -83,7 +83,7 @@
                         <div id="today-total-result" class="text-xl md:text-2xl font-black font-mono">加 0</div>
                     </div>
                     <div id="sim-pnl-container" class="hidden flex flex-col items-end">
-                        <span class="text-[10px] text-sky-400 font-bold uppercase animate-pulse mb-0.5">沙盤預備甘霖</span>
+                        <span class="text-[10px] text-sky-400 font-bold uppercase animate-pulse mb-0.5">沙盤累積戰果</span>
                         <div id="sim-total-result" class="text-xl md:text-2xl font-black font-mono text-sky-400 drop-shadow-[0_0_5px_rgba(56,189,248,0.5)]">加 0</div>
                     </div>
                 </div>
@@ -111,7 +111,8 @@
                 </div>
             </div>
             
-            <div class="glass rounded-xl p-3 md:p-4 w-full md:w-auto border-purple-500/30 flex justify-between items-center hidden md:flex flex-col items-end">
+            <!-- 隱藏式大螢幕數據區 -->
+            <div class="glass rounded-2xl p-3 md:p-4 w-full md:w-auto border-purple-500/30 flex justify-between items-center hidden md:flex flex-col items-end">
                 <div class="text-right">
                     <div class="text-[10px] text-purple-400 font-bold uppercase tracking-widest mb-1">天道國庫 總資產</div>
                     <div id="treasury-balance-display" class="text-lg md:text-xl font-mono font-black text-yellow-400">讀取中</div>
@@ -120,8 +121,10 @@
             </div>
         </div>
 
+        <!-- 中央戰區 (透明區，展示 3D) -->
         <div class="flex-1 min-h-[40vh] w-full pointer-events-none"></div>
 
+        <!-- 底部軍令與陣列表 -->
         <div class="w-full flex-none flex flex-col md:flex-row gap-2">
             <div class="glass rounded-xl flex flex-col w-full md:w-96 flex-none h-[35vh] md:h-[40vh]">
                 <div class="flex border-b border-white/10 flex-none">
@@ -189,7 +192,7 @@
         </div>
         
         <div class="flex-1 min-h-[30vh] md:min-h-[40vh] bg-black/50 border border-white/10 p-2 rounded-xl relative flex flex-col shadow-inner">
-            <span class="text-[10px] text-gray-400 font-bold uppercase absolute top-2 left-3 z-10 tracking-widest">價格走勢 (連續 K 線)</span>
+            <span class="text-[10px] text-gray-400 font-bold uppercase absolute top-2 left-3 z-10 tracking-widest">連續價格走勢 (紅漲綠跌)</span>
             <div class="flex-1 relative w-full h-full mt-4">
                 <canvas id="mainChartCanvas"></canvas>
             </div>
@@ -266,7 +269,7 @@
     </div>
 </div>
 
-<div id="msg-box" class="fixed top-16 md:bottom-24 md:top-auto left-1/2 -translate-x-1/2 glass px-5 py-2.5 rounded-full text-xs md:text-sm font-bold opacity-0 transition-all duration-300 z-[60] pointer-events-none text-center w-max max-w-[85vw] border border-white/20 text-white tracking-widest shadow-[0_10px_25px_rgba(0,0,0,0.8)] whitespace-nowrap"></div>
+<div id="msg-box" class="fixed top-16 md:bottom-24 md:top-auto left-1/2 -translate-x-1/2 bg-gray-900/95 backdrop-blur-md px-5 py-2.5 rounded-full text-xs md:text-sm font-bold opacity-0 transition-all duration-300 z-[60] pointer-events-none text-center w-max max-w-[85vw] border border-white/20 text-white tracking-widest shadow-[0_10px_25px_rgba(0,0,0,0.8)] whitespace-nowrap"></div>
 
 <script>
 window.safeNum = function(val, fallback = 0) {
@@ -323,25 +326,25 @@ const CITIES = {};
 ["2330","2454","2303","2317","2382","3231","2412","3045","4904"].forEach(sym => {
     CITIES[sym] = { price: 100, basePrice: 100, realPrice: 100, simBasePrice: 100, vol: 2, chartData: {}, autoSimTriggered: false };
 });
-CITIES["2330"].name="台積電"; CITIES["2330"].basePrice=825.0; 
-CITIES["2454"].name="聯發科"; CITIES["2454"].basePrice=1150.0;
-CITIES["2303"].name="聯電"; CITIES["2303"].basePrice=50.0; 
-CITIES["2317"].name="鴻海"; CITIES["2317"].basePrice=180.0;
-CITIES["2382"].name="廣達"; CITIES["2382"].basePrice=280.0;
-CITIES["3231"].name="緯創"; CITIES["3231"].basePrice=115.0;
-CITIES["2412"].name="中華電"; CITIES["2412"].basePrice=125.0;
-CITIES["3045"].name="台灣大"; CITIES["3045"].basePrice=100.0;
-CITIES["4904"].name="遠傳"; CITIES["4904"].basePrice=105.0;
+// 設定預設基準價
+CITIES["2330"].name="台積電"; CITIES["2330"].basePrice=825.0; CITIES["2330"].price=825.0; CITIES["2330"].realPrice=825.0; CITIES["2330"].simBasePrice=825.0;
+CITIES["2454"].name="聯發科"; CITIES["2454"].basePrice=1150.0; CITIES["2454"].price=1150.0; CITIES["2454"].realPrice=1150.0; CITIES["2454"].simBasePrice=1150.0;
+CITIES["2303"].name="聯電"; CITIES["2303"].basePrice=50.0; CITIES["2303"].price=50.0; CITIES["2303"].realPrice=50.0; CITIES["2303"].simBasePrice=50.0;
+CITIES["2317"].name="鴻海"; CITIES["2317"].basePrice=180.0; CITIES["2317"].price=180.0; CITIES["2317"].realPrice=180.0; CITIES["2317"].simBasePrice=180.0;
+CITIES["2382"].name="廣達"; CITIES["2382"].basePrice=280.0; CITIES["2382"].price=280.0; CITIES["2382"].realPrice=280.0; CITIES["2382"].simBasePrice=280.0;
+CITIES["3231"].name="緯創"; CITIES["3231"].basePrice=115.0; CITIES["3231"].price=115.0; CITIES["3231"].realPrice=115.0; CITIES["3231"].simBasePrice=115.0;
+CITIES["2412"].name="中華電"; CITIES["2412"].basePrice=125.0; CITIES["2412"].price=125.0; CITIES["2412"].realPrice=125.0; CITIES["2412"].simBasePrice=125.0;
+CITIES["3045"].name="台灣大"; CITIES["3045"].basePrice=100.0; CITIES["3045"].price=100.0; CITIES["3045"].realPrice=100.0; CITIES["3045"].simBasePrice=100.0;
+CITIES["4904"].name="遠傳"; CITIES["4904"].basePrice=105.0; CITIES["4904"].price=105.0; CITIES["4904"].realPrice=105.0; CITIES["4904"].simBasePrice=105.0;
 
 const TAX_RATE = 0.003;
 const FEE_RATE = 0.001425;
-const GENERALS = ["神將關雲長", "猛將張翼德", "智將諸葛孔明", "龍騎趙子龍", "錦馬超", "神射黃漢升"];
 
 let gameState = {
     balance: 5000000, frozen: 0, realizedPnl: 0, taxTotal: 0,
     activeSector: "SEMICON", activeCity: "2330", timeframe: "1d",
     units: [], history: [], pending: [], currentTab: 'units',
-    lastDividendDay: "", pendingSimReward: 0, activeIndicator: "MACD", treasury: 100000000
+    lastDividendDay: "", pendingSimReward: 0, activeIndicator: "MACD"
 };
 
 let isSimMode = false;
@@ -364,7 +367,6 @@ function loadState() {
             gameState.realizedPnl = window.safeNum(parsed.realizedPnl, 0);
             gameState.taxTotal = window.safeNum(parsed.taxTotal, 0);
             gameState.pendingSimReward = window.safeNum(parsed.pendingSimReward, 0);
-            gameState.treasury = window.safeNum(parsed.treasury, 100000000);
             gameState.activeSector = parsed.activeSector || "SEMICON";
             gameState.activeCity = parsed.activeCity || "2330";
             gameState.timeframe = parsed.timeframe || "1d";
@@ -387,7 +389,7 @@ function loadState() {
 let scene, camera, renderer, battleLine;
 let baseRedArmy = [], baseGreenArmy = [];
 let playerRedArmy = [], playerGreenArmy = []; 
-let particles, snowParticles, fireworks = [];
+let particles, snowParticles;
 let castleGroup, forestGroup, decorationsGroup;
 const MAX_PHALANX_SIZE = 50; 
 
@@ -407,46 +409,43 @@ function getPriceTier(price) {
     return 5;
 }
 
-// 高科技數據要塞
+// 科幻高能矩陣城池
 function createCastle(tier, season) {
     const group = new THREE.Group();
     const isWinter = season === 'WINTER';
-    const baseColor = isWinter ? 0x223344 : 0x1a2233; // 暗黑科技感
-    const mat = new THREE.MeshPhysicalMaterial({
-        color: baseColor, roughness: 0.2, metalness: 0.8, clearcoat: 0.5
-    });
+    const baseColor = isWinter ? 0x2d3748 : 0x1e293b; 
+    const mat = new THREE.MeshStandardMaterial({color: baseColor, roughness: 0.6, metalness: 0.5});
     
     const wallHeight = 16 + tier * 2.5; 
     const wall = new THREE.Mesh(new THREE.BoxGeometry(10, wallHeight, 60), mat);
     wall.position.set(-35, wallHeight/2, 0);
     group.add(wall);
     
-    // 發光伺服器節點 (取代傳統城垛)
     for(let z = -25; z <= 25; z+=10) {
         const battlement = new THREE.Mesh(new THREE.BoxGeometry(10, 4, 5), mat);
         battlement.position.set(-35, wallHeight + 2, z); 
         group.add(battlement);
-        
-        // 發光核心
-        const coreGeo = new THREE.BoxGeometry(2, 2, 2);
-        const coreMat = new THREE.MeshBasicMaterial({color: 0xef4444}); // 紅軍主場
-        const core = new THREE.Mesh(coreGeo, coreMat);
-        core.position.set(-34, wallHeight + 2, z);
-        group.add(core);
     }
     
+    if (tier >= 3) {
+        const towerMat = new THREE.MeshStandardMaterial({color: baseColor, roughness: 0.5, metalness: 0.7});
+        for(let z of [-30, 30]) {
+            const tower = new THREE.Mesh(new THREE.BoxGeometry(14, wallHeight+8, 14), towerMat);
+            tower.position.set(-35, (wallHeight+8)/2, z);
+            group.add(tower);
+        }
+    }
+    
+    // 千金股高科技陣列
     if (tier >= 4) {
         const glowColor = tier === 5 ? 0x00ffff : 0xffaa00; 
-        const glowMat = new THREE.MeshStandardMaterial({color: glowColor, emissive: glowColor, emissiveIntensity: 2.0});
-        
-        // 能量環繞線條
+        const glowMat = new THREE.MeshStandardMaterial({color: glowColor, emissive: glowColor, emissiveIntensity: tier === 5 ? 3 : 1.5});
         const line = new THREE.Mesh(new THREE.BoxGeometry(11, 0.8, 61), glowMat);
         line.position.set(-35, wallHeight * 0.8, 0);
         group.add(line);
         
-        // 科技砲塔
         for(let z of [-15, 0, 15]) {
-            const turret = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2, 5, 8), mat);
+            const turret = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2, 5, 8), new THREE.MeshStandardMaterial({color: 0x334455, metalness: 0.8}));
             turret.position.set(-32, wallHeight + 2.5, z);
             const cannon = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 6, 8), glowMat);
             cannon.rotation.x = Math.PI/2;
@@ -455,109 +454,116 @@ function createCastle(tier, season) {
             group.add(turret);
         }
 
-        // 千金股全像防禦網
         if (tier === 5) {
-            const shieldMat = new THREE.MeshBasicMaterial({color: 0x00ffff, transparent: true, opacity: 0.15, wireframe: true});
-            const shield = new THREE.Mesh(new THREE.SphereGeometry(45, 16, 16, 0, Math.PI), shieldMat);
-            shield.rotation.y = -Math.PI / 2;
-            shield.position.set(-35, 0, 0);
+            const shield = new THREE.Mesh(new THREE.BoxGeometry(18, wallHeight + 15, 75), new THREE.MeshBasicMaterial({color: 0x00ffff, transparent: true, opacity: 0.08, wireframe: true}));
+            shield.position.set(-35, (wallHeight+15)/2, 0);
             group.add(shield);
         }
     }
     return group;
 }
 
-// 六角柱狀數據叢林
+// 數據叢林 (取代圓柱森林)
 function createForest(season) {
     const group = new THREE.Group();
     const isWinter = season === 'WINTER';
-    let hexColor = 0x22c55e; // 空軍主場綠
-    if (isWinter) hexColor = 0xaaddff;
+    let leafColor = 0x22c55e;
+    if(season === 'SUMMER') leafColor = 0x15803d;
+    if(season === 'AUTUMN') leafColor = 0xf97316;
+    if(isWinter) leafColor = 0x94a3b8;
     
-    const nodeMat = new THREE.MeshPhysicalMaterial({
-        color: hexColor, emissive: hexColor, emissiveIntensity: 0.2, 
-        roughness: 0.1, metalness: 0.9, transparent: true, opacity: 0.8
-    });
+    const mat = new THREE.MeshStandardMaterial({color: leafColor, roughness: 0.8, metalness: 0.2, flatShading: true});
     
-    for(let i=0; i<40; i++) {
-        const height = 10 + Math.random()*20;
-        // 使用 6 面圓柱體創造六角柱 (Hexagonal Monolith)
-        const node = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, height, 6), nodeMat); 
-        node.position.y = height / 2;
-        node.position.set(30 + Math.random()*30, height/2, (Math.random()-0.5)*80);
-        group.add(node);
+    for(let i=0; i<45; i++) {
+        const tree = new THREE.Group();
+        const scale = 0.8 + Math.random()*0.8;
+        // 六角形石柱代替樹幹，增加科技感
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.2, 4, 6), new THREE.MeshStandardMaterial({color: 0x1e293b, metalness: 0.6})); 
+        trunk.position.y = 2;
+        const leaves1 = new THREE.Mesh(new THREE.ConeGeometry(4.5, 10, 6), mat); leaves1.position.y = 7;
+        const leaves2 = new THREE.Mesh(new THREE.ConeGeometry(3.5, 8, 6), mat); leaves2.position.y = 12;
+        tree.add(trunk, leaves1, leaves2);
+        tree.scale.set(scale, scale, scale); 
+        tree.position.set(30 + Math.random()*25, 0, (Math.random()-0.5)*75);
+        group.add(tree);
     }
     return group;
 }
 
-// 懸浮水晶戰棋 (科幻全像兵種)
+function createSnowman() {
+    const group = new THREE.Group();
+    const snowMat = new THREE.MeshStandardMaterial({color: 0xffffff, roughness: 0.9});
+    const base = new THREE.Mesh(new THREE.DodecahedronGeometry(1.5, 1), snowMat); base.position.y = 1.5;
+    const mid = new THREE.Mesh(new THREE.DodecahedronGeometry(1.2, 1), snowMat); mid.position.y = 3.5;
+    const head = new THREE.Mesh(new THREE.DodecahedronGeometry(0.8, 1), snowMat); head.position.y = 5.2;
+    
+    const scarf = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.4, 8), new THREE.MeshStandardMaterial({color: 0xef4444}));
+    scarf.position.y = 4.6;
+    group.add(base, mid, head, scarf);
+    return group;
+}
+
+// 科幻水晶戰棋 (全像懸浮士兵)
 function createSoldier(colorHex, isPlayer, tier = 1, side = 'LONG') {
     const group = new THREE.Group();
-    let sc = (isPlayer ? 1.5 : 0.8) * (1 + (tier - 1) * 0.1); 
+    let scale = isPlayer ? 1.8 : 1.0; 
+    scale *= (1 + (tier - 1) * 0.1); 
     
-    // 核心發光晶體 (Octahedron)
-    const coreMat = new THREE.MeshPhysicalMaterial({
-        color: colorHex, emissive: colorHex, emissiveIntensity: isPlayer ? 1.0 : 0.4,
-        roughness: 0.1, transmission: 0.5, transparent: true, opacity: 0.9
+    // 懸浮八面體核心
+    const mat = new THREE.MeshStandardMaterial({
+        color: colorHex, emissive: isPlayer ? colorHex : 0x000000,
+        emissiveIntensity: isPlayer ? 0.8 : 0, metalness: 0.8, roughness: 0.2
     });
-    const core = new THREE.Mesh(new THREE.OctahedronGeometry(1.0 * sc, 0), coreMat); 
-    core.position.y = 1.5 * sc; 
+    const core = new THREE.Mesh(new THREE.OctahedronGeometry(1.2*scale), mat);
+    core.position.y = 2.0 * scale; 
     group.add(core);
 
-    // 數據環 (Torus)
-    const ringMat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.6 });
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.4 * sc, 0.08 * sc, 8, 24), ringMat);
-    ring.position.y = 1.5 * sc;
-    ring.rotation.x = Math.PI / 2;
-    group.add(ring);
-
-    // 雷射指向光束 (武器)
+    // 專屬武器與光環
     if (isPlayer || tier >= 4) {
-        const wColor = tier >= 4 ? 0xffffff : colorHex;
-        const wpnMat = new THREE.MeshBasicMaterial({color: wColor});
-        const weaponLength = 5 * sc;
-        const wpn = new THREE.Mesh(new THREE.CylinderGeometry(0.08*sc, 0.08*sc, weaponLength, 8), wpnMat);
-        wpn.rotation.z = -Math.PI / 2; // 指向 X 軸
-        wpn.position.set(weaponLength/2, 1.5 * sc, 0); 
-        
-        const wpnGroup = new THREE.Group();
-        wpnGroup.add(wpn);
-        // 紅軍面右 (+X)，綠軍面左 (-X)
-        if (side === 'SHORT') wpnGroup.rotation.y = Math.PI;
-        
-        group.add(wpnGroup);
+        const wpnColor = tier >= 4 ? (colorHex === 0xff3333 || colorHex === 0xff2222 ? 0xff4444 : 0x44ff44) : 0xffdd88;
+        // 光束武器，絕對水平指向對手 (X軸)
+        const wpn = new THREE.Mesh(new THREE.CylinderGeometry(0.08*scale, 0.08*scale, 6.0*scale, 4), new THREE.MeshStandardMaterial({color: wpnColor, emissive: wpnColor, emissiveIntensity: 2}));
+        const dir = side === 'LONG' ? 1 : -1;
+        wpn.position.set(dir * 1.5 * scale, 2.0 * scale, 0); 
+        wpn.rotation.z = Math.PI / 2; // 水平放置
+        group.add(wpn);
+
+        if (isPlayer && tier === 5) {
+            const ring = new THREE.Mesh(new THREE.RingGeometry(1.5*scale, 1.8*scale, 16), new THREE.MeshBasicMaterial({color: colorHex, transparent: true, opacity: 0.8, side: THREE.DoubleSide}));
+            ring.rotation.x = -Math.PI/2; 
+            ring.position.y = 0.1; 
+            group.add(ring);
+            group.userData.ring = ring; // 用於動畫旋轉
+        }
     }
     
-    group.userData = { isAttacking: false, baseX: 0, active: true, isPlayer: isPlayer, randomOffset: Math.random() * Math.PI * 2 };
+    // 面向修正，確保紅右綠左
+    group.rotation.y = side === 'LONG' ? 0 : Math.PI;
+    
+    group.userData = Object.assign(group.userData, { isAttacking: false, isPlayer: isPlayer, active: true, randomOffset: Math.random()*Math.PI*2 });
     return group;
 }
 
 function initParticles() {
     const geom = new THREE.BufferGeometry();
-    const pos = new Float32Array(200 * 3); const vel = [];
-    for (let i=0; i<200; i++) { pos[i*3]=0; pos[i*3+1]=-100; pos[i*3+2]=0; vel.push({x:0,y:0,z:0}); }
+    const pos = new Float32Array(150 * 3); const vel = [];
+    for (let i=0; i<150; i++) { pos[i*3]=0; pos[i*3+1]=-100; pos[i*3+2]=0; vel.push({x:0,y:0,z:0}); }
     geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    particles = new THREE.Points(geom, new THREE.PointsMaterial({color: 0xffffff, size: 1.5, transparent: true, opacity: 0, blending: THREE.AdditiveBlending}));
+    particles = new THREE.Points(geom, new THREE.PointsMaterial({color: 0xffcc00, size: 1.0, transparent: true, opacity: 0, blending: THREE.AdditiveBlending}));
     particles.userData = { vel: vel, active: false, life: 0 };
     scene.add(particles);
 }
 
 function triggerClashParticles(x, side) {
     if(!particles) return;
-    particles.position.x = x; 
-    particles.material.opacity = 1; 
-    // 電光十色混合粒子 (金、紫、青)
-    const flashColor = side === 'LONG' ? 0xff88ff : 0x88ffff;
-    particles.material.color.setHex(flashColor);
-    particles.userData.active = true; 
-    particles.userData.life = 1.0;
-    
+    particles.position.x = x; particles.material.opacity = 1; particles.material.color.setHex(side==='LONG' ? 0xff4444 : 0x44ff44);
+    particles.userData.active = true; particles.userData.life = 1;
     const pos = particles.geometry.attributes.position.array;
-    for (let i=0; i<200; i++) {
-        pos[i*3] = (Math.random()-0.5)*5; 
+    for (let i=0; i<150; i++) {
+        pos[i*3] = (Math.random()-0.5)*4; 
         pos[i*3+1] = 1+Math.random()*8; 
-        pos[i*3+2] = (Math.random()-0.5)*60;
-        particles.userData.vel[i] = { x:(Math.random()-0.5)*5, y:Math.random()*6, z:(Math.random()-0.5)*4 };
+        pos[i*3+2] = (Math.random()-0.5)*40;
+        particles.userData.vel[i] = { x:(Math.random()-0.5)*4, y:Math.random()*6, z:(Math.random()-0.5)*2 };
     }
     particles.geometry.attributes.position.needsUpdate = true;
 }
@@ -566,14 +572,10 @@ function updateParticles() {
     if(!particles || !particles.userData.active) return;
     particles.userData.life -= 0.03; particles.material.opacity = Math.max(0, particles.userData.life);
     if(particles.userData.life <= 0) { particles.userData.active = false; return; }
-    
     const pos = particles.geometry.attributes.position.array;
-    for (let i=0; i<200; i++) {
-        pos[i*3] += particles.userData.vel[i].x; 
-        pos[i*3+1] += particles.userData.vel[i].y; 
-        pos[i*3+2] += particles.userData.vel[i].z;
-        particles.userData.vel[i].y -= 0.15; // 地心引力
-        if(pos[i*3+1]<0) pos[i*3+1]=0;
+    for (let i=0; i<150; i++) {
+        pos[i*3] += particles.userData.vel[i].x; pos[i*3+1] += particles.userData.vel[i].y; pos[i*3+2] += particles.userData.vel[i].z;
+        particles.userData.vel[i].y -= 0.2; if(pos[i*3+1]<0) pos[i*3+1]=0;
     }
     particles.geometry.attributes.position.needsUpdate = true;
 }
@@ -585,63 +587,71 @@ function rebuildEnvironment() {
     
     if(castleGroup) scene.remove(castleGroup);
     if(forestGroup) scene.remove(forestGroup);
+    if(decorationsGroup) scene.remove(decorationsGroup);
+    if(snowParticles) { scene.remove(snowParticles); snowParticles = null; }
     
     castleGroup = createCastle(tier, season);
     forestGroup = createForest(season);
-    scene.add(castleGroup, forestGroup);
+    scene.add(castleGroup);
+    scene.add(forestGroup);
     
-    // 重新佈署基礎方陣
-    [...baseRedArmy, ...baseGreenArmy].forEach(m => scene.remove(m)); 
-    baseRedArmy = []; baseGreenArmy = [];
-    const cols = 10;
-    for(let i=0; i<MAX_PHALANX_SIZE; i++) {
-        const r = Math.floor(i / cols);
-        const c = i % cols;
-        const zPos = (c - 4.5) * 6;
+    decorationsGroup = new THREE.Group();
+    if(season === 'WINTER') {
+        const snowman = createSnowman();
+        snowman.position.set(22, 0, 15);
+        decorationsGroup.add(snowman);
         
-        const rm = createSoldier(0xef4444, false, tier, 'LONG');
-        rm.userData.baseX = -15 - r*4;
-        rm.position.set(rm.userData.baseX, 0, zPos);
-        baseRedArmy.push(rm); scene.add(rm);
-        
-        const gm = createSoldier(0x22c55e, false, tier, 'SHORT');
-        gm.userData.baseX = 15 + r*4;
-        gm.position.set(gm.userData.baseX, 0, zPos);
-        baseGreenArmy.push(gm); scene.add(gm);
+        const geom = new THREE.BufferGeometry();
+        const pos = new Float32Array(300 * 3);
+        for (let i=0; i<300; i++) { 
+            pos[i*3] = (Math.random()-0.5)*150; 
+            pos[i*3+1] = Math.random()*60; 
+            pos[i*3+2] = (Math.random()-0.5)*120; 
+        }
+        geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        snowParticles = new THREE.Points(geom, new THREE.PointsMaterial({color: 0xffffff, size: 0.6, transparent: true, opacity: 0.6}));
+        scene.add(snowParticles);
+    } else if (season === 'AUTUMN') {
+        for(let i=0; i<40; i++) {
+            const lf = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, 0.6), new THREE.MeshBasicMaterial({color: 0xc96b1e}));
+            lf.position.set(20 + Math.random()*45, 0.05, (Math.random()-0.5)*95);
+            lf.rotation.y = Math.random() * Math.PI;
+            decorationsGroup.add(lf);
+        }
     }
-    window.syncPlayerTroopsFromState(tier);
+    scene.add(decorationsGroup);
+    
+    baseRedArmy.forEach(m => scene.remove(m)); baseRedArmy = [];
+    baseGreenArmy.forEach(m => scene.remove(m)); baseGreenArmy = [];
+    spawnBasePhalanx(tier);
+    syncPlayerTroopsFromState(tier);
 }
 
 function init3D() {
-    scene = new THREE.Scene(); 
-    scene.fog = new THREE.FogExp2(0x050914, 0.012); // 太空深藍霧氣
+    scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x02050a, 0.012);
     
     camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(window.innerWidth, window.innerHeight); 
+    renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.domElement.className = 'three-canvas';
     document.body.appendChild(renderer.domElement);
 
-    // 科技感強光
-    scene.add(new THREE.AmbientLight(0xffffff, 2.0));
-    const dLight = new THREE.DirectionalLight(0xaabbff, 4.0); 
-    dLight.position.set(0, 50, 20); 
+    // 大幅提亮場景
+    scene.add(new THREE.AmbientLight(0xffffff, 4.0));
+    const dLight = new THREE.DirectionalLight(0xffffff, 5.0);
+    dLight.position.set(20, 100, 40); 
     scene.add(dLight);
     
-    // 發光量子地板
-    const grid = new THREE.GridHelper(300, 100, 0x0088ff, 0x001133); 
-    grid.position.y = 0.01; 
+    const grid = new THREE.GridHelper(200, 80, 0x1e293b, 0x0f172a);
+    grid.position.y = 0.01;
     scene.add(grid);
     
-    // 實體發光戰線
-    battleLine = new THREE.Mesh(
-        new THREE.BoxGeometry(0.8, 0.5, 90), 
-        new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 })
-    ); 
+    battleLine = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 70), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }));
     scene.add(battleLine);
 
-    camera.position.set(0, 40, 75); 
+    camera.position.set(0, 35, 65); 
     camera.lookAt(0, 5, 0);
 
     initParticles();
@@ -651,29 +661,54 @@ function init3D() {
         camera.aspect = window.innerWidth / window.innerHeight; 
         camera.updateProjectionMatrix(); 
         renderer.setSize(window.innerWidth, window.innerHeight); 
-    });
+    }, false);
     
     animate();
 }
 
-window.syncPlayerTroopsFromState = function(tier) {
-    [...playerRedArmy, ...playerGreenArmy].forEach(m => scene.remove(m)); 
+function spawnBasePhalanx(tier) {
+    const cols = Math.floor(MAX_PHALANX_SIZE / 5);
+    for(let i=0; i<MAX_PHALANX_SIZE; i++) {
+        const r = Math.floor(i / cols);
+        const c = i % cols;
+        const zPos = (c - cols/2 + 0.5) * 4.5;
+        
+        const rm = createSoldier(0xaa2222, false, tier, 'LONG'); 
+        rm.userData.baseX = -12 - r*3; 
+        rm.position.set(rm.userData.baseX, 0, zPos); 
+        baseRedArmy.push(rm); 
+        scene.add(rm);
+        
+        const gm = createSoldier(0x228822, false, tier, 'SHORT'); 
+        gm.userData.baseX = 12 + r*3; 
+        gm.position.set(gm.userData.baseX, 0, zPos); 
+        baseGreenArmy.push(gm); 
+        scene.add(gm);
+    }
+}
+
+function spawnPlayerTroop(side, tier) {
+    const m = createSoldier(side==='LONG'?0xff2222:0x22ff22, true, tier, side);
+    m.userData.baseX = side==='LONG' ? -7 : 7;
+    m.position.set(m.userData.baseX, 0, (Math.random()-0.5)*25);
+    scene.add(m);
+    if(side==='LONG') playerRedArmy.push(m); else playerGreenArmy.push(m);
+}
+
+function syncPlayerTroopsFromState(tier) {
+    playerRedArmy.forEach(m => scene.remove(m)); playerGreenArmy.forEach(m => scene.remove(m));
     playerRedArmy = []; playerGreenArmy = [];
-    if(!tier) tier = getPriceTier(window.safeNum(CITIES[gameState.activeCity]?.basePrice, 100));
-    
+    if(!tier) {
+        const city = CITIES[gameState.activeCity];
+        tier = getPriceTier(window.safeNum(city?.basePrice, 100));
+    }
     gameState.units.forEach(u => {
-        if(u.city === gameState.activeCity) {
-            const m = createSoldier(u.side==='LONG'?0xff5555:0x55ff55, true, tier, u.side);
-            m.userData.baseX = u.side==='LONG' ? -8 : 8; 
-            m.position.set(m.userData.baseX, 0, (Math.random()-0.5)*40);
-            scene.add(m); 
-            if(u.side==='LONG') playerRedArmy.push(m); else playerGreenArmy.push(m);
-        }
+        if(u.city === gameState.activeCity) spawnPlayerTroop(u.side, tier);
     });
-};
+}
 
 function triggerAttackAnim(side, magnitude = 1) {
-    const attackCount = Math.max(3, Math.min(15, Math.floor(magnitude * 10)));
+    const attackCount = Math.max(3, Math.min(20, Math.floor(magnitude * 15)));
     const baseArmy = side === 'LONG' ? baseRedArmy : baseGreenArmy;
     const available = baseArmy.filter(m => m.userData.active && !m.userData.isAttacking);
     
@@ -681,13 +716,20 @@ function triggerAttackAnim(side, magnitude = 1) {
     const attackers = available.slice(0, attackCount);
     const dir = side === 'LONG' ? 1 : -1; 
     
-    // 拔出方陣雷射突刺
     attackers.forEach(m => {
         m.userData.isAttacking = true; 
         const origX = m.position.x;
-        new TWEEN.Tween(m.position).to({ x: battleLine.position.x - (dir*2), y: 3 }, 150).easing(TWEEN.Easing.Quadratic.Out).onComplete(() => {
-            new TWEEN.Tween(m.position).to({ x: m.userData.baseX, y: 0 }, 400).easing(TWEEN.Easing.Quadratic.In).onComplete(() => m.userData.isAttacking = false).start();
-        }).start();
+        
+        new TWEEN.Tween(m.position)
+            .to({ x: battleLine.position.x - (dir*1.5), y: 3 }, 150)
+            .easing(TWEEN.Easing.Quadratic.Out)
+            .onComplete(() => {
+                new TWEEN.Tween(m.position)
+                    .to({ x: m.userData.baseX, y: 0 }, 400)
+                    .easing(TWEEN.Easing.Quadratic.In)
+                    .onComplete(() => m.userData.isAttacking = false)
+                    .start();
+            }).start();
     });
 
     const playerArmy = side === 'LONG' ? playerRedArmy : playerGreenArmy;
@@ -695,23 +737,28 @@ function triggerAttackAnim(side, magnitude = 1) {
         if (m.userData.isAttacking) return; 
         m.userData.isAttacking = true; 
         const origX = m.position.x;
-        new TWEEN.Tween(m.position).to({ x: origX + dir*6, y: 2 }, 150).easing(TWEEN.Easing.Quadratic.Out).yoyo(true).repeat(1).onComplete(() => m.userData.isAttacking = false).start();
+        new TWEEN.Tween(m.position)
+            .to({ x: origX + dir*5, y: 2.5 }, 150)
+            .easing(TWEEN.Easing.Quadratic.Out)
+            .yoyo(true).repeat(1)
+            .onComplete(() => m.userData.isAttacking = false).start();
     });
 
     if(attackers.length > 0) {
-        triggerClashParticles(battleLine.position.x, side); 
+        triggerClashParticles(battleLine.position.x, side);
         battleLine.material.color.setHex(0xffffff);
         setTimeout(() => battleLine.material.color.setHex(side==='LONG'?0xef4444:0x22c55e), 200);
     }
 }
 
 function updateVisuals() {
-    const city = CITIES[gameState.activeCity]; if(!city) return;
+    const city = CITIES[gameState.activeCity];
+    if(!city) return;
+    
     const activeBasePrice = isSimMode ? window.safeNum(city.simBasePrice, city.basePrice) : window.safeNum(city.basePrice, 100);
     const p = window.safeNum(currentPrice, activeBasePrice);
     const diff = activeBasePrice > 0 ? (p - activeBasePrice) / activeBasePrice : 0;
     
-    // 掛單厚度可見度控制
     const redActiveCount = Math.floor(Math.min(MAX_PHALANX_SIZE, Math.max(5, (MAX_PHALANX_SIZE/2) + diff * 500)));
     const greenActiveCount = Math.floor(Math.min(MAX_PHALANX_SIZE, Math.max(5, (MAX_PHALANX_SIZE/2) - diff * 500)));
     
@@ -734,269 +781,37 @@ function animate() {
     TWEEN.update(); 
     updateParticles(); 
     
-    // 水晶懸浮與環繞動畫
-    const time = Date.now() * 0.002;
-    const allTroops = [...baseRedArmy, ...baseGreenArmy, ...playerRedArmy, ...playerGreenArmy];
-    allTroops.forEach(m => {
+    // 全像水晶懸浮動畫
+    const time = Date.now() * 0.003;
+    [...baseRedArmy, ...baseGreenArmy, ...playerRedArmy, ...playerGreenArmy].forEach(m => {
         if (!m.userData.isAttacking && m.visible) {
-            // 上下浮動
-            m.position.y = Math.sin(time + m.userData.randomOffset) * 0.5;
-            // 能量環自轉 (第1個子物件是身體，第2個是頭，第3個是武器/環)
-            if(m.children[2] && m.children[2].children[1]) {
-                m.children[2].children[1].rotation.z += 0.05;
-            } else if (m.children[2] && m.children[2].geometry.type === 'RingGeometry') {
-                m.children[2].rotation.z += 0.05;
-            }
+            m.position.y = Math.sin(time + m.userData.randomOffset) * 0.3;
+            // 如果是高價統帥，旋轉能量環
+            if (m.userData.ring) m.userData.ring.rotation.z += 0.05;
         }
     });
 
+    if(snowParticles) {
+        const p = snowParticles.geometry.attributes.position.array;
+        for(let i=0; i<300; i++) {
+            p[i*3+1] -= 0.15; 
+            if(p[i*3+1] < 0) p[i*3+1] = 60; 
+        }
+        snowParticles.geometry.attributes.position.needsUpdate = true;
+    }
     renderer.render(scene, camera); 
 }
 
-// --------------------------------------------------
-// 專業技術指標數學核心
-// --------------------------------------------------
-function calcEMA(data, period) {
-    if(data.length === 0) return [];
-    let k = 2 / (period + 1), ema = [data[0]];
-    for(let i=1; i<data.length; i++) ema.push(data[i] * k + ema[i-1] * (1-k));
-    return ema;
-}
-function calcSMA(data, period) {
-    let sma = [];
-    for(let i=0; i<data.length; i++) {
-        if(i < period - 1) { sma.push(data[i]); continue; }
-        let sum = 0; for(let j=0; j<period; j++) sum += data[i-j];
-        sma.push(sum/period);
-    }
-    return sma;
-}
-function calcMACD(data) {
-    if(data.length < 26) return { macd: [], signal: [], hist: [] };
-    let ema12 = calcEMA(data, 12); let ema26 = calcEMA(data, 26);
-    let macd = ema12.map((v, i) => v - ema26[i]);
-    let signal = calcEMA(macd, 9);
-    let hist = macd.map((v, i) => v - signal[i]);
-    return { macd, signal, hist };
-}
-function calcRSI(data, period) {
-    if(data.length < period) return new Array(data.length).fill(50);
-    let rsi = []; let gains = 0, losses = 0;
-    for(let i=1; i<=period; i++) {
-        let diff = data[i] - data[i-1];
-        if(diff >= 0) gains += diff; else losses -= diff;
-    }
-    let avgGain = gains/period, avgLoss = losses/period;
-    rsi.push(100 - (100 / (1 + (avgLoss === 0 ? 999 : avgGain/avgLoss))));
-    for(let i=period+1; i<data.length; i++) {
-        let diff = data[i] - data[i-1];
-        avgGain = (avgGain * (period-1) + (diff>=0?diff:0)) / period;
-        avgLoss = (avgLoss * (period-1) + (diff<0?-diff:0)) / period;
-        let rs = avgLoss === 0 ? 999 : avgGain/avgLoss;
-        rsi.push(100 - (100 / (1 + rs)));
-    }
-    return new Array(period).fill(50).concat(rsi);
-}
-function calcKD(data, period = 9) {
-    if(data.length < period) return { k: new Array(data.length).fill(50), d: new Array(data.length).fill(50) };
-    let k = [], d = [], prevK = 50, prevD = 50;
-    for(let i=0; i<data.length; i++) {
-        let start = Math.max(0, i - period + 1);
-        let slice = data.slice(start, i+1);
-        let high = Math.max(...slice), low = Math.min(...slice);
-        let rsv = (high === low) ? 50 : ((data[i] - low) / (high - low)) * 100;
-        let currK = (2/3)*prevK + (1/3)*rsv; let currD = (2/3)*prevD + (1/3)*currK;
-        k.push(currK); d.push(currD); prevK = currK; prevD = currD;
-    }
-    return { k, d };
-}
-function calcBIAS(data, period) {
-    if(data.length < period) return new Array(data.length).fill(0);
-    let sma = calcSMA(data, period);
-    return data.map((v, i) => sma[i] > 0 ? ((v - sma[i]) / sma[i]) * 100 : 0);
-}
-
-window.fetchFullChartData = async function() {
-    if(isSimMode) return; 
-    const cityCode = gameState.activeCity; const city = CITIES[cityCode]; if (!city) return;
-    
-    const map = { "1m":{i:"1m",r:"1d"}, "5m":{i:"5m",r:"5d"}, "15m":{i:"15m",r:"5d"}, "30m":{i:"30m",r:"1mo"}, "60m":{i:"60m",r:"1mo"}, "1d":{i:"1d",r:"6mo"}, "1wk":{i:"1wk",r:"2y"}, "1mo":{i:"1mo",r:"5y"} };
-    const prm = map[gameState.timeframe] || map["1d"];
-    
-    try {
-        const ySym = /^\d{4}$/.test(cityCode) ? cityCode + '.TW' : cityCode;
-        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ySym}?interval=${prm.i}&range=${prm.r}`;
-        let data = null;
-        try {
-            const res = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(url)}`);
-            if (res.ok) data = await res.json();
-        } catch(e) {
-            const res2 = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
-            if (res2.ok) data = await res2.json();
-        }
-        
-        if (data && data.chart.result && data.chart.result[0]) {
-            const result = data.chart.result[0];
-            const meta = result.meta;
-            let fetchedBase = meta.previousClose;
-            
-            const timestamps = result.timestamp || [];
-            const quote = result.indicators.quote[0] || {};
-            let ohlcData = [];
-            for(let i=0; i<timestamps.length; i++) {
-                // 剔除空洞斷層
-                if (quote.close[i] !== null && quote.close[i] !== undefined) {
-                    let o = window.safeNum(quote.open[i], fetchedBase);
-                    let h = window.safeNum(quote.high[i], fetchedBase);
-                    let l = window.safeNum(quote.low[i], fetchedBase);
-                    let c = window.safeNum(quote.close[i], fetchedBase);
-                    let v = window.safeNum(quote.volume[i], 0);
-                    if (c > 0) {
-                        ohlcData.push({ x: timestamps[i] * 1000, o, h, l, c, v });
-                    }
-                }
-            }
-            if(ohlcData.length > 0) city.chartData[gameState.timeframe] = ohlcData;
-        }
-    } catch(e) {}
-    
-    if(!city.chartData || !city.chartData[gameState.timeframe] || city.chartData[gameState.timeframe].length < 10) {
-        if(city.basePrice > 0) initKbars(city);
-    }
-
-    if(!document.getElementById('chart-page').classList.contains('hidden')) window.renderChartInstance();
-};
-
-window.renderChartInstance = function() {
-    const city = CITIES[gameState.activeCity]; if(!city || !city.chartData[gameState.timeframe]) return;
-    const rawData = city.chartData[gameState.timeframe];
-    if (rawData.length < 10) return;
-    
-    // 使用字串標籤強制分類軸
-    const labels = rawData.map(d => {
-        const date = new Date(d.x);
-        return gameState.timeframe.includes('m') ? date.toLocaleTimeString('zh-TW', {hour: '2-digit', minute:'2-digit'}) : date.toLocaleDateString('zh-TW', {month:'2-digit', day:'2-digit'});
-    });
-    
-    const candleData = rawData.map((d, i) => ({ x: labels[i], o: d.o, h: d.h, l: d.l, c: d.c }));
-    const twColors = { up: 'rgba(239, 68, 68, 1)', down: 'rgba(34, 197, 94, 1)', unchanged: 'rgba(156, 163, 175, 1)' };
-
-    const ctxMain = document.getElementById('mainChartCanvas').getContext('2d');
-    if(mainChart) mainChart.destroy();
-    mainChart = new Chart(ctxMain, {
-        type: 'candlestick',
-        data: { datasets: [{ label: 'Price', data: candleData, color: twColors, borderColor: twColors }] },
-        options: { 
-            animation: false, 
-            responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, 
-            scales: { x: { type: 'category', display: false, labels: labels }, y: { position: 'right', grid: { color: 'rgba(255,255,255,0.1)' } } } 
-        }
-    });
-
-    const ctxVol = document.getElementById('volumeChartCanvas').getContext('2d');
-    if(volChart) volChart.destroy();
-    const volumeColors = rawData.map(d => d.c >= d.o ? 'rgba(239, 68, 68, 0.7)' : 'rgba(34, 197, 94, 0.7)');
-    volChart = new Chart(ctxVol, {
-        type: 'bar',
-        data: { labels: labels, datasets: [{ data: rawData.map(d => d.v), backgroundColor: volumeColors, barPercentage: 0.8 }] },
-        options: { 
-            animation: false,
-            responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, 
-            scales: { x: { type: 'category', display: false }, y: { position: 'right', grid: { display: false }, ticks: { display: false } } } 
-        }
-    });
-
-    const ctxInd = document.getElementById('indicatorChartCanvas').getContext('2d');
-    if(indChart) indChart.destroy();
-    
-    const closePrices = rawData.map(d => d.c);
-    let datasets = [];
-    const activeInd = gameState.activeIndicator;
-    
-    if (activeInd === "MACD") {
-        const { macd, signal, hist } = calcMACD(closePrices);
-        datasets = [
-            { type: 'bar', label: 'Hist', data: hist, backgroundColor: hist.map(v => v >= 0 ? 'rgba(239,68,68,0.6)' : 'rgba(34,197,94,0.6)') },
-            { type: 'line', label: 'MACD', data: macd, borderColor: '#fff', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
-            { type: 'line', label: 'Signal', data: signal, borderColor: '#facc15', borderWidth: 1.5, pointRadius: 0, tension: 0.2 }
-        ];
-    } else if (activeInd === "KD") {
-        const { k, d } = calcKD(closePrices);
-        datasets = [
-            { type: 'line', label: 'K', data: k, borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
-            { type: 'line', label: 'D', data: d, borderColor: '#fb923c', borderWidth: 1.5, pointRadius: 0, tension: 0.2 }
-        ];
-    } else if (activeInd === "RSI") {
-        const rsi5 = calcRSI(closePrices, 5);
-        const rsi10 = calcRSI(closePrices, 10);
-        datasets = [ 
-            { type: 'line', label: 'RSI 5', data: rsi5, borderColor: '#c084fc', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
-            { type: 'line', label: 'RSI 10', data: rsi10, borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0, tension: 0.2 }
-        ];
-    } else if (activeInd === "BIAS") {
-        const bias5 = calcBIAS(closePrices, 5);
-        const bias10 = calcBIAS(closePrices, 10);
-        const bias20 = calcBIAS(closePrices, 20);
-        datasets = [ 
-            { type: 'line', label: 'BIAS 5', data: bias5, borderColor: '#fff', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
-            { type: 'line', label: 'BIAS 10', data: bias10, borderColor: '#facc15', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
-            { type: 'line', label: 'BIAS 20', data: bias20, borderColor: '#ec4899', borderWidth: 1.5, pointRadius: 0, tension: 0.2 }
-        ];
-    }
-
-    indChart = new Chart(ctxInd, {
-        data: { labels: labels, datasets: datasets },
-        options: { 
-            animation: false,
-            responsive: true, maintainAspectRatio: false, 
-            plugins: { legend: { display: true, position: 'top', labels: { color: '#ccc', font: { size: 9 } } } }, 
-            scales: { x: { type: 'category', display: false }, y: { position: 'right', grid: { color: 'rgba(255,255,255,0.1)' } } } 
-        }
-    });
-    
-    document.getElementById('chart-realtime-price').innerText = window.safeNum(rawData[rawData.length-1].c).toFixed(2);
-};
-
-window.setIndicator = function(ind) {
-    gameState.activeIndicator = ind; 
-    document.querySelectorAll('.ind-btn').forEach(b => b.classList.remove('active')); 
-    document.getElementById(`btn-ind-${ind}`).classList.add('active');
-    window.renderChartInstance();
-};
-
-window.openChartPage = function() {
-    document.getElementById('main-ui').classList.add('hidden');
-    document.getElementById('chart-city-name').innerText = CITIES[gameState.activeCity]?.name || "未知城池";
-    const p = document.getElementById('chart-page'); p.classList.remove('hidden');
-    setTimeout(() => { p.classList.remove('translate-y-full'); window.fetchFullChartData(); }, 10);
-};
-
-window.closeChartPage = function() {
-    const p = document.getElementById('chart-page'); p.classList.add('translate-y-full');
-    setTimeout(() => { p.classList.add('hidden'); document.getElementById('main-ui').classList.remove('hidden'); }, 300);
-};
-
-window.setTimeframe = function(tf) {
-    gameState.timeframe = tf; 
-    document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active')); 
-    document.getElementById(`tf-${tf}`).classList.add('active');
-    window.showMsg(`資料頻率切換至 ${tf}`); window.fetchFullChartData();
-};
-
-
-// --------------------------------------------------
-// 時間閘門與狀態機
-// --------------------------------------------------
 function getTaiwanTimeStr() { return new Date().toLocaleDateString('zh-TW', {timeZone: 'Asia/Taipei'}); }
 
 function checkTimeEvents() {
     const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Taipei"}));
-    const day = now.getDay(); 
+    const day = now.getDay(); // 0:週日, 6:週六
     const timeNum = now.getHours() * 100 + now.getMinutes();
 
     let newStatus = "CLOSED";
     
-    // 嚴格休市判定
+    // 嚴格休市判定：六日絕對休市
     if (day >= 1 && day <= 5) {
         if (timeNum >= 855 && timeNum < 900) newStatus = "PRE";
         else if (timeNum >= 900 && timeNum < 1330) newStatus = "OPEN";
@@ -1004,125 +819,212 @@ function checkTimeEvents() {
 
     if (currentMarketState !== newStatus) {
         if (newStatus === "PRE" && isSimMode) window.forceCloseSimMode(true);
-        currentMarketState = newStatus; 
+        if (newStatus === "OPEN") {
+            if (isSimMode) window.forceCloseSimMode(false); 
+        }
+        currentMarketState = newStatus;
         updateOrderButtonsUI();
     }
 
-    const label = document.getElementById('market-status-label'); 
+    const label = document.getElementById('market-status-label');
     const simBtn = document.getElementById('sim-btn');
     
     if (isSimMode) {
-        label.innerText = "沙盤推演 獨立時空"; 
+        label.innerText = "沙盤推演 獨立時空";
         label.className = "text-[10px] md:text-xs text-sky-300 font-bold uppercase tracking-widest bg-sky-500/20 px-2 py-1 rounded border border-sky-500/30 animate-pulse";
-        simBtn.innerText = "結束推演"; 
-        simBtn.className = "bg-red-600 hover:bg-red-500 px-2.5 py-1.5 rounded text-[10px] text-white font-bold transition-all shadow-md"; 
+        simBtn.innerText = "結束推演";
+        simBtn.className = "bg-red-600 hover:bg-red-500 px-2.5 py-1.5 rounded text-[10px] text-white font-bold transition-all shadow-md";
         simBtn.classList.remove('hidden');
     } else {
         if (currentMarketState === "OPEN") {
-            label.innerText = "真實天道 運轉中"; 
-            label.className = "text-[10px] md:text-xs text-yellow-400 font-bold uppercase tracking-widest bg-yellow-500/20 px-2 py-1 rounded border border-yellow-500/30"; 
+            label.innerText = "真實天道 運轉中";
+            label.className = "text-[10px] md:text-xs text-yellow-400 font-bold uppercase tracking-widest bg-yellow-500/20 px-2 py-1 rounded border border-yellow-500/30";
             simBtn.classList.add('hidden');
         } else if (currentMarketState === "PRE") {
-            label.innerText = "盤前試撮 準備開戰"; 
-            label.className = "text-[10px] md:text-xs text-orange-400 font-bold uppercase tracking-widest bg-orange-500/20 px-2 py-1 rounded border border-orange-500/30"; 
+            label.innerText = "盤前試撮 準備開戰";
+            label.className = "text-[10px] md:text-xs text-orange-400 font-bold uppercase tracking-widest bg-orange-500/20 px-2 py-1 rounded border border-orange-500/30";
             simBtn.classList.add('hidden');
         } else {
-            label.innerText = "天道休市 盤後時段"; 
+            label.innerText = "天道休市 盤後時段";
             label.className = "text-[10px] md:text-xs text-gray-400 font-bold uppercase tracking-widest bg-white/10 px-2 py-1 rounded border border-white/20";
-            simBtn.innerText = "啟動沙盤"; 
-            simBtn.className = "bg-sky-600 hover:bg-sky-500 px-2.5 py-1.5 rounded text-[10px] text-white font-bold shadow-[0_0_10px_rgba(2,132,199,0.5)] transition-all animate-pulse"; 
+            simBtn.innerText = "啟動沙盤";
+            simBtn.className = "bg-sky-600 hover:bg-sky-500 px-2.5 py-1.5 rounded text-[10px] text-white font-bold shadow-[0_0_10px_rgba(2,132,199,0.5)] transition-all animate-pulse";
             simBtn.classList.remove('hidden');
         }
     }
 }
 
 function updateOrderButtonsUI() {
-    const btnL = document.getElementById('btn-long'); const btnS = document.getElementById('btn-short');
+    const btnL = document.getElementById('btn-long');
+    const btnS = document.getElementById('btn-short');
+    const txtL = document.getElementById('btn-long-text');
+    const txtS = document.getElementById('btn-short-text');
+
     if (currentMarketState === "CLOSED" && !isSimMode) {
-        btnL.classList.add('btn-disabled'); btnS.classList.add('btn-disabled'); 
-        document.getElementById('btn-long-text').innerText = "休市禁令"; document.getElementById('btn-short-text').innerText = "休市禁令";
+        btnL.classList.add('btn-disabled'); btnS.classList.add('btn-disabled');
+        txtL.innerText = "休市禁令"; txtS.innerText = "休市禁令";
     } else {
-        btnL.classList.remove('btn-disabled'); btnS.classList.remove('btn-disabled'); 
-        document.getElementById('btn-long-text').innerText = "入城"; document.getElementById('btn-short-text').innerText = "攻掠";
+        btnL.classList.remove('btn-disabled'); btnS.classList.remove('btn-disabled');
+        txtL.innerText = "入城"; txtS.innerText = "攻掠";
     }
 }
 
 window.toggleSimMode = function(isAutoFallback = false) {
-    if (!isAutoFallback && (currentMarketState === "OPEN" || currentMarketState === "PRE")) { window.showMsg("真實天道運行中 禁止手動啟動沙盤"); return; }
+    if (!isAutoFallback && (currentMarketState === "OPEN" || currentMarketState === "PRE")) { 
+        window.showMsg("真實天道運行中 禁止手動啟動沙盤"); 
+        return; 
+    }
     if (isSimMode) window.forceCloseSimMode(false);
     else {
-        realStateSnapshot = JSON.parse(JSON.stringify(gameState)); isSimMode = true;
+        realStateSnapshot = JSON.parse(JSON.stringify(gameState)); 
+        isSimMode = true;
+        
         Object.keys(CITIES).forEach(c => {
             if(!isAutoFallback) { CITIES[c].simBasePrice = window.safeNum(CITIES[c].price, CITIES[c].basePrice); }
-            CITIES[c].chartData = {}; 
-            initKbars(CITIES[c]); 
+            CITIES[c].chartData = {}; // 重置圖表資料
+            initKbars(CITIES[c]);
         });
-        document.getElementById('real-pnl-container').classList.add('hidden'); document.getElementById('sim-pnl-container').classList.remove('hidden'); document.getElementById('base-price-label').innerText = '沙盤基準';
+        
+        document.getElementById('real-pnl-container').classList.add('hidden'); 
+        document.getElementById('sim-pnl-container').classList.remove('hidden'); 
+        document.getElementById('base-price-label').innerText = '沙盤基準';
+        
         ['main-dashboard','tab-container','order-panel'].forEach(id => document.getElementById(id).classList.replace('glass', 'glass-sim'));
+        
         window.triggerSimThunder(); 
         window.showMsg(isAutoFallback ? "連線中斷 自動進入沙盤時空" : "進入沙盤時空 資金獨立計算"); 
-        updateOrderButtonsUI(); updateUI();
+        updateOrderButtonsUI(); 
+        updateUI();
     }
 };
 
 window.forceCloseSimMode = function(isAuto) {
     if (!isSimMode || !realStateSnapshot) return;
-    const simNet = window.safeNum(gameState.balance) + window.safeNum(gameState.frozen); 
+    const simNet = window.safeNum(gameState.balance) + window.safeNum(gameState.frozen);
     const realNet = window.safeNum(realStateSnapshot.balance) + window.safeNum(realStateSnapshot.frozen);
     const profit = simNet - realNet;
 
-    gameState = JSON.parse(JSON.stringify(realStateSnapshot)); realStateSnapshot = null; isSimMode = false;
+    gameState = JSON.parse(JSON.stringify(realStateSnapshot)); 
+    realStateSnapshot = null; 
+    isSimMode = false;
 
     let msg = "沙盤結束 本金還原";
-    if (profit > 0) { 
+    if (profit > 0) {
         const reward = profit * 0.001; 
-        gameState.pendingSimReward = window.safeNum(gameState.pendingSimReward) + reward; 
+        gameState.pendingSimReward = window.safeNum(gameState.pendingSimReward) + reward;
         msg = `沙盤獲利 獎勵 ${Math.floor(reward)} 天幣明日發放`; 
-        window.triggerGoldThunder(); 
-    } else { window.triggerThunder(); if(isAuto) msg = "試撮啟動 強制結束練兵"; }
+        window.triggerGoldThunder();
+    } else { 
+        window.triggerThunder(); 
+        if(isAuto) msg = "試撮啟動 強制結束練兵"; 
+    }
 
     Object.keys(CITIES).forEach(c => {
         CITIES[c].price = window.safeNum(CITIES[c].realPrice, CITIES[c].basePrice);
         CITIES[c].chartData = {}; 
     });
-    currentPrice = window.safeNum(CITIES[gameState.activeCity].price); syncPlayerTroopsFromState();
+    
+    currentPrice = window.safeNum(CITIES[gameState.activeCity].price); 
+    syncPlayerTroopsFromState();
 
-    document.getElementById('sim-pnl-container').classList.add('hidden'); document.getElementById('real-pnl-container').classList.remove('hidden'); document.getElementById('base-price-label').innerText = '昨收';
+    document.getElementById('sim-pnl-container').classList.add('hidden'); 
+    document.getElementById('real-pnl-container').classList.remove('hidden'); 
+    document.getElementById('base-price-label').innerText = '昨收';
+    
     ['main-dashboard','tab-container','order-panel'].forEach(id => document.getElementById(id).classList.replace('glass-sim', 'glass'));
     
-    window.showMsg(msg); saveState(); updateOrderButtonsUI(); updateUI(); window.fetchFullChartData();
+    window.showMsg(msg); 
+    saveState(); 
+    updateOrderButtonsUI(); 
+    updateUI(); 
+    window.fetchFullChartData();
+};
+
+window.submitManualPrice = function() {
+    const val = parseFloat(document.getElementById('manual-price-input').value);
+    if(isNaN(val) || val <= 0) { window.showMsg("請輸入有效的基準價格"); return; }
+    
+    const city = CITIES[pendingPriceCity];
+    if(city) {
+        city.basePrice = val; city.simBasePrice = val; city.price = val; city.realPrice = val;
+        initKbars(city);
+        rebuildEnvironment();
+    }
+    
+    window.closePricePrompt();
+    if(!isSimMode) { 
+        window.showMsg("基準價已設定 系統自動導入沙盤"); 
+        window.toggleSimMode(true); 
+    }
+};
+
+window.openPricePrompt = function(cityCode) {
+    pendingPriceCity = cityCode;
+    document.getElementById('prompt-city-name').innerText = CITIES[cityCode].name;
+    document.getElementById('manual-price-input').value = '';
+    document.getElementById('price-prompt-modal').classList.remove('opacity-0', 'pointer-events-none');
+};
+window.closePricePrompt = function() {
+    document.getElementById('price-prompt-modal').classList.add('opacity-0', 'pointer-events-none');
 };
 
 async function fetchRealMarketData() {
     if(isSimMode) return; 
-    const cityCode = gameState.activeCity; const city = CITIES[cityCode]; if (!city) return;
-    let fetchedPrice = null, fetchedBase = null;
+    const cityCode = gameState.activeCity; 
+    const city = CITIES[cityCode]; 
+    if (!city) return;
     
+    let fetchedPrice = null, fetchedBase = null;
     try {
         if (USER_API_KEY) {
             const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${cityCode}&token=${USER_API_KEY}`);
-            if (res.ok) { const data = await res.json(); if(data.c) { fetchedPrice = data.c; fetchedBase = data.pc; } }
+            if (res.ok) { 
+                const data = await res.json(); 
+                if(data.c) { fetchedPrice = data.c; fetchedBase = data.pc; } 
+            }
         }
         if (!fetchedPrice) {
             const ySym = /^\d{4}$/.test(cityCode) ? cityCode + '.TW' : cityCode;
             const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ySym}?interval=1m&range=1d`;
             try {
                 const res = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(url)}`);
-                if (res.ok) { const data = await res.json(); fetchedPrice = data.chart.result[0].meta.regularMarketPrice; fetchedBase = data.chart.result[0].meta.previousClose; }
+                if (res.ok) { 
+                    const data = await res.json(); 
+                    if (data?.chart?.result?.[0]) {
+                        fetchedPrice = data.chart.result[0].meta.regularMarketPrice; 
+                        fetchedBase = data.chart.result[0].meta.previousClose; 
+                    }
+                }
             } catch(e) {
                 const res2 = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
-                if (res2.ok) { const data2 = await res2.json(); fetchedPrice = data2.chart.result[0].meta.regularMarketPrice; fetchedBase = data2.chart.result[0].meta.previousClose; }
+                if (res2.ok) { 
+                    const data2 = await res2.json(); 
+                    if (data2?.chart?.result?.[0]) {
+                        fetchedPrice = data2.chart.result[0].meta.regularMarketPrice; 
+                        fetchedBase = data2.chart.result[0].meta.previousClose; 
+                    }
+                }
             }
         }
     } catch(e) {}
     
     const p = parseFloat(fetchedPrice);
     if (!isNaN(p) && p > 0) {
-        city.realPrice = p; city.basePrice = parseFloat(fetchedBase) || city.realPrice;
-        if (!isSimMode) { city.price = city.realPrice; currentPrice = city.price; }
+        city.realPrice = p; 
+        city.basePrice = parseFloat(fetchedBase) || city.realPrice;
+        if (!isSimMode) { 
+            city.price = city.realPrice; 
+            currentPrice = city.price; 
+        }
     } else {
-        if (!isSimMode && !city.autoSimTriggered && (!city.basePrice || city.basePrice === 0)) {
-            window.showMsg("天道連線失敗 自動導入沙盤"); window.toggleSimMode(true); city.autoSimTriggered = true; 
+        if (!city.basePrice || city.basePrice === 0) {
+            if (!document.getElementById('price-prompt-modal').classList.contains('opacity-100') && !isSimMode) { 
+                window.openPricePrompt(cityCode); 
+            }
+        } else if (!isSimMode && !city.autoSimTriggered) {
+            window.showMsg("天道連線失敗 自動導入沙盤"); 
+            window.toggleSimMode(true); 
+            city.autoSimTriggered = true; 
         }
     }
 }
@@ -1152,7 +1054,8 @@ function initKbars(city) {
 
 function startMarketPolling() {
     if(apiPollingInterval) clearInterval(apiPollingInterval);
-    apiPollingInterval = setInterval(fetchRealMarketData, 5000); fetchRealMarketData();
+    apiPollingInterval = setInterval(fetchRealMarketData, 5000); 
+    fetchRealMarketData();
 }
 
 function localTick() {
@@ -1160,11 +1063,15 @@ function localTick() {
     const city = CITIES[gameState.activeCity];
     
     if (isSimMode && city) {
-        const bp = window.safeNum(city.simBasePrice, city.basePrice); const maxDev = bp * 0.05;
+        const bp = window.safeNum(city.simBasePrice, city.basePrice); 
+        const maxDev = bp * 0.05;
         let newPrice = window.safeNum(city.price, bp) + (Math.random() - 0.5) * window.safeNum(city.vol, 2.0) * 2;
         if (isNaN(newPrice) || newPrice <= 0.1) newPrice = bp;
-        if (newPrice > bp + maxDev) newPrice = bp + maxDev; if (newPrice < bp - maxDev) newPrice = bp - maxDev;
-        city.price = newPrice; currentPrice = city.price;
+        if (newPrice > bp + maxDev) newPrice = bp + maxDev; 
+        if (newPrice < bp - maxDev) newPrice = bp - maxDev;
+        
+        city.price = newPrice; 
+        currentPrice = city.price;
         
         if(city.chartData && city.chartData[gameState.timeframe] && city.chartData[gameState.timeframe].length > 0) {
             let lastBar = city.chartData[gameState.timeframe][city.chartData[gameState.timeframe].length - 1];
@@ -1177,22 +1084,29 @@ function localTick() {
 
     const jumpMag = Math.abs(currentPrice - lastPriceForAnim);
     if (jumpMag > 0.01) {
-        if (currentPrice > lastPriceForAnim) triggerAttackAnim('LONG', jumpMag); else triggerAttackAnim('SHORT', jumpMag);
+        if (currentPrice > lastPriceForAnim) triggerAttackAnim('LONG', jumpMag); 
+        else triggerAttackAnim('SHORT', jumpMag);
         lastPriceForAnim = currentPrice;
     }
 
     if (isSimMode || currentMarketState !== "PRE") checkPendingOrders();
-    if(!document.getElementById('chart-page').classList.contains('hidden')) window.renderChartInstance();
+    updateVisuals(); 
+    if(!document.getElementById('chart-page').classList.contains('hidden')) renderChartInstance();
     updateUI();
 }
 
-// ==========================================
-// 5. 介面操作與交易撮合
-// ==========================================
-
 window.switchSector = function(code) {
-    gameState.activeSector = code; const sel = document.getElementById('city-selector'); sel.innerHTML = '';
-    if (SECTORS[code].cities.length === 0) { sel.appendChild(new Option("尚無城池", "")); currentPrice = 0; lastPriceForAnim = 0; document.getElementById('market-price').innerText = "---"; return; }
+    gameState.activeSector = code; 
+    const sel = document.getElementById('city-selector'); 
+    sel.innerHTML = '';
+    
+    if (SECTORS[code].cities.length === 0) { 
+        sel.appendChild(new Option("尚無城池", "")); 
+        currentPrice = 0; 
+        lastPriceForAnim = 0; 
+        document.getElementById('market-price').innerText = "---"; 
+        return; 
+    }
     SECTORS[code].cities.forEach(c => sel.appendChild(new Option(CITIES[c]?.name || c, c)));
     window.switchCity(SECTORS[code].cities[0]);
 };
@@ -1201,29 +1115,50 @@ window.switchCity = function(code) {
     if (!code || !CITIES[code]) return;
     gameState.activeCity = code;
     CITIES[code].autoSimTriggered = false; 
-    currentPrice = window.safeNum(CITIES[code].price, CITIES[code].basePrice); lastPriceForAnim = currentPrice;
+    currentPrice = window.safeNum(CITIES[code].price, CITIES[code].basePrice); 
+    lastPriceForAnim = currentPrice;
     document.getElementById('chart-city-name').innerText = CITIES[code].name;
     window.showMsg(`軍令轉移 至 ${CITIES[code].name}`);
     
     rebuildEnvironment();
-    
     if(battleLine) battleLine.material.color.setHex(0xffffff);
     if(!isSimMode) fetchRealMarketData();
     window.fetchFullChartData();
 };
 
 window.issueOrder = function(side) {
-    if (currentMarketState === "CLOSED" && !isSimMode) { window.showMsg("休市禁令"); window.triggerThunder(); return; }
+    if (currentMarketState === "CLOSED" && !isSimMode) { 
+        window.showMsg("天道休市期間 僅開放沙盤練兵下單"); 
+        window.triggerThunder(); 
+        return; 
+    }
+    
     const qty = parseInt(document.getElementById('order-qty').value) || 0;
     const tPrice = parseFloat(document.getElementById('order-price').value) || currentPrice;
+    
     if(qty <= 0 || !gameState.activeCity) return;
+    
     const validCurrentPrice = window.safeNum(currentPrice, window.safeNum(CITIES[gameState.activeCity]?.basePrice, 100));
-    if(gameState.units.find(u => u.city === gameState.activeCity && u.side !== side)){ window.showMsg("立場衝突 請先結算目前兵力"); window.triggerThunder(); return; }
+    
+    // 防呆：禁止多空雙向
+    if(gameState.units.find(u => u.city === gameState.activeCity && u.side !== side)){ 
+        window.showMsg("立場衝突 請先結算目前兵力"); 
+        window.triggerThunder(); 
+        return; 
+    }
 
     const vol = tPrice * qty * 1000;
-    const tax = vol * TAX_RATE, fee = vol * FEE_RATE, total = vol + tax + fee;
-    if(gameState.balance < total){ window.showMsg("存銀不足 無法派遣"); window.triggerThunder(); return; }
+    const tax = vol * TAX_RATE;
+    const fee = vol * FEE_RATE;
+    const totalCost = vol + tax + fee;
+    
+    if(gameState.balance < totalCost){ 
+        window.showMsg("存銀不足 無法派遣"); 
+        window.triggerThunder(); 
+        return; 
+    }
 
+    // 多空撮合邏輯
     let immediate = false;
     if(isSimMode || currentMarketState !== "PRE") {
         if(side === 'LONG' && tPrice >= validCurrentPrice) immediate = true;
@@ -1231,33 +1166,61 @@ window.issueOrder = function(side) {
     }
 
     if(immediate){
-        gameState.balance -= total; executeOrder({ city: gameState.activeCity, side, qty, tax, fee, isSim: isSimMode }, validCurrentPrice); window.showMsg("市價滿足 立即出征");
+        gameState.balance -= totalCost; 
+        executeOrder({ city: gameState.activeCity, side, qty, tax, fee, isSim: isSimMode }, validCurrentPrice); 
+        window.showMsg("市價滿足 立即出征");
     } else {
-        gameState.balance -= total; gameState.frozen += total;
-        gameState.pending.push({ id: Date.now(), city: gameState.activeCity, side, qty, price: tPrice, totalCost: total, tax, fee, isSim: isSimMode }); window.showMsg("進入埋伏 等候滿足價位");
+        gameState.balance -= totalCost; 
+        gameState.frozen += totalCost;
+        gameState.pending.push({ 
+            id: Date.now(), city: gameState.activeCity, side, qty, 
+            price: tPrice, totalCost: totalCost, tax, fee, isSim: isSimMode 
+        }); 
+        window.showMsg("進入埋伏 等候滿足價位");
     }
-    saveState(); updateUI();
+    saveState(); 
+    updateUI();
 };
 
 function checkPendingOrders() {
     for(let i=gameState.pending.length-1; i>=0; i--){
-        const o = gameState.pending[i]; const m = window.safeNum(CITIES[o.city]?.price, 0);
+        const o = gameState.pending[i]; 
+        const m = window.safeNum(CITIES[o.city]?.price, 0);
         if (m <= 0.1) continue;
-        if((o.side === 'LONG' && m <= o.price) || (o.side === 'SHORT' && m >= o.price)){
-            gameState.pending.splice(i,1); executeOrder(o, m); window.showMsg(`天道撮合 ${CITIES[o.city].name} 入城`); saveState();
+        
+        let canFill = false;
+        if(o.side === 'LONG' && m <= o.price) canFill = true;
+        if(o.side === 'SHORT' && m >= o.price) canFill = true;
+
+        if(canFill){
+            gameState.pending.splice(i,1); 
+            executeOrder(o, m); 
+            window.showMsg(`天道撮合 ${CITIES[o.city].name} 入城`); 
+            saveState();
         }
     }
 }
 
 function executeOrder(o, fP) {
     if(o.totalCost) gameState.frozen -= o.totalCost;
-    const vol = fP * o.qty * 1000; const aTax = vol * TAX_RATE, aFee = vol * FEE_RATE;
-    if(!isSimMode) gameState.taxTotal += (aTax + aFee);
-
+    
+    const vol = fP * o.qty * 1000; 
+    const aTax = vol * TAX_RATE;
+    const aFee = vol * FEE_RATE;
+    
+    // 會計分離：紀錄單價不含費用
     gameState.units.push({
-        id: Date.now() + Math.random(), city: o.city, side: o.side, qty: o.qty,
-        cost: fP, entry: fP, tax: aTax, fee: aFee,
-        time: new Date().toLocaleTimeString('zh-TW', { hour12: false }), entryDate: getTaiwanTimeStr(), isSim: o.isSim || isSimMode
+        id: Date.now() + Math.random(), 
+        city: o.city, 
+        side: o.side, 
+        qty: o.qty,
+        cost: fP, 
+        entry: fP, 
+        tax: aTax, 
+        fee: aFee,
+        time: new Date().toLocaleTimeString('zh-TW', { hour12: false }), 
+        entryDate: getTaiwanTimeStr(), 
+        isSim: o.isSim || isSimMode
     });
     
     if(o.city === gameState.activeCity) {
@@ -1269,32 +1232,323 @@ function executeOrder(o, fP) {
 }
 
 window.settle = function(id) {
-    const idx = gameState.units.findIndex(u => u.id === id); if (idx === -1) return;
-    const u = gameState.units[idx]; const city = CITIES[u.city];
+    const idx = gameState.units.findIndex(u => u.id === id); 
+    if (idx === -1) return;
+    const u = gameState.units[idx]; 
+    const city = CITIES[u.city];
     const validPrice = window.safeNum(city.price, city.basePrice);
     
     const vol = validPrice * u.qty * 1000;
     const isDayTrade = u.entryDate === getTaiwanTimeStr();
-    const tax = vol * (isDayTrade ? 0.0015 : TAX_RATE), fee = vol * FEE_RATE;
-    const pnl = calcProfit(u.side, u.cost, validPrice, u.qty);
     
+    // 獨立軍費計算
+    const tax = vol * (isDayTrade ? 0.0015 : TAX_RATE);
+    const fee = vol * FEE_RATE;
+    
+    // 多空損益分離計算
+    const pnl = u.side === 'LONG' 
+        ? (validPrice - u.cost) * u.qty * 1000 - tax - fee
+        : (u.cost - validPrice) * u.qty * 1000 - tax - fee;
+    
+    // 結清餘額
     gameState.balance += (u.cost * u.qty * 1000) + pnl; 
-    if(!isSimMode) { gameState.taxTotal += (tax + fee); gameState.realizedPnl += pnl; }
+    
+    if(!isSimMode) { 
+        gameState.realizedPnl += pnl; 
+    }
     
     const rep = { ...u, exit: validPrice, eTax: tax, eFee: fee, pnl, isDayTrade };
-    gameState.history.unshift(rep); gameState.units.splice(idx,1);
+    gameState.history.unshift(rep); 
+    gameState.units.splice(idx,1);
     
     if(u.city === gameState.activeCity) removePlayerTroop(u.side);
-    saveState(); window.showWarReport(rep); updateUI();
+    
+    saveState(); 
+    window.showWarReport(rep); 
+    updateUI();
 };
 
 window.cancelOrder = function(id) {
-    const idx = gameState.pending.findIndex(o => o.id === id); if (idx === -1) return;
+    const idx = gameState.pending.findIndex(o => o.id === id); 
+    if (idx === -1) return;
     const o = gameState.pending[idx];
-    gameState.balance += window.safeNum(o.totalCost); gameState.frozen -= window.safeNum(o.totalCost);
-    gameState.pending.splice(idx, 1); window.showMsg("撤回軍令 資金歸庫"); saveState(); updateUI();
+    
+    gameState.balance += window.safeNum(o.totalCost); 
+    gameState.frozen -= window.safeNum(o.totalCost);
+    gameState.pending.splice(idx, 1); 
+    
+    window.showMsg("撤回軍令 資金歸庫"); 
+    saveState(); 
+    updateUI();
 };
 
+function calcEMA(data, period) {
+    if(data.length === 0) return [];
+    let k = 2 / (period + 1), ema = [data[0]];
+    for(let i=1; i<data.length; i++) ema.push(data[i] * k + ema[i-1] * (1-k));
+    return ema;
+}
+
+function calcSMA(data, period) {
+    let sma = [];
+    for(let i=0; i<data.length; i++) {
+        if(i < period - 1) { sma.push(data[i]); continue; }
+        let sum = 0; 
+        for(let j=0; j<period; j++) sum += data[i-j];
+        sma.push(sum/period);
+    }
+    return sma;
+}
+
+function calcMACD(data) {
+    if(data.length < 26) return { macd: [], signal: [], hist: [] };
+    let ema12 = calcEMA(data, 12); 
+    let ema26 = calcEMA(data, 26);
+    let macd = ema12.map((v, i) => v - ema26[i]);
+    let signal = calcEMA(macd, 9);
+    let hist = macd.map((v, i) => v - signal[i]);
+    return { macd, signal, hist };
+}
+
+function calcRSI(data, period) {
+    if(data.length < period) return new Array(data.length).fill(50);
+    let rsi = []; 
+    let gains = 0, losses = 0;
+    
+    for(let i=1; i<=period; i++) {
+        let diff = data[i] - data[i-1];
+        if(diff >= 0) gains += diff; else losses -= diff;
+    }
+    
+    let avgGain = gains/period, avgLoss = losses/period;
+    rsi.push(100 - (100 / (1 + (avgLoss === 0 ? 999 : avgGain/avgLoss))));
+    
+    for(let i=period+1; i<data.length; i++) {
+        let diff = data[i] - data[i-1];
+        avgGain = (avgGain * (period-1) + (diff>=0?diff:0)) / period;
+        avgLoss = (avgLoss * (period-1) + (diff<0?-diff:0)) / period;
+        let rs = avgLoss === 0 ? 999 : avgGain/avgLoss;
+        rsi.push(100 - (100 / (1 + rs)));
+    }
+    return new Array(period).fill(50).concat(rsi);
+}
+
+function calcKD(data, period = 9) {
+    if(data.length < period) return { k: new Array(data.length).fill(50), d: new Array(data.length).fill(50) };
+    let k = [], d = [], prevK = 50, prevD = 50;
+    
+    for(let i=0; i<data.length; i++) {
+        let start = Math.max(0, i - period + 1);
+        let slice = data.slice(start, i+1);
+        let high = Math.max(...slice), low = Math.min(...slice);
+        let rsv = (high === low) ? 50 : ((data[i] - low) / (high - low)) * 100;
+        let currK = (2/3)*prevK + (1/3)*rsv; 
+        let currD = (2/3)*prevD + (1/3)*currK;
+        k.push(currK); d.push(currD); 
+        prevK = currK; prevD = currD;
+    }
+    return { k, d };
+}
+
+function calcBIAS(data, period) {
+    if(data.length < period) return new Array(data.length).fill(0);
+    let sma = calcSMA(data, period);
+    return data.map((v, i) => sma[i] > 0 ? ((v - sma[i]) / sma[i]) * 100 : 0);
+}
+
+window.fetchFullChartData = async function() {
+    if(isSimMode) return; 
+    const cityCode = gameState.activeCity; 
+    const city = CITIES[cityCode]; 
+    if (!city) return;
+    
+    const map = { "1m":{i:"1m",r:"1d"}, "5m":{i:"5m",r:"5d"}, "15m":{i:"15m",r:"5d"}, "30m":{i:"30m",r:"1mo"}, "60m":{i:"60m",r:"1mo"}, "1d":{i:"1d",r:"6mo"}, "1wk":{i:"1wk",r:"2y"}, "1mo":{i:"1mo",r:"5y"} };
+    const prm = map[gameState.timeframe] || map["1d"];
+    
+    try {
+        const ySym = /^\d{4}$/.test(cityCode) ? cityCode + '.TW' : cityCode;
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ySym}?interval=${prm.i}&range=${prm.r}`;
+        let data = null;
+        
+        try {
+            const res = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(url)}`);
+            if (res.ok) data = await res.json();
+        } catch(e) {
+            const res2 = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
+            if (res2.ok) data = await res2.json();
+        }
+        
+        // 嚴密防呆過濾
+        if (data?.chart?.result?.[0]) {
+            const result = data.chart.result[0];
+            const meta = result.meta;
+            let fetchedBase = meta.previousClose;
+            
+            const timestamps = result.timestamp || [];
+            const quote = result.indicators.quote[0] || {};
+            let ohlcData = [];
+            
+            for(let i=0; i<timestamps.length; i++) {
+                if (quote.close[i] !== null && quote.close[i] !== undefined) {
+                    let o = window.safeNum(quote.open[i], fetchedBase);
+                    let h = window.safeNum(quote.high[i], fetchedBase);
+                    let l = window.safeNum(quote.low[i], fetchedBase);
+                    let c = window.safeNum(quote.close[i], fetchedBase);
+                    let v = window.safeNum(quote.volume[i], 0);
+                    if (c > 0) {
+                        ohlcData.push({ x: timestamps[i] * 1000, o, h, l, c, v });
+                    }
+                }
+            }
+            if(ohlcData.length > 0) city.chartData[gameState.timeframe] = ohlcData;
+        }
+    } catch(e) {}
+    
+    if(!city.chartData || !city.chartData[gameState.timeframe] || city.chartData[gameState.timeframe].length < 10) {
+        if(city.basePrice > 0) initKbars(city);
+    }
+
+    if(!document.getElementById('chart-page').classList.contains('hidden')) window.renderChartInstance();
+};
+
+window.renderChartInstance = function() {
+    const city = CITIES[gameState.activeCity]; 
+    if(!city || !city.chartData[gameState.timeframe]) return;
+    
+    const rawData = city.chartData[gameState.timeframe];
+    if (rawData.length < 10) return;
+    
+    // 使用分類軸強制連貫
+    const labels = rawData.map(d => {
+        const date = new Date(d.x);
+        return gameState.timeframe.includes('m') ? date.toLocaleTimeString('zh-TW', {hour: '2-digit', minute:'2-digit'}) : date.toLocaleDateString('zh-TW', {month:'2-digit', day:'2-digit'});
+    });
+    
+    const candleData = rawData.map((d, i) => ({ x: labels[i], o: d.o, h: d.h, l: d.l, c: d.c }));
+    const twColors = { up: 'rgba(239, 68, 68, 1)', down: 'rgba(34, 197, 94, 1)', unchanged: 'rgba(156, 163, 175, 1)' };
+
+    const ctxMain = document.getElementById('mainChartCanvas').getContext('2d');
+    if(mainChart) mainChart.destroy();
+    
+    mainChart = new Chart(ctxMain, {
+        type: 'candlestick',
+        data: { datasets: [{ label: 'Price', data: candleData, color: twColors, borderColor: twColors }] },
+        options: { 
+            animation: false, 
+            responsive: true, 
+            maintainAspectRatio: false, 
+            plugins: { legend: { display: false } }, 
+            scales: { 
+                x: { type: 'category', display: false, labels: labels }, 
+                y: { position: 'right', grid: { color: 'rgba(255,255,255,0.1)' } } 
+            } 
+        }
+    });
+
+    const ctxVol = document.getElementById('volumeChartCanvas').getContext('2d');
+    if(volChart) volChart.destroy();
+    
+    const volumeColors = rawData.map(d => d.c >= d.o ? 'rgba(239, 68, 68, 0.7)' : 'rgba(34, 197, 94, 0.7)');
+    volChart = new Chart(ctxVol, {
+        type: 'bar',
+        data: { 
+            labels: labels, 
+            datasets: [{ data: rawData.map(d => d.v), backgroundColor: volumeColors, barPercentage: 0.8 }] 
+        },
+        options: { 
+            animation: false,
+            responsive: true, 
+            maintainAspectRatio: false, 
+            plugins: { legend: { display: false } }, 
+            scales: { 
+                x: { type: 'category', display: false }, 
+                y: { position: 'right', grid: { display: false }, ticks: { display: false } } 
+            } 
+        }
+    });
+
+    const ctxInd = document.getElementById('indicatorChartCanvas').getContext('2d');
+    if(indChart) indChart.destroy();
+    
+    const closePrices = rawData.map(d => d.c);
+    let datasets = [];
+    const activeInd = gameState.activeIndicator;
+    
+    if (activeInd === "MACD") {
+        const { macd, signal, hist } = calcMACD(closePrices);
+        datasets = [
+            { type: 'bar', label: 'Hist', data: hist, backgroundColor: hist.map(v => v >= 0 ? 'rgba(239,68,68,0.6)' : 'rgba(34,197,94,0.6)') },
+            { type: 'line', label: 'MACD 快線', data: macd, borderColor: '#fff', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
+            { type: 'line', label: 'Signal 慢線', data: signal, borderColor: '#facc15', borderWidth: 1.5, pointRadius: 0, tension: 0.2 }
+        ];
+    } else if (activeInd === "KD") {
+        const { k, d } = calcKD(closePrices);
+        datasets = [
+            { type: 'line', label: 'K', data: k, borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
+            { type: 'line', label: 'D', data: d, borderColor: '#fb923c', borderWidth: 1.5, pointRadius: 0, tension: 0.2 }
+        ];
+    } else if (activeInd === "RSI") {
+        const rsi5 = calcRSI(closePrices, 5);
+        const rsi10 = calcRSI(closePrices, 10);
+        datasets = [ 
+            { type: 'line', label: 'RSI 5T', data: rsi5, borderColor: '#c084fc', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
+            { type: 'line', label: 'RSI 10T', data: rsi10, borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0, tension: 0.2 }
+        ];
+    } else if (activeInd === "BIAS") {
+        const bias5 = calcBIAS(closePrices, 5);
+        const bias10 = calcBIAS(closePrices, 10);
+        const bias20 = calcBIAS(closePrices, 20);
+        datasets = [ 
+            { type: 'line', label: 'BIAS 5T', data: bias5, borderColor: '#fff', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
+            { type: 'line', label: 'BIAS 10T', data: bias10, borderColor: '#facc15', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
+            { type: 'line', label: 'BIAS 20T', data: bias20, borderColor: '#ec4899', borderWidth: 1.5, pointRadius: 0, tension: 0.2 }
+        ];
+    }
+
+    indChart = new Chart(ctxInd, {
+        data: { labels: labels, datasets: datasets },
+        options: { 
+            animation: false,
+            responsive: true, 
+            maintainAspectRatio: false, 
+            plugins: { legend: { display: true, position: 'top', labels: { color: '#ccc', font: { size: 9 } } } }, 
+            scales: { x: { type: 'category', display: false }, y: { position: 'right', grid: { color: 'rgba(255,255,255,0.1)' } } } 
+        }
+    });
+};
+
+window.setIndicator = function(ind) {
+    gameState.activeIndicator = ind; 
+    document.querySelectorAll('.ind-btn').forEach(b => b.classList.remove('active')); 
+    document.getElementById(`btn-ind-${ind}`).classList.add('active');
+    window.renderChartInstance();
+};
+
+window.openChartPage = function() {
+    document.getElementById('main-ui').classList.add('hidden');
+    document.getElementById('chart-city-name').innerText = CITIES[gameState.activeCity]?.name || "未知城池";
+    const p = document.getElementById('chart-page'); 
+    p.classList.remove('hidden');
+    setTimeout(() => { p.classList.remove('translate-y-full'); window.fetchFullChartData(); }, 10);
+};
+
+window.closeChartPage = function() {
+    const p = document.getElementById('chart-page'); 
+    p.classList.add('translate-y-full');
+    setTimeout(() => { p.classList.add('hidden'); document.getElementById('main-ui').classList.remove('hidden'); }, 300);
+};
+
+window.setTimeframe = function(tf) {
+    gameState.timeframe = tf; 
+    document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active')); 
+    document.getElementById(`tf-${tf}`).classList.add('active');
+    window.showMsg(`資料頻率切換至 ${tf}`); 
+    window.fetchFullChartData();
+};
+
+// ==========================================
+// 7. 結算與報表顯示更新
+// ==========================================
 window.showWarReport = function(d) {
     const color = d.pnl >= 0 ? 'result-positive' : 'result-negative';
     const tag1 = d.isSim ? '<span class="bg-sky-500/20 text-sky-400 px-1.5 py-0.5 rounded text-[10px] ml-1 border border-sky-500/30 tracking-widest">沙盤推演</span>' : '';
@@ -1309,7 +1563,7 @@ window.showWarReport = function(d) {
             <div class="col-span-2 border-t border-white/10 pt-3 flex flex-col items-center"><span class="text-[9px] text-gray-500 tracking-widest mb-1">離場稅費貢獻</span><span class="font-mono text-base text-gray-400">${Math.floor(window.safeNum(d.eTax)+window.safeNum(d.eFee)).toLocaleString()}</span></div>
         </div>
         <div class="mt-5 p-5 bg-gradient-to-b from-white/10 to-transparent rounded-2xl text-center border border-white/5 shadow-inner">
-            <div class="text-[10px] text-gray-400 uppercase font-black tracking-widest mb-1">本次戰果</div>
+            <div class="text-[10px] text-gray-400 uppercase font-black tracking-widest mb-1">本次淨戰果</div>
             <div class="text-3xl font-black ${color} drop-shadow-md">${d.pnl>=0?'加':'減'} ${Math.abs(Math.floor(window.safeNum(d.pnl,0))).toLocaleString()}</div>
         </div>`;
     document.getElementById('report-modal').classList.remove('opacity-0','pointer-events-none');
@@ -1327,7 +1581,7 @@ window.showDailySummary = function() {
             const c = CITIES[u.city];
             if(c) {
                 const cp = window.safeNum(c.price, c.basePrice);
-                realUnrealized += calcProfit(u.side, u.cost, cp, u.qty);
+                realUnrealized += (u.side==='LONG' ? (cp - u.cost) : (u.cost - cp)) * u.qty * 1000;
             }
         }
     });
@@ -1339,7 +1593,6 @@ window.showDailySummary = function() {
             <div class="flex justify-between border-b border-white/10 pb-2"><span class="text-gray-400 font-bold tracking-widest">平均勝率</span><span class="text-yellow-500 font-mono drop-shadow-md">${rate.toFixed(1)} %</span></div>
             <div class="flex justify-between border-b border-white/10 pb-2"><span class="text-gray-400 font-bold tracking-widest">未實現戰果</span><span class="font-mono font-bold ${realUnrealized>=0?'text-red-400':'text-green-400'}">${Math.floor(realUnrealized).toLocaleString()}</span></div>
             <div class="flex justify-between border-b border-white/10 pb-2"><span class="text-gray-400 font-bold tracking-widest">已實現戰果</span><span class="font-mono font-bold ${gameState.realizedPnl>=0?'text-red-500':'text-green-500'}">${Math.floor(window.safeNum(gameState.realizedPnl,0)).toLocaleString()}</span></div>
-            <div class="flex justify-between pt-1"><span class="text-purple-300 font-bold tracking-widest">累計貢獻稅費</span><span class="text-purple-400 font-mono font-black drop-shadow-md">${Math.floor(window.safeNum(gameState.taxTotal,0)).toLocaleString()}</span></div>
         </div>`;
     document.getElementById('report-modal').classList.remove('opacity-0','pointer-events-none');
     document.getElementById('modal-window').classList.replace('scale-95', 'scale-100');
@@ -1348,13 +1601,6 @@ window.showDailySummary = function() {
 window.closeModal = function() { 
     document.getElementById('report-modal').classList.add('opacity-0','pointer-events-none'); 
     document.getElementById('modal-window').classList.replace('scale-100', 'scale-95'); 
-};
-
-window.openApiSettings = function() { document.getElementById('api-modal').classList.remove('opacity-0', 'pointer-events-none'); document.getElementById('api-key-input').value = USER_API_KEY; };
-window.closeApiSettings = function() { document.getElementById('api-modal').classList.add('opacity-0', 'pointer-events-none'); };
-window.saveApiKey = function() { 
-    USER_API_KEY = String(document.getElementById('api-key-input').value).trim().replace(/[^a-zA-Z0-9_\-]/g, ''); 
-    localStorage.setItem('abula_api_key', USER_API_KEY); closeApiSettings(); window.showMsg("設定已儲存"); fetchRealMarketData(); 
 };
 
 window.openCustomManager = function() { document.getElementById('custom-modal').classList.remove('opacity-0', 'pointer-events-none'); renderCustomList(); };
@@ -1371,30 +1617,40 @@ window.addCustomStock = function() {
 };
 window.removeCustomStock = function(sym) {
     const idx = SECTORS["CUSTOM"].cities.indexOf(sym);
-    if (idx > -1) { SECTORS["CUSTOM"].cities.splice(idx, 1); localStorage.setItem('abula_custom_stocks', JSON.stringify(SECTORS["CUSTOM"].cities.map(s => ({ symbol: s, name: CITIES[s].name })))); window.showMsg(`已移出 ${sym}`); renderCustomList(); }
+    if (idx > -1) {
+        SECTORS["CUSTOM"].cities.splice(idx, 1);
+        localStorage.setItem('abula_custom_stocks', JSON.stringify(SECTORS["CUSTOM"].cities.map(s => ({ symbol: s, name: CITIES[s].name }))));
+        window.showMsg(`已移出 ${sym}`); renderCustomList();
+    }
 };
+
 function renderCustomList() {
     const list = document.getElementById('custom-stock-list'); list.innerHTML = '';
     SECTORS["CUSTOM"].cities.forEach(sym => {
-        list.innerHTML += `<div class="flex justify-between items-center bg-black/40 p-2.5 rounded-lg border border-white/5"><div class="flex flex-col"><span class="text-xs font-bold text-yellow-500">${sym}</span><span class="text-[10px] text-gray-400 mt-0.5">${CITIES[sym].name}</span></div><button onclick="window.removeCustomStock('${sym}')" class="text-[10px] bg-red-900/50 hover:bg-red-800 border border-red-500/30 px-3 py-1.5 rounded-md text-red-200 transition-colors cursor-pointer">移除</button></div>`;
+        list.innerHTML += `<div class="flex justify-between items-center bg-black/40 p-2.5 rounded-lg border border-white/5"><div class="flex flex-col"><span class="text-xs font-bold text-yellow-500">${sym}</span><span class="text-[10px] text-gray-400 mt-0.5">${CITIES[sym].name}</span></div><button onclick="removeCustomStock('${sym}')" class="text-[10px] bg-red-900/50 hover:bg-red-800 border border-red-500/30 px-3 py-1.5 rounded-md text-red-200 transition-colors cursor-pointer">移除</button></div>`;
     });
 }
 
 window.switchTab = function(t) {
-    gameState.currentTab = t; document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.getElementById(`tab-${t}`).classList.add('active');
+    gameState.currentTab = t; 
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); 
+    document.getElementById(`tab-${t}`).classList.add('active');
     ['units','history','pending'].forEach(x => { const el = document.getElementById(`tab-content-${x}`); if(el) el.classList.add('hidden'); });
-    const content = document.getElementById(`tab-content-${t}`); if(content) content.classList.remove('hidden'); updateUI();
+    const content = document.getElementById(`tab-content-${t}`); if(content) content.classList.remove('hidden'); 
+    updateUI();
 };
 
 function updateUI() {
     const city = CITIES[gameState.activeCity]; if(!city) return;
+    
+    // 無時無刻更新當下股價顯示，包含沙盤模式
+    document.getElementById('market-price').innerText = window.safeNum(currentPrice).toFixed(2);
+
     document.getElementById('user-balance').innerText = Math.floor(window.safeNum(gameState.balance)).toLocaleString();
     document.getElementById('frozen-balance').innerText = `凍結 ${Math.floor(window.safeNum(gameState.frozen)).toLocaleString()}`;
     
     const activeBasePrice = isSimMode ? window.safeNum(city.simBasePrice, city.basePrice) : window.safeNum(city.basePrice, 100);
     document.getElementById('base-price-display').innerText = activeBasePrice.toFixed(2);
-    
-    if (!isSimMode) document.getElementById('market-price').innerText = window.safeNum(currentPrice).toFixed(2);
     
     const pct = activeBasePrice > 0 ? ((window.safeNum(currentPrice, activeBasePrice) - activeBasePrice)/activeBasePrice*100) : 0;
     const elPct = document.getElementById('price-change');
@@ -1405,8 +1661,12 @@ function updateUI() {
     gameState.units.forEach(u => { 
         const c = CITIES[u.city];
         if (c) {
+            // 淨利計算：(差價 * 數量) - 軍費
             const cp = window.safeNum(c.price, c.basePrice);
-            const profit = calcProfit(u.side, u.cost, cp, u.qty);
+            const rawProfit = (u.side==='LONG' ? (cp - u.cost) : (u.cost - cp)) * u.qty * 1000;
+            const fees = (cp * u.qty * 1000) * (FEE_RATE + TAX_RATE);
+            const profit = rawProfit - fees;
+            
             if (u.isSim) simUnrealized += profit; else realUnrealized += profit;
         }
     });
@@ -1429,13 +1689,17 @@ function updateUI() {
         }
     }
     
+    renderLists();
+}
+
+function renderLists() {
     const cont = document.getElementById(`tab-content-${gameState.currentTab}`); if(!cont) return; cont.innerHTML = '';
     
     if(gameState.currentTab === 'units'){
         if(gameState.units.length === 0) {
             cont.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-8 font-bold tracking-widest">目前無駐紮部隊</div>';
         } else {
-            // 加權平均整編邏輯
+            // 聚合整編計算
             const grouped = {};
             gameState.units.forEach(u => {
                 if(!grouped[u.city]) grouped[u.city] = { totalQty: 0, weightedCost: 0, items: [] };
@@ -1445,24 +1709,38 @@ function updateUI() {
             });
 
             for(let cityCode in grouped) {
-                const g = grouped[cityCode]; const avgCost = g.weightedCost / g.totalQty;
-                const totalProfit = g.items.reduce((sum, u) => sum + calcProfit(u.side, u.cost, currentPrice, u.qty), 0);
+                const g = grouped[cityCode]; 
+                const avgCost = g.weightedCost / g.totalQty;
+                const totalProfit = g.items.reduce((sum, u) => {
+                    const c = CITIES[u.city];
+                    const cp = c ? window.safeNum(c.price, c.basePrice) : window.safeNum(u.entry, 0);
+                    const rawP = (u.side==='LONG' ? (cp - u.cost) : (u.cost - cp)) * u.qty * 1000;
+                    const fee = (cp * u.qty * 1000) * (FEE_RATE + TAX_RATE);
+                    return sum + (rawP - fee);
+                }, 0);
+                
                 cont.innerHTML += `<div class="bg-black/60 p-3 rounded-xl border-l-4 border-yellow-500 mb-2 shadow-lg">
-                    <div class="flex justify-between items-center mb-1"><strong class="text-yellow-400">${CITIES[cityCode].name} 整編戰報</strong><span class="text-[10px] bg-white/10 px-2 rounded">${g.totalQty.toFixed(1)} 營</span></div>
-                    <div class="flex justify-between text-[11px] text-gray-400 mb-1"><span>權重均價成本</span><span class="text-white">${avgCost.toFixed(2)}</span></div>
-                    <div class="flex justify-between text-sm font-black"><span>淨利戰功</span><span class="${totalProfit>=0?'text-red-400':'text-green-400'}">${Math.floor(totalProfit).toLocaleString()}</span></div>
+                    <div class="flex justify-between items-center mb-1">
+                        <strong class="text-yellow-400">${CITIES[cityCode].name} 整編戰報</strong>
+                        <span class="text-[10px] bg-white/10 px-2 rounded">${g.totalQty.toFixed(1)} 營</span>
+                    </div>
+                    <div class="flex justify-between text-[11px] text-gray-400 mb-1">
+                        <span>權重均價 (不含費)</span>
+                        <span class="text-white">${avgCost.toFixed(2)}</span>
+                    </div>
+                    <div class="flex justify-between text-sm font-black">
+                        <span>預估淨利</span>
+                        <span class="${totalProfit>=0?'text-red-400':'text-green-400'}">${Math.floor(totalProfit).toLocaleString()}</span>
+                    </div>
                 </div>`;
 
                 g.items.forEach(u => {
                     const c = CITIES[u.city]; 
                     const m = c ? window.safeNum(c.price, c.basePrice) : window.safeNum(u.entry, 0);
                     const costVal = window.safeNum(u.cost);
-                    const principal = costVal * u.qty * 1000;
-                    
-                    const p = calcProfit(u.side, costVal, m, u.qty);
-                    const roi = principal > 0 ? (p / principal) * 100 : 0;
-                    const roiStr = roi >= 0 ? `+${roi.toFixed(2)} %` : `${roi.toFixed(2)} %`;
-                    const totalValue = principal + p; 
+                    const rawP = (u.side==='LONG' ? (m - costVal) : (costVal - m)) * u.qty * 1000;
+                    const fee = (m * u.qty * 1000) * (FEE_RATE + TAX_RATE);
+                    const p = rawP - fee;
                     
                     const tag = u.isSim ? '<span class="bg-sky-500/20 border border-sky-500/30 text-sky-400 px-1.5 py-0.5 rounded text-[8px] ml-1 tracking-widest">沙盤推演</span>' : '';
                     
@@ -1478,27 +1756,21 @@ function updateUI() {
                                 <div class="text-[10px] text-gray-400 tracking-widest">派遣 <span class="text-white font-mono">${window.safeNum(u.qty).toFixed(1)}</span> 營</div>
                             </div>
                             <div class="text-right flex flex-col items-end">
-                                <span class="text-[9px] text-gray-500 tracking-widest mb-0.5">未實現淨利戰功</span>
+                                <span class="text-[9px] text-gray-500 tracking-widest mb-0.5">預估淨利</span>
                                 <div class="text-sm md:text-base font-black font-mono ${p>=0?'text-red-500':'text-green-500'}">${p>=0?'加':'減'} ${Math.abs(Math.floor(window.safeNum(p))).toLocaleString()}</div>
-                                <div class="text-[10px] font-bold ${p>=0?'text-red-400':'text-green-400'}">${roiStr}</div>
                             </div>
                         </div>
                         <div class="flex justify-between text-[10px] mb-3 px-1">
                             <div class="flex flex-col">
-                                <span class="text-gray-500 tracking-widest mb-0.5">均價成本</span>
+                                <span class="text-gray-500 tracking-widest mb-0.5">進場單價</span>
                                 <span class="text-gray-200 font-mono">${costVal.toFixed(2)}</span>
                             </div>
-                            <div class="flex flex-col text-center">
-                                <span class="text-gray-500 tracking-widest mb-0.5">目前市價</span>
-                                <span class="text-gray-200 font-mono">${m.toFixed(2)}</span>
-                            </div>
                             <div class="flex flex-col text-right">
-                                <span class="text-gray-500 tracking-widest mb-0.5">帳面戰力</span>
-                                <span class="text-gray-200 font-mono">${Math.floor(totalValue).toLocaleString()}</span>
+                                <span class="text-gray-500 tracking-widest mb-0.5">預扣軍費</span>
+                                <span class="text-gray-200 font-mono">${Math.floor(fee).toLocaleString()}</span>
                             </div>
                         </div>
                         <div class="text-right">
-                            <span class="text-[8px] text-gray-500 mr-2">軍費另於結算扣除</span>
                             <button onclick="window.settle(${u.id})" class="text-[10px] bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 rounded-lg transition-colors font-bold text-gray-300 tracking-widest cursor-pointer">結算撤軍</button>
                         </div>
                     </div>`;
@@ -1509,25 +1781,32 @@ function updateUI() {
         if(gameState.history.length === 0) cont.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-8 font-bold tracking-widest">尚無作戰紀錄</div>';
         gameState.history.slice(0, 15).forEach(h => {
             const tag = h.isSim ? '<span class="text-sky-400 font-bold">沙盤</span>' : '<span class="text-gray-400 font-bold">實戰</span>';
-            cont.innerHTML += `<div class="bg-black/30 rounded-lg p-3 border-r-2 border-gray-600 text-right text-[10px] mb-2 opacity-80 shadow-inner">
+            cont.innerHTML += `<div class="bg-black/30 rounded-lg p-2.5 border-r-2 border-gray-600 text-right text-[10px] mb-2 opacity-80">
                 <span class="text-gray-500 font-mono tracking-tighter mr-2">${h.time}</span>
                 <span class="text-gray-300 mr-2">${CITIES[h.city]?.name || h.city}</span>
-                ${tag} <span class="font-mono font-bold text-[11px] ${h.pnl>=0?'text-red-400':'text-green-400'} ml-2">${Math.floor(window.safeNum(h.pnl)).toLocaleString()}</span>
+                ${tag} <span class="font-mono font-bold ${h.pnl>=0?'text-red-400':'text-green-400'} ml-1">${Math.floor(window.safeNum(h.pnl)).toLocaleString()}</span>
             </div>`;
         });
     } else if(gameState.currentTab === 'pending'){
         if(gameState.pending.length === 0) cont.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-8 font-bold tracking-widest">無待命軍令</div>';
         gameState.pending.forEach(o => {
-            const tag = o.isSim ? '<span class="bg-sky-500/20 border border-sky-500/30 text-sky-400 px-1.5 py-0.5 rounded text-[8px] ml-2">沙盤推演</span>' : '';
+            const tag = o.isSim ? '<span class="bg-sky-500/20 border border-sky-500/30 text-sky-400 px-1.5 py-0.5 rounded text-[8px] ml-1">沙盤推演</span>' : '';
             cont.innerHTML += `<div class="bg-black/40 rounded-xl p-3 border-r-4 border-gray-500 text-right mb-2 flex justify-between items-center shadow-inner">
                 <button onclick="window.cancelOrder(${o.id})" class="text-[10px] bg-red-900/30 hover:bg-red-800/50 border border-red-500/30 text-red-300 px-3 py-1.5 rounded-lg transition-colors font-bold cursor-pointer">撤回</button>
-                <div class="text-[11px] text-gray-300 font-bold">${CITIES[o.city]?.name || o.city} <span class="text-gray-500 ml-1 text-[9px] tracking-widest">待命價</span> <span class="font-mono text-sm">${window.safeNum(o.price).toFixed(2)}</span> ${tag}</div>
+                <div class="text-[11px] text-gray-300 font-bold">${CITIES[o.city]?.name || o.city} <span class="text-gray-500 ml-1 text-[9px]">待命價</span> <span class="font-mono">${window.safeNum(o.price).toFixed(2)}</span> ${tag}</div>
             </div>`;
         });
     }
 }
 
-window.onload = () => { loadState(); init3D(); window.switchSector("SEMICON"); startMarketPolling(); setInterval(localTick, 1000); updateOrderButtonsUI(); };
+window.onload = () => { 
+    loadState(); 
+    init3D(); 
+    window.switchSector("SEMICON"); 
+    startMarketPolling(); 
+    setInterval(localTick, 1000); 
+    updateOrderButtonsUI(); 
+};
 </script>
 </body>
 </html>
