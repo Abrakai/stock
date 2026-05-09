@@ -185,7 +185,7 @@
         <div class="w-full flex-none flex flex-col md:flex-row gap-2 justify-between items-start">
             <div id="main-dashboard" class="glass rounded-xl p-3 w-full md:w-[26rem] shadow-lg transition-all duration-500">
                 <div class="flex justify-between items-center mb-2">
-                    <span id="market-status-label" class="text-[10px] md:text-xs text-yellow-400 font-bold uppercase tracking-widest bg-yellow-500/20 px-2 py-1 rounded border border-yellow-500/30">判讀時區中</span>
+                    <span id="market-status-label" class="text-[10px] md:text-xs text-yellow-400 font-bold uppercase tracking-widest bg-yellow-500/20 px-2 py-1 rounded border border-yellow-500/30">系統啟動中</span>
                     <div class="flex gap-1.5">
                         <button onclick="window.toggleSimMode()" id="sim-btn" class="hidden bg-sky-600 hover:bg-sky-500 px-2.5 py-1.5 rounded text-[10px] text-white font-bold tracking-widest shadow-[0_0_10px_rgba(2,132,199,0.5)] transition-all cursor-pointer">啟動沙盤</button>
                         <button onclick="window.openChartPage()" class="bg-white/10 hover:bg-white/20 border border-white/20 px-2.5 py-1.5 rounded text-[10px] text-white font-bold tracking-widest transition-all cursor-pointer">軍師圖表</button>
@@ -226,10 +226,19 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- 天道國庫顯示區 -->
+            <div class="glass rounded-xl p-3 md:p-4 w-full md:w-auto border-purple-500/30 flex justify-between items-center hidden md:flex flex-col items-end">
+                <div class="text-right">
+                    <div class="text-[10px] text-purple-400 font-bold uppercase tracking-widest mb-1">天道國庫總餘額</div>
+                    <div id="treasury-balance-display" class="text-lg md:text-xl font-mono font-black text-yellow-400">讀取中</div>
+                </div>
+                <button onclick="window.openApiSettings()" class="mt-2 bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer">連線金鑰</button>
+            </div>
         </div>
 
         <!-- 中央戰區 (高度解鎖，保持視窗穿透力) -->
-        <div class="flex-1 min-h-[40vh] w-full pointer-events-none"></div>
+        <div class="flex-1 min-h-[35vh] md:min-h-[40vh] w-full pointer-events-none"></div>
 
         <!-- 底部：軍令操作與報表區 -->
         <div class="w-full flex-none flex flex-col md:flex-row gap-2">
@@ -255,17 +264,17 @@
                         <input id="order-qty" type="number" value="1" min="1" class="border border-white/20 rounded-lg px-3 py-2 text-lg md:text-xl font-bold outline-none text-center text-white font-mono w-full">
                     </div>
                     <div class="flex flex-col flex-1">
-                        <span class="text-[10px] text-gray-400 font-bold uppercase mb-1 ml-1 tracking-widest">委託進場價</span>
+                        <span class="text-[10px] text-gray-400 font-bold uppercase mb-1 ml-1 tracking-widest">進場委託價</span>
                         <input id="order-price" type="number" step="0.5" placeholder="市價" class="border border-white/20 rounded-lg px-3 py-2 text-lg md:text-xl font-bold outline-none text-center text-white font-mono w-full">
                     </div>
                 </div>
                 <div class="flex gap-3 mt-1">
                     <button id="btn-long" onclick="window.issueOrder('LONG')" class="flex-1 bg-gradient-to-b from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 active:scale-95 transition-all rounded-xl py-3 md:py-4 flex flex-col items-center justify-center border-b-2 border-red-900 shadow-lg cursor-pointer">
-                        <span class="text-[10px] font-bold text-red-200 tracking-widest mb-0.5">護國多軍 (漲獲利)</span>
+                        <span class="text-[10px] font-bold text-red-200 tracking-widest mb-0.5">護國多軍</span>
                         <span id="btn-long-text" class="text-base md:text-xl font-black uppercase tracking-widest text-white drop-shadow-md">入城</span>
                     </button>
                     <button id="btn-short" onclick="window.issueOrder('SHORT')" class="flex-1 bg-gradient-to-b from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 active:scale-95 transition-all rounded-xl py-3 md:py-4 flex flex-col items-center justify-center border-b-2 border-green-900 shadow-lg cursor-pointer">
-                        <span class="text-[10px] font-bold text-green-200 tracking-widest mb-0.5">掠奪空軍 (跌獲利)</span>
+                        <span class="text-[10px] font-bold text-green-200 tracking-widest mb-0.5">掠奪空軍</span>
                         <span id="btn-short-text" class="text-base md:text-xl font-black uppercase tracking-widest text-white drop-shadow-md">攻掠</span>
                     </button>
                 </div>
@@ -279,7 +288,7 @@
     <div class="flex justify-between items-center p-3 border-b border-white/10 bg-gray-900/80 backdrop-blur-md">
         <div class="flex items-center gap-2">
             <div class="w-1 h-5 bg-yellow-500 rounded-full"></div>
-            <h2 class="text-base md:text-lg font-black text-white tracking-widest">軍師戰略室</h2>
+            <h2 class="text-base md:text-lg font-black text-white tracking-widest">軍師圖表分析</h2>
         </div>
         <div class="flex items-center gap-2">
             <span id="chart-realtime-price" class="text-yellow-400 font-mono font-bold text-sm">--</span>
@@ -301,15 +310,13 @@
             </div>
         </div>
         
-        <!-- 主圖：K線蠟燭圖 -->
         <div class="flex-1 min-h-[30vh] md:min-h-[40vh] bg-black/50 border border-white/10 p-2 rounded-xl relative flex flex-col shadow-inner">
-            <span class="text-[10px] text-gray-400 font-bold uppercase absolute top-2 left-3 z-10 tracking-widest">價格走勢 (紅漲綠跌)</span>
+            <span class="text-[10px] text-gray-400 font-bold uppercase absolute top-2 left-3 z-10 tracking-widest">價格走勢</span>
             <div class="flex-1 relative w-full h-full mt-4">
                 <canvas id="mainChartCanvas"></canvas>
             </div>
         </div>
 
-        <!-- 獨立成交量表 -->
         <div class="h-[12vh] min-h-[80px] bg-black/50 border border-white/10 p-2 rounded-xl relative flex flex-col shadow-inner">
             <span class="text-[10px] text-gray-400 font-bold uppercase absolute top-2 left-3 z-10 tracking-widest">成交量矩陣</span>
             <div class="flex-1 relative w-full h-full mt-3">
@@ -317,7 +324,6 @@
             </div>
         </div>
         
-        <!-- 副圖：技術指標切換區 -->
         <div class="h-[25vh] min-h-[150px] bg-black/50 border border-white/10 p-2 rounded-xl relative flex flex-col shadow-inner">
             <div class="flex gap-2 absolute top-2 left-3 z-10">
                 <button onclick="window.setIndicator('MACD')" id="btn-ind-MACD" class="ind-btn active">MACD</button>
@@ -369,7 +375,7 @@
 <div id="report-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300 p-4">
     <div id="modal-window" class="glass rounded-2xl p-6 w-full max-w-md border-purple-500/40 transform scale-95 transition-transform duration-300 shadow-[0_0_30px_rgba(168,85,247,0.15)]">
         <div id="modal-body"></div>
-        <button onclick="window.closeModal()" class="mt-6 w-full bg-purple-600 hover:bg-purple-500 py-3 rounded-xl font-black text-sm text-white shadow-lg transition-all active:scale-95 cursor-pointer tracking-widest">關閉報表</button>
+        <button onclick="window.closeModal()" class="mt-6 w-full bg-purple-600 hover:bg-purple-500 py-3 rounded-xl font-black text-sm text-white shadow-lg transition-all active:scale-95 cursor-pointer tracking-widest">關閉</button>
     </div>
 </div>
 
@@ -442,7 +448,6 @@ let apiPollingInterval = null;
 const MAX_PHALANX_SIZE = 50;
 const TAX_RATE = 0.003;
 const FEE_RATE = 0.001425;
-const GENERALS = ["神將關雲長", "猛將張翼德", "智將諸葛孔明", "龍騎趙子龍", "錦馬超", "神射黃漢升"];
 
 const SECTORS = {
     "SEMICON": { name: "半導體 領域", cities: ["2330", "2454", "2303"] },
@@ -471,6 +476,7 @@ let gameState = {
     frozen: 0, 
     realizedPnl: 0, 
     taxTotal: 0,
+    treasury: 100000000,
     activeSector: "SEMICON", 
     activeCity: "2330", 
     timeframe: "1d",
@@ -503,6 +509,7 @@ function loadState() {
             gameState.frozen = window.safeNum(parsed.frozen, 0);
             gameState.realizedPnl = window.safeNum(parsed.realizedPnl, 0);
             gameState.taxTotal = window.safeNum(parsed.taxTotal, 0);
+            gameState.treasury = window.safeNum(parsed.treasury, 100000000);
             gameState.pendingSimReward = window.safeNum(parsed.pendingSimReward, 0);
             gameState.activeSector = parsed.activeSector || "SEMICON";
             gameState.activeCity = parsed.activeCity || "2330";
@@ -525,7 +532,7 @@ function loadState() {
 
 /**
  * 會計演算核心：空軍與多軍淨利分離
- * 規費(手續費+交易稅)獨立運算，確保顯示純戰果
+ * 規費獨立運算，確保顯示純戰果
  */
 function calcProfit(side, entryPrice, currentMarketPrice, qty) {
     const diff = side === 'LONG' 
@@ -579,7 +586,6 @@ function createCastle(tier, season) {
         group.add(battlement);
     }
     
-    // 中高階武裝
     if (tier >= 3) {
         const towerMat = new THREE.MeshStandardMaterial({color: baseColor, roughness: 0.6, metalness: 0.4});
         for(let z of [-30, 30]) {
@@ -589,7 +595,6 @@ function createCastle(tier, season) {
         }
     }
     
-    // 科幻發光系統
     if (tier >= 4) {
         const glowColor = tier === 5 ? 0x00ffff : 0xffaa00; 
         const glowMat = new THREE.MeshStandardMaterial({color: glowColor, emissive: glowColor, emissiveIntensity: tier === 5 ? 3 : 1.5});
@@ -670,12 +675,12 @@ function createSoldier(colorHex, isPlayer, tier = 1, side = 'LONG') {
     body.position.y = 1.0 * sc; 
     group.add(body);
     
-    const headGeo = tier >= 4 ? new THREE.BoxGeometry(0.7*scale, 0.7*sc, 0.7*sc) : new THREE.DodecahedronGeometry(0.5*sc);
+    const headGeo = tier >= 4 ? new THREE.BoxGeometry(0.7*sc, 0.7*sc, 0.7*sc) : new THREE.DodecahedronGeometry(0.5*sc);
     const head = new THREE.Mesh(headGeo, mat); 
     head.position.y = 2.5 * sc; 
     group.add(head);
 
-    // 【重要修正】士兵面對面交鋒
+    // 士兵面對面交鋒
     group.rotation.y = side === 'LONG' ? -Math.PI/2 : Math.PI/2;
 
     if (isPlayer || tier >= 4) {
@@ -783,7 +788,6 @@ function rebuildEnvironment() {
         snowman.position.set(22, 0, 15);
         decorationsGroup.add(snowman);
         
-        // 積雪板塊
         for(let i=0; i<15; i++) {
             const patch = new THREE.Mesh(new THREE.CylinderGeometry(Math.random()*4+2, Math.random()*4+2, 0.1, 8), new THREE.MeshBasicMaterial({color: 0xdddddd}));
             patch.position.set((Math.random()-0.5)*100, 0.05, (Math.random()-0.5)*100);
@@ -802,7 +806,6 @@ function rebuildEnvironment() {
         scene.add(snowParticles);
         
     } else if (season === 'AUTUMN') {
-        // 落葉
         for(let i=0; i<60; i++) {
             const leaf = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, 0.6), new THREE.MeshBasicMaterial({color: Math.random() > 0.5 ? 0xc96b1e : 0x8b4513}));
             leaf.position.set(20 + Math.random()*40, 0.05, (Math.random()-0.5)*90);
@@ -814,7 +817,6 @@ function rebuildEnvironment() {
     
     [...baseRedArmy, ...baseGreenArmy].forEach(m => scene.remove(m)); baseRedArmy = []; baseGreenArmy = [];
     
-    // 建立市場掛單厚度陣型
     const cols = Math.floor(MAX_PHALANX_SIZE / 4);
     for(let i=0; i<MAX_PHALANX_SIZE; i++) {
         const r = Math.floor(i / cols);
@@ -857,8 +859,7 @@ function init3D() {
     camera.position.set(0, 35, 65); camera.lookAt(0, 5, 0);
 
     initParticles();
-    rebuildEnvironment();
-
+    
     window.addEventListener('resize', () => { 
         camera.aspect = window.innerWidth / window.innerHeight; 
         camera.updateProjectionMatrix(); 
@@ -870,7 +871,7 @@ function init3D() {
 
 function animate() {
     requestAnimationFrame(animate); 
-    TWEEN.update(); 
+    if (window.TWEEN) TWEEN.update(); 
     
     if(snowParticles) {
         const p = snowParticles.geometry.attributes.position.array;
@@ -924,7 +925,6 @@ function updateVisuals() {
     const p = window.safeNum(currentPrice, base);
     const diff = base > 0 ? (p - base) / base : 0;
     
-    // 掛單厚度模擬
     const redActiveCount = Math.floor(Math.min(MAX_PHALANX_SIZE, Math.max(5, (MAX_PHALANX_SIZE/2) + diff * 500)));
     const greenActiveCount = Math.floor(Math.min(MAX_PHALANX_SIZE, Math.max(5, (MAX_PHALANX_SIZE/2) - diff * 500)));
     
@@ -972,9 +972,8 @@ function triggerAttackAnim(side, magnitude = 1) {
 }
 
 // ==========================================
-// 4. 專業 Chart.js 金融圖表引擎 (含技術指標)
+// 4. 專業 Chart.js 金融圖表引擎 (多週期)
 // ==========================================
-
 function calcEMA(data, period) {
     if(data.length === 0) return [];
     let k = 2 / (period + 1), ema = [data[0]];
@@ -1054,7 +1053,6 @@ window.fetchFullChartData = async function() {
             if (res2.ok) data = await res2.json();
         }
         
-        // 嚴格過濾斷層，確保 K 線連貫
         if (data?.chart?.result?.[0]) {
             const result = data.chart.result[0];
             const meta = result.meta;
@@ -1081,7 +1079,9 @@ window.fetchFullChartData = async function() {
         if(city.basePrice > 0) initKbars(city);
     }
 
-    if(!document.getElementById('chart-page').classList.contains('hidden')) renderChartInstance();
+    if(document.getElementById('chart-page') && !document.getElementById('chart-page').classList.contains('hidden')) {
+        window.renderChartInstance();
+    }
 };
 
 window.renderChartInstance = function() {
@@ -1094,82 +1094,115 @@ window.renderChartInstance = function() {
         return gameState.timeframe.includes('m') ? date.toLocaleTimeString('zh-TW', {hour: '2-digit', minute:'2-digit'}) : date.toLocaleDateString('zh-TW', {month:'2-digit', day:'2-digit'});
     });
     
-    // Category 軸解決空白
     const candleData = rawData.map((d, i) => ({ x: labels[i], o: d.o, h: d.h, l: d.l, c: d.c }));
     const twColors = { up: 'rgba(239, 68, 68, 1)', down: 'rgba(34, 197, 94, 1)', unchanged: 'rgba(156, 163, 175, 1)' };
 
-    const ctxMain = document.getElementById('mainChartCanvas').getContext('2d');
-    if(mainChart) mainChart.destroy();
-    mainChart = new Chart(ctxMain, {
-        type: 'candlestick',
-        data: { datasets: [{ label: 'Price', data: candleData, color: twColors, borderColor: twColors }] },
-        options: { 
-            animation: false, 
-            responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, 
-            scales: { x: { type: 'category', display: false, labels: labels }, y: { position: 'right', grid: { color: 'rgba(255,255,255,0.1)' } } } 
-        }
-    });
-
-    const ctxVol = document.getElementById('volumeChartCanvas').getContext('2d');
-    if(volChart) volChart.destroy();
-    const volumeColors = rawData.map(d => d.c >= d.o ? 'rgba(239, 68, 68, 0.7)' : 'rgba(34, 197, 94, 0.7)');
-    volChart = new Chart(ctxVol, {
-        type: 'bar',
-        data: { labels: labels, datasets: [{ data: rawData.map(d => d.v), backgroundColor: volumeColors, barPercentage: 0.8 }] },
-        options: { 
-            animation: false,
-            responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, 
-            scales: { x: { type: 'category', display: false }, y: { position: 'right', grid: { display: false }, ticks: { display: false } } } 
-        }
-    });
-
-    const ctxInd = document.getElementById('indicatorChartCanvas').getContext('2d');
-    if(indChart) indChart.destroy();
-    
-    const closePrices = rawData.map(d => d.c);
-    let datasets = [];
-    const activeInd = gameState.activeIndicator;
-    
-    if (activeInd === "MACD") {
-        const { macd, signal, hist } = calcMACD(closePrices);
-        datasets = [
-            { type: 'bar', label: 'Hist', data: hist, backgroundColor: hist.map(v => v >= 0 ? 'rgba(239,68,68,0.6)' : 'rgba(34,197,94,0.6)') },
-            { type: 'line', label: 'MACD', data: macd, borderColor: '#fff', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
-            { type: 'line', label: 'Signal', data: signal, borderColor: '#facc15', borderWidth: 1.5, pointRadius: 0, tension: 0.2 }
-        ];
-    } else if (activeInd === "KD") {
-        const { k, d } = calcKD(closePrices);
-        datasets = [
-            { type: 'line', label: 'K', data: k, borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
-            { type: 'line', label: 'D', data: d, borderColor: '#fb923c', borderWidth: 1.5, pointRadius: 0, tension: 0.2 }
-        ];
-    } else if (activeInd === "RSI") {
-        const rsi5 = calcRSI(closePrices, 5);
-        const rsi10 = calcRSI(closePrices, 10);
-        datasets = [ 
-            { type: 'line', label: 'RSI 5', data: rsi5, borderColor: '#c084fc', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
-            { type: 'line', label: 'RSI 10', data: rsi10, borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0, tension: 0.2 }
-        ];
-    } else if (activeInd === "BIAS") {
-        const bias5 = calcBIAS(closePrices, 5);
-        const bias10 = calcBIAS(closePrices, 10);
-        const bias20 = calcBIAS(closePrices, 20);
-        datasets = [ 
-            { type: 'line', label: 'BIAS 5', data: bias5, borderColor: '#fff', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
-            { type: 'line', label: 'BIAS 10', data: bias10, borderColor: '#facc15', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
-            { type: 'line', label: 'BIAS 20', data: bias20, borderColor: '#ec4899', borderWidth: 1.5, pointRadius: 0, tension: 0.2 }
-        ];
+    const ctxMain = document.getElementById('mainChartCanvas');
+    if (ctxMain) {
+        if(window.mainChart) window.mainChart.destroy();
+        window.mainChart = new Chart(ctxMain.getContext('2d'), {
+            type: 'candlestick',
+            data: { datasets: [{ label: 'Price', data: candleData, color: twColors, borderColor: twColors }] },
+            options: { 
+                animation: false, 
+                responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, 
+                scales: { x: { type: 'category', display: false, labels: labels }, y: { position: 'right', grid: { color: 'rgba(255,255,255,0.1)' } } } 
+            }
+        });
     }
 
-    indChart = new Chart(ctxInd, {
-        data: { labels: labels, datasets: datasets },
-        options: { 
-            animation: false,
-            responsive: true, maintainAspectRatio: false, 
-            plugins: { legend: { display: true, position: 'top', labels: { color: '#ccc', font: { size: 9 } } } }, 
-            scales: { x: { type: 'category', display: false }, y: { position: 'right', grid: { color: 'rgba(255,255,255,0.1)' } } } 
+    const ctxVol = document.getElementById('volumeChartCanvas');
+    if (ctxVol) {
+        if(window.volChart) window.volChart.destroy();
+        const volumeColors = rawData.map(d => d.c >= d.o ? 'rgba(239, 68, 68, 0.7)' : 'rgba(34, 197, 94, 0.7)');
+        window.volChart = new Chart(ctxVol.getContext('2d'), {
+            type: 'bar',
+            data: { labels: labels, datasets: [{ data: rawData.map(d => d.v), backgroundColor: volumeColors, barPercentage: 0.8 }] },
+            options: { 
+                animation: false,
+                responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, 
+                scales: { x: { type: 'category', display: false }, y: { position: 'right', grid: { display: false }, ticks: { display: false } } } 
+            }
+        });
+    }
+
+    const ctxInd = document.getElementById('indicatorChartCanvas');
+    if (ctxInd) {
+        if(window.indChart) window.indChart.destroy();
+        const closePrices = rawData.map(d => d.c);
+        let datasets = [];
+        const activeInd = gameState.activeIndicator;
+        
+        if (activeInd === "MACD") {
+            const { macd, signal, hist } = calcMACD(closePrices);
+            datasets = [
+                { type: 'bar', label: 'Hist', data: hist, backgroundColor: hist.map(v => v >= 0 ? 'rgba(239,68,68,0.6)' : 'rgba(34,197,94,0.6)') },
+                { type: 'line', label: 'MACD', data: macd, borderColor: '#fff', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
+                { type: 'line', label: 'Signal', data: signal, borderColor: '#facc15', borderWidth: 1.5, pointRadius: 0, tension: 0.2 }
+            ];
+        } else if (activeInd === "KD") {
+            const { k, d } = calcKD(closePrices);
+            datasets = [
+                { type: 'line', label: 'K', data: k, borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
+                { type: 'line', label: 'D', data: d, borderColor: '#fb923c', borderWidth: 1.5, pointRadius: 0, tension: 0.2 }
+            ];
+        } else if (activeInd === "RSI") {
+            const rsi5 = calcRSI(closePrices, 5);
+            const rsi10 = calcRSI(closePrices, 10);
+            datasets = [ 
+                { type: 'line', label: 'RSI 5', data: rsi5, borderColor: '#c084fc', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
+                { type: 'line', label: 'RSI 10', data: rsi10, borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0, tension: 0.2 }
+            ];
+        } else if (activeInd === "BIAS") {
+            const bias5 = calcBIAS(closePrices, 5);
+            const bias10 = calcBIAS(closePrices, 10);
+            const bias20 = calcBIAS(closePrices, 20);
+            datasets = [ 
+                { type: 'line', label: 'BIAS 5', data: bias5, borderColor: '#fff', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
+                { type: 'line', label: 'BIAS 10', data: bias10, borderColor: '#facc15', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
+                { type: 'line', label: 'BIAS 20', data: bias20, borderColor: '#ec4899', borderWidth: 1.5, pointRadius: 0, tension: 0.2 }
+            ];
         }
-    });
+
+        window.indChart = new Chart(ctxInd.getContext('2d'), {
+            data: { labels: labels, datasets: datasets },
+            options: { 
+                animation: false,
+                responsive: true, maintainAspectRatio: false, 
+                plugins: { legend: { display: true, position: 'top', labels: { color: '#ccc', font: { size: 9 } } } }, 
+                scales: { x: { type: 'category', display: false }, y: { position: 'right', grid: { color: 'rgba(255,255,255,0.1)' } } } 
+            }
+        });
+    }
+};
+
+window.setIndicator = function(ind) {
+    gameState.activeIndicator = ind; 
+    document.querySelectorAll('.ind-btn').forEach(b => b.classList.remove('active')); 
+    const el = document.getElementById(`btn-ind-${ind}`);
+    if (el) el.classList.add('active');
+    window.renderChartInstance();
+};
+
+window.openChartPage = function() {
+    document.getElementById('main-ui').classList.add('hidden');
+    document.getElementById('chart-city-name').innerText = CITIES[gameState.activeCity]?.name || "未知城池";
+    const p = document.getElementById('chart-page'); p.classList.remove('hidden');
+    setTimeout(() => { p.classList.remove('translate-y-full'); window.fetchFullChartData(); }, 10);
+};
+
+window.closeChartPage = function() {
+    const p = document.getElementById('chart-page'); p.classList.add('translate-y-full');
+    setTimeout(() => { p.classList.add('hidden'); document.getElementById('main-ui').classList.remove('hidden'); }, 300);
+};
+
+window.setTimeframe = function(tf) {
+    gameState.timeframe = tf; 
+    document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active')); 
+    const el = document.getElementById(`tf-${tf}`);
+    if (el) el.classList.add('active');
+    window.showMsg(`切換至 ${tf}`); 
+    window.fetchFullChartData();
 };
 
 // ==========================================
@@ -1195,7 +1228,6 @@ function checkTimeEvents() {
     ];
 
     let newStatus = "CLOSED";
-    // 嚴格休市判定：週一到週五，且不在假日名單
     if (day >= 1 && day <= 5 && !TWSE_HOLIDAYS.includes(formatHoliDate)) {
         if (timeNum >= 855 && timeNum < 900) newStatus = "PRE";
         else if (timeNum >= 900 && timeNum < 1330) newStatus = "OPEN";
@@ -1215,28 +1247,34 @@ function checkTimeEvents() {
         currentMarketState = newStatus; updateOrderButtonsUI();
     }
 
-    const label = document.getElementById('market-status-label'); const simBtn = document.getElementById('sim-btn');
+    const label = document.getElementById('market-status-label'); 
+    const simBtn = document.getElementById('sim-btn');
     if (isSimMode) {
-        label.innerText = "沙盤推演 獨立時空"; label.className = "text-[10px] md:text-xs text-sky-300 font-bold uppercase tracking-widest bg-sky-500/20 px-2 py-1 rounded border border-sky-500/30 animate-pulse";
-        simBtn.innerText = "結束推演"; simBtn.className = "bg-red-600 hover:bg-red-500 px-2.5 py-1.5 rounded text-[10px] text-white font-bold transition-all shadow-md"; simBtn.classList.remove('hidden');
+        if(label) { label.innerText = "沙盤推演 獨立時空"; label.className = "text-[10px] md:text-xs text-sky-300 font-bold uppercase tracking-widest bg-sky-500/20 px-2 py-1 rounded border border-sky-500/30 animate-pulse"; }
+        if(simBtn) { simBtn.innerText = "結束推演"; simBtn.className = "bg-red-600 hover:bg-red-500 px-2.5 py-1.5 rounded text-[10px] text-white font-bold transition-all shadow-md"; simBtn.classList.remove('hidden'); }
     } else {
         if (currentMarketState === "OPEN") {
-            label.innerText = "真實天道 運轉中"; label.className = "text-[10px] md:text-xs text-yellow-400 font-bold uppercase tracking-widest bg-yellow-500/20 px-2 py-1 rounded border border-yellow-500/30"; simBtn.classList.add('hidden');
+            if(label) { label.innerText = "真實天道 運轉中"; label.className = "text-[10px] md:text-xs text-yellow-400 font-bold uppercase tracking-widest bg-yellow-500/20 px-2 py-1 rounded border border-yellow-500/30"; }
+            if(simBtn) simBtn.classList.add('hidden');
         } else if (currentMarketState === "PRE") {
-            label.innerText = "盤前試撮 準備開戰"; label.className = "text-[10px] md:text-xs text-orange-400 font-bold uppercase tracking-widest bg-orange-500/20 px-2 py-1 rounded border border-orange-500/30"; simBtn.classList.add('hidden');
+            if(label) { label.innerText = "盤前試撮 準備開戰"; label.className = "text-[10px] md:text-xs text-orange-400 font-bold uppercase tracking-widest bg-orange-500/20 px-2 py-1 rounded border border-orange-500/30"; }
+            if(simBtn) simBtn.classList.add('hidden');
         } else {
-            label.innerText = "天道休市 盤後時段"; label.className = "text-[10px] md:text-xs text-gray-400 font-bold uppercase tracking-widest bg-white/10 px-2 py-1 rounded border border-white/20";
-            simBtn.innerText = "啟動沙盤"; simBtn.className = "bg-sky-600 hover:bg-sky-500 px-2.5 py-1.5 rounded text-[10px] text-white font-bold shadow-[0_0_10px_rgba(2,132,199,0.5)] transition-all animate-pulse"; simBtn.classList.remove('hidden');
+            if(label) { label.innerText = "天道休市 盤後時段"; label.className = "text-[10px] md:text-xs text-gray-400 font-bold uppercase tracking-widest bg-white/10 px-2 py-1 rounded border border-white/20"; }
+            if(simBtn) { simBtn.innerText = "啟動沙盤"; simBtn.className = "bg-sky-600 hover:bg-sky-500 px-2.5 py-1.5 rounded text-[10px] text-white font-bold shadow-[0_0_10px_rgba(2,132,199,0.5)] transition-all animate-pulse"; simBtn.classList.remove('hidden'); }
         }
     }
 }
 
 function updateOrderButtonsUI() {
     const btnL = document.getElementById('btn-long'); const btnS = document.getElementById('btn-short');
+    const txtL = document.getElementById('btn-long-text'); const txtS = document.getElementById('btn-short-text');
     if (currentMarketState === "CLOSED" && !isSimMode) {
-        btnL.classList.add('btn-disabled'); btnS.classList.add('btn-disabled'); document.getElementById('btn-long-text').innerText = "休市禁令"; document.getElementById('btn-short-text').innerText = "休市禁令";
+        if(btnL) btnL.classList.add('btn-disabled'); if(btnS) btnS.classList.add('btn-disabled'); 
+        if(txtL) txtL.innerText = "休市禁令"; if(txtS) txtS.innerText = "休市禁令";
     } else {
-        btnL.classList.remove('btn-disabled'); btnS.classList.remove('btn-disabled'); document.getElementById('btn-long-text').innerText = "入城"; document.getElementById('btn-short-text').innerText = "攻掠";
+        if(btnL) btnL.classList.remove('btn-disabled'); if(btnS) btnS.classList.remove('btn-disabled'); 
+        if(txtL) txtL.innerText = "入城"; if(txtS) txtS.innerText = "攻掠";
     }
 }
 
@@ -1312,7 +1350,7 @@ function startMarketPolling() {
     apiPollingInterval = setInterval(fetchRealMarketData, 5000); fetchRealMarketData();
 }
 
-function localTick() {
+window.localTick = function() {
     checkTimeEvents();
     const city = CITIES[gameState.activeCity];
     
@@ -1340,9 +1378,11 @@ function localTick() {
 
     if (isSimMode || currentMarketState !== "PRE") checkPendingOrders();
     updateVisuals(); 
-    if(!document.getElementById('chart-page').classList.contains('hidden')) window.renderChartInstance();
+    if(document.getElementById('chart-page') && !document.getElementById('chart-page').classList.contains('hidden')) {
+        window.renderChartInstance();
+    }
     updateUI();
-}
+};
 
 // ==========================================
 // 6. UI 事件與操盤指令
@@ -1357,7 +1397,10 @@ window.toggleSimMode = function(isAutoFallback = false) {
             CITIES[c].chartData = {}; initKbars(CITIES[c]); 
         });
         document.getElementById('real-pnl-container').classList.add('hidden'); document.getElementById('sim-pnl-container').classList.remove('hidden'); document.getElementById('base-price-label').innerText = '沙盤基準';
-        ['main-dashboard','tab-container','order-panel'].forEach(id => document.getElementById(id).classList.replace('glass', 'glass-sim'));
+        ['main-dashboard','tab-container','order-panel'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.classList.replace('glass', 'glass-sim');
+        });
         window.triggerSimThunder(); window.showMsg(isAutoFallback ? "連線中斷 自動進入沙盤時空" : "進入沙盤時空 資金獨立計算"); 
         updateOrderButtonsUI(); updateUI();
     }
@@ -1378,7 +1421,10 @@ window.forceCloseSimMode = function(isAuto) {
     });
     currentPrice = window.safeNum(CITIES[gameState.activeCity].price); syncPlayerTroopsFromState();
     document.getElementById('sim-pnl-container').classList.add('hidden'); document.getElementById('real-pnl-container').classList.remove('hidden'); document.getElementById('base-price-label').innerText = '昨收';
-    ['main-dashboard','tab-container','order-panel'].forEach(id => document.getElementById(id).classList.replace('glass-sim', 'glass'));
+    ['main-dashboard','tab-container','order-panel'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.classList.replace('glass-sim', 'glass');
+    });
     window.showMsg(msg); saveState(); updateOrderButtonsUI(); updateUI(); window.fetchFullChartData();
 };
 
@@ -1488,7 +1534,9 @@ window.showWarReport = function(d) {
     const color = d.pnl >= 0 ? 'result-positive' : 'result-negative';
     const tag1 = d.isSim ? '<span class="bg-sky-500/20 text-sky-400 px-1.5 py-0.5 rounded text-[10px] ml-1 border border-sky-500/30 tracking-widest">沙盤</span>' : '';
     const tag2 = d.isDayTrade ? '<span class="bg-yellow-500/20 text-yellow-400 px-1.5 py-0.5 rounded text-[10px] ml-1 border border-yellow-500/30 tracking-widest">當沖</span>' : '';
-    document.getElementById('modal-body').innerHTML = `
+    const mb = document.getElementById('modal-body');
+    if(mb) {
+        mb.innerHTML = `
         <h2 class="text-xl font-black text-center mb-4 tracking-widest text-white drop-shadow-md">結算紀實 ${tag1}${tag2}</h2>
         <div class="grid grid-cols-2 gap-3 text-xs font-bold bg-black/40 p-5 rounded-2xl border border-white/10 shadow-inner">
             <div class="flex flex-col"><span class="text-[9px] text-gray-500 tracking-widest mb-1">征戰地</span><span class="text-base text-gray-200">${CITIES[d.city]?.name || d.city}</span></div>
@@ -1501,8 +1549,11 @@ window.showWarReport = function(d) {
             <div class="text-[10px] text-gray-400 uppercase font-black tracking-widest mb-1">本次淨利戰果</div>
             <div class="text-3xl font-black ${color} drop-shadow-md">${d.pnl>=0?'加':'減'} ${Math.abs(Math.floor(window.safeNum(d.pnl,0))).toLocaleString()}</div>
         </div>`;
-    document.getElementById('report-modal').classList.remove('opacity-0','pointer-events-none');
-    document.getElementById('modal-window').classList.replace('scale-95', 'scale-100');
+    }
+    const rm = document.getElementById('report-modal');
+    if(rm) rm.classList.remove('opacity-0','pointer-events-none');
+    const mw = document.getElementById('modal-window');
+    if(mw) mw.classList.replace('scale-95', 'scale-100');
 };
 
 window.showDailySummary = function() {
@@ -1521,7 +1572,9 @@ window.showDailySummary = function() {
         }
     });
 
-    document.getElementById('modal-body').innerHTML = `
+    const mb = document.getElementById('modal-body');
+    if(mb) {
+        mb.innerHTML = `
         <h2 class="text-xl font-black text-center mb-4 tracking-widest text-purple-300 drop-shadow-[0_0_8px_rgba(216,180,254,0.5)]">實戰結算大表</h2>
         <div class="space-y-4 bg-black/40 p-5 rounded-2xl border border-purple-500/20 text-sm shadow-inner">
             <div class="flex justify-between border-b border-white/10 pb-2"><span class="text-gray-400 font-bold tracking-widest">實戰派遣</span><span class="font-mono text-gray-200">${reals} 次</span></div>
@@ -1530,27 +1583,26 @@ window.showDailySummary = function() {
             <div class="flex justify-between border-b border-white/10 pb-2"><span class="text-gray-400 font-bold tracking-widest">已實現戰果</span><span class="font-mono font-bold ${gameState.realizedPnl>=0?'text-red-500':'text-green-500'}">${Math.floor(window.safeNum(gameState.realizedPnl,0)).toLocaleString()}</span></div>
             <div class="flex justify-between pt-1"><span class="text-purple-300 font-bold tracking-widest">累計貢獻稅費</span><span class="text-purple-400 font-mono font-black drop-shadow-md">${Math.floor(window.safeNum(gameState.taxTotal,0)).toLocaleString()}</span></div>
         </div>`;
-    document.getElementById('report-modal').classList.remove('opacity-0','pointer-events-none');
-    document.getElementById('modal-window').classList.replace('scale-95', 'scale-100');
-};
-window.closeModal = function() { document.getElementById('report-modal').classList.add('opacity-0','pointer-events-none'); document.getElementById('modal-window').classList.replace('scale-100', 'scale-95'); };
-
-window.openPricePrompt = function(cityCode) { pendingPriceCity = cityCode; document.getElementById('prompt-city-name').innerText = CITIES[cityCode].name; document.getElementById('manual-price-input').value = ''; document.getElementById('price-prompt-modal').classList.remove('opacity-0', 'pointer-events-none'); };
-window.closePricePrompt = function() { document.getElementById('price-prompt-modal').classList.add('opacity-0', 'pointer-events-none'); };
-window.submitManualPrice = function() {
-    const val = parseFloat(document.getElementById('manual-price-input').value);
-    if(isNaN(val) || val <= 0) { window.showMsg("請輸入有效的基準價格"); return; }
-    const city = CITIES[pendingPriceCity];
-    if(city) { city.basePrice = val; city.simBasePrice = val; city.price = val; city.realPrice = val; city.chartData = {}; initKbars(city); rebuildEnvironment(); }
-    window.closePricePrompt();
-    if(!isSimMode) { window.showMsg("基準價已設定 系統自動導入沙盤"); window.toggleSimMode(true); }
+    }
+    const rm = document.getElementById('report-modal');
+    if(rm) rm.classList.remove('opacity-0','pointer-events-none');
+    const mw = document.getElementById('modal-window');
+    if(mw) mw.classList.replace('scale-95', 'scale-100');
 };
 
-window.openApiSettings = function() { document.getElementById('api-modal').classList.remove('opacity-0', 'pointer-events-none'); document.getElementById('api-key-input').value = USER_API_KEY; };
-window.closeApiSettings = function() { document.getElementById('api-modal').classList.add('opacity-0', 'pointer-events-none'); };
+window.closeModal = function() { 
+    const rm = document.getElementById('report-modal');
+    if(rm) rm.classList.add('opacity-0','pointer-events-none'); 
+    const mw = document.getElementById('modal-window');
+    if(mw) mw.classList.replace('scale-100', 'scale-95'); 
+};
+
+window.openApiSettings = function() { const m = document.getElementById('api-modal'); if(m) m.classList.remove('opacity-0', 'pointer-events-none'); const k = document.getElementById('api-key-input'); if(k) k.value = USER_API_KEY; };
+window.closeApiSettings = function() { const m = document.getElementById('api-modal'); if(m) m.classList.add('opacity-0', 'pointer-events-none'); };
 window.saveApiKey = function() { USER_API_KEY = String(document.getElementById('api-key-input').value).trim().replace(/[^a-zA-Z0-9_\-]/g, ''); localStorage.setItem('abula_api_key', USER_API_KEY); window.closeApiSettings(); window.showMsg("設定已儲存"); fetchRealMarketData(); };
-window.openCustomManager = function() { document.getElementById('custom-modal').classList.remove('opacity-0', 'pointer-events-none'); window.renderCustomList(); };
-window.closeCustomManager = function() { document.getElementById('custom-modal').classList.add('opacity-0', 'pointer-events-none'); if(gameState.activeSector === 'CUSTOM') window.switchSector('CUSTOM'); };
+
+window.openCustomManager = function() { const m = document.getElementById('custom-modal'); if(m) m.classList.remove('opacity-0', 'pointer-events-none'); window.renderCustomList(); };
+window.closeCustomManager = function() { const m = document.getElementById('custom-modal'); if(m) m.classList.add('opacity-0', 'pointer-events-none'); if(gameState.activeSector === 'CUSTOM') window.switchSector('CUSTOM'); };
 window.addCustomStock = function() {
     const cleanSym = String(document.getElementById('custom-symbol').value).trim().toUpperCase().replace(/[^A-Z0-9\.]/g, ''); 
     const cleanName = String(document.getElementById('custom-name').value).trim().replace(/[<>]/g, '');
@@ -1566,32 +1618,38 @@ window.removeCustomStock = function(sym) {
     if (idx > -1) { SECTORS["CUSTOM"].cities.splice(idx, 1); localStorage.setItem('abula_custom_stocks', JSON.stringify(SECTORS["CUSTOM"].cities.map(s => ({ symbol: s, name: CITIES[s].name })))); window.showMsg(`已移出 ${sym}`); window.renderCustomList(); }
 };
 window.renderCustomList = function() {
-    const list = document.getElementById('custom-stock-list'); list.innerHTML = '';
+    const list = document.getElementById('custom-stock-list'); if(!list) return; list.innerHTML = '';
     SECTORS["CUSTOM"].cities.forEach(sym => {
         list.innerHTML += `<div class="flex justify-between items-center bg-black/40 p-2.5 rounded-lg border border-white/5"><div class="flex flex-col"><span class="text-xs font-bold text-yellow-500">${sym}</span><span class="text-[10px] text-gray-400 mt-0.5">${CITIES[sym].name}</span></div><button onclick="window.removeCustomStock('${sym}')" class="text-[10px] bg-red-900/50 hover:bg-red-800 border border-red-500/30 px-3 py-1.5 rounded-md text-red-200 transition-colors cursor-pointer">移除</button></div>`;
     });
 };
 
 window.switchTab = function(t) {
-    gameState.currentTab = t; document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.getElementById(`tab-${t}`).classList.add('active');
+    gameState.currentTab = t; document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); 
+    const tb = document.getElementById(`tab-${t}`); if(tb) tb.classList.add('active');
     ['units','history','pending'].forEach(x => { const el = document.getElementById(`tab-content-${x}`); if(el) el.classList.add('hidden'); });
     const content = document.getElementById(`tab-content-${t}`); if(content) content.classList.remove('hidden'); updateUI();
 };
 
 function updateUI() {
     const city = CITIES[gameState.activeCity]; if(!city) return;
-    document.getElementById('user-balance').innerText = Math.floor(window.safeNum(gameState.balance)).toLocaleString();
-    document.getElementById('frozen-balance').innerText = `凍結 ${Math.floor(window.safeNum(gameState.frozen)).toLocaleString()}`;
+    const ub = document.getElementById('user-balance'); if(ub) ub.innerText = Math.floor(window.safeNum(gameState.balance)).toLocaleString();
+    const fb = document.getElementById('frozen-balance'); if(fb) fb.innerText = `凍結 ${Math.floor(window.safeNum(gameState.frozen)).toLocaleString()}`;
     
     const activeBasePrice = isSimMode ? window.safeNum(city.simBasePrice, city.basePrice) : window.safeNum(city.basePrice, 100);
-    document.getElementById('base-price-display').innerText = activeBasePrice.toFixed(2);
+    const bpd = document.getElementById('base-price-display'); if(bpd) bpd.innerText = activeBasePrice.toFixed(2);
     
-    if (!isSimMode) document.getElementById('market-price').innerText = window.safeNum(currentPrice).toFixed(2);
+    if (!isSimMode) {
+        const mp = document.getElementById('market-price');
+        if(mp) mp.innerText = window.safeNum(currentPrice).toFixed(2);
+    }
     
     const pct = activeBasePrice > 0 ? ((window.safeNum(currentPrice, activeBasePrice) - activeBasePrice)/activeBasePrice*100) : 0;
     const elPct = document.getElementById('price-change');
-    elPct.innerText = `${Math.abs(window.safeNum(pct,0)).toFixed(2)} %`;
-    elPct.className = `text-[10px] md:text-[11px] font-bold mt-0.5 ${pct >= 0 ? 'text-red-500' : 'text-green-500'}`;
+    if(elPct) {
+        elPct.innerText = `${Math.abs(window.safeNum(pct,0)).toFixed(2)} %`;
+        elPct.className = `text-[10px] md:text-[11px] font-bold mt-0.5 ${pct >= 0 ? 'text-red-500' : 'text-green-500'}`;
+    }
 
     let realUnrealized = 0, simUnrealized = 0;
     gameState.units.forEach(u => { 
@@ -1717,13 +1775,28 @@ function updateUI() {
     }
 }
 
+// 確保在 onLoad 前函式有綁定，避免出錯。將初始函式放入 try-catch 結構
 window.onload = () => { 
-    loadState(); 
-    init3D(); 
-    window.switchSector("SEMICON"); 
-    startMarketPolling(); 
-    setInterval(localTick, 1000); 
-    updateOrderButtonsUI(); 
+    try {
+        loadState(); 
+        init3D(); 
+        
+        // 確保 Sector 有選項
+        const sec = document.getElementById('sector-selector');
+        if (sec) {
+            sec.innerHTML = '';
+            for(let k in SECTORS) {
+                sec.appendChild(new Option(SECTORS[k].name, k));
+            }
+        }
+        window.switchSector("SEMICON"); 
+        startMarketPolling(); 
+        setInterval(window.localTick, 1000); 
+        updateOrderButtonsUI(); 
+    } catch (e) {
+        console.error("系統啟動失敗:", e);
+        window.showMsg("系統啟動發生異常，請重整頁面");
+    }
 };
 </script>
 </body>
