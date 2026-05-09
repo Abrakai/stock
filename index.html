@@ -728,7 +728,7 @@ function createCastle(tier, season) {
         metalness: 0.4
     });
     
-    // 城池主體
+    // 城池主體牆面
     const height = 18 + tier * 3.5; 
     const wall = new THREE.Mesh(new THREE.BoxGeometry(12, height, 65), mat); 
     wall.position.set(-35, height / 2, 0); 
@@ -750,7 +750,7 @@ function createCastle(tier, season) {
         group.add(battlement);
     }
 
-    // 尊爵高科技要塞防禦
+    // 尊爵高科技要塞防禦 (針對 500 元以上高價股)
     if (tier >= 4) {
         const glowColor = tier === 5 ? 0x00ffff : 0xffaa00;
         const glowMat = new THREE.MeshStandardMaterial({
@@ -759,34 +759,42 @@ function createCastle(tier, season) {
             emissiveIntensity: tier === 5 ? 3 : 1.5
         });
         
+        // 科技能量運輸線條
         const line = new THREE.Mesh(new THREE.BoxGeometry(13, 1, 66), glowMat); 
         line.position.set(-35, height * 0.8, 0); 
         group.add(line);
         
-        // 【修復】增設半球體防禦砲塔，面向右側
+        // 【修復】增設重型半球體防禦砲塔，面向右側 (+X)
+        const turretMat = new THREE.MeshPhysicalMaterial({ color: 0x2a303c, metalness: 0.8, roughness: 0.2, clearcoat: 0.5 });
         for(let z of [-20, 0, 20]) {
             const turretGroup = new THREE.Group();
             turretGroup.position.set(-32, height, z);
             
-            const turretBase = new THREE.Mesh(new THREE.CylinderGeometry(3, 3.5, 4, 16), mat);
-            turretBase.position.y = 2;
+            // 砲塔底座
+            const turretBase = new THREE.Mesh(new THREE.CylinderGeometry(3, 3.5, 3, 16), mat);
+            turretBase.position.y = 1.5;
             turretGroup.add(turretBase);
 
-            const turretDome = new THREE.Mesh(new THREE.SphereGeometry(2.5, 16, 16), new THREE.MeshStandardMaterial({color: 0x1a202c, metalness: 0.9, roughness: 0.1}));
-            turretDome.position.y = 4;
+            // 砲塔圓頂
+            const turretDome = new THREE.Mesh(new THREE.SphereGeometry(2.5, 16, 16), turretMat);
+            turretDome.position.y = 3;
             turretGroup.add(turretDome);
             
+            // 發光加農砲管
             const cannon = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.4, 10, 16), glowMat); 
-            cannon.rotation.x = Math.PI / 2; // 指向 +Z (砲塔座標系)
-            cannon.position.set(0, 4, 5); 
+            // 將圓柱放平指向 Z 軸
+            cannon.rotation.x = Math.PI / 2; 
+            // 將砲管往前推伸出圓頂
+            cannon.position.set(0, 3, 5); 
+            
             turretGroup.add(cannon); 
             
-            // 轉向：讓砲塔面向戰場中心 (+X)
+            // 【關鍵】將整個砲塔旋轉 90 度，讓砲口指向戰場中心 (+X)
             turretGroup.rotation.y = Math.PI / 2;
             group.add(turretGroup);
         }
         
-        // 千金股全像護盾
+        // 千金股專屬：全像防禦巨型護盾
         if (tier === 5) {
             const shield = new THREE.Mesh(new THREE.BoxGeometry(20, height + 15, 80), new THREE.MeshBasicMaterial({
                 color: 0x00ffff, 
@@ -848,16 +856,16 @@ function createSnowman() {
 }
 
 /**
- * 單位產生器 (全面解壓縮，邏輯重塑)
- * 【完美修復】：第四階以上，多軍與空軍皆全面配備「重裝攻城戰車」。
- * 【完美修復】：紅軍向右瞄準，綠軍向左瞄準，絕不背對敵人。
+ * 單位產生器 (全面解壓縮展開版)
+ * 【修復】：第四階以上，多空雙方皆生成「重裝攻城戰車」。
+ * 【修復】：校正朝向，紅軍向右瞄準，綠軍向左瞄準。
  */
 function createSoldier(color, isPlayer, tier = 1, side = 'LONG') {
     const group = new THREE.Group();
     
     if (tier >= 4) {
         // ==============================
-        // 戰鬥階級 4 以上：重裝攻城戰車
+        // 重裝攻城戰車模組 (Tier 4, 5)
         // ==============================
         let sc = isPlayer ? 1.8 : 1.2;
         const tankMat = new THREE.MeshPhysicalMaterial({
@@ -867,38 +875,41 @@ function createSoldier(color, isPlayer, tier = 1, side = 'LONG') {
             clearcoat: 0.5
         });
         
-        // 底盤
-        const base = new THREE.Mesh(new THREE.BoxGeometry(2.5*sc, 1.2*sc, 3.5*sc), tankMat); 
+        // 戰車底盤 (稍微拉長呈履帶狀)
+        const base = new THREE.Mesh(new THREE.BoxGeometry(4.0*sc, 1.2*sc, 2.8*sc), tankMat); 
         base.position.y = 0.6*sc; 
         group.add(base);
         
-        // 頂塔
-        const top = new THREE.Mesh(new THREE.BoxGeometry(1.5*sc, 0.8*sc, 2*sc), tankMat); 
-        top.position.y = 1.6*sc; 
+        // 戰車頂塔 (改為圓滑的半球形)
+        const top = new THREE.Mesh(new THREE.SphereGeometry(1.4*sc, 16, 16), new THREE.MeshStandardMaterial({
+            color: 0x222222, metalness: 0.9, roughness: 0.1
+        })); 
+        top.position.y = 1.4*sc; 
         group.add(top);
         
-        // 高能加農砲
+        // 戰車發光加農砲管
         const cannonColor = side === 'LONG' ? 0xff4444 : 0x44ff44;
-        const cannon = new THREE.Mesh(new THREE.CylinderGeometry(0.15*sc, 0.15*sc, 3.5*sc), new THREE.MeshStandardMaterial({
+        const cannon = new THREE.Mesh(new THREE.CylinderGeometry(0.15*sc, 0.1*sc, 4.0*sc), new THREE.MeshStandardMaterial({
             color: cannonColor, 
             emissive: cannonColor, 
-            emissiveIntensity: 2
+            emissiveIntensity: 3
         }));
-        // 將圓柱放平，指向 Z 軸
+        
+        // 【修復】將圓柱放平並指向 Z 軸
         cannon.rotation.x = Math.PI / 2;
-        cannon.position.set(0, 1.6*sc, 1.5*sc); 
+        // 將砲管拉出頂塔
+        cannon.position.set(0, 1.4*sc, 2.0*sc); 
         group.add(cannon);
         
-        // 【修復】轉向校正：紅軍(LONG)向右(+X) = Y軸旋轉 90度 (Math.PI/2)
-        // 綠軍(SHORT)向左(-X) = Y軸旋轉 -90度 (-Math.PI/2)
-        group.rotation.y = side === 'LONG' ? Math.PI / 2 : -Math.PI / 2;
+        // 【關鍵修復】轉向校正：紅軍(LONG)向右(-90度)，綠軍(SHORT)向左(90度)
+        group.rotation.y = side === 'LONG' ? -Math.PI / 2 : Math.PI / 2;
         
         // 記錄砲口的世界絕對位置，供發射雷射用
-        group.userData.cannonPos = new THREE.Vector3(0, 1.6*sc, 3.0*sc);
+        group.userData.cannonPos = new THREE.Vector3(0, 1.4*sc, 3.5*sc);
 
     } else {
         // ==============================
-        // 戰鬥階級 1~3：常規高科技步兵
+        // 常規高科技步兵模組 (Tier 1-3)
         // ==============================
         let sc = (isPlayer ? 2.4 : 1.5) * (1 + (tier - 1) * 0.12);
         const mat = new THREE.MeshStandardMaterial({
@@ -916,9 +927,7 @@ function createSoldier(color, isPlayer, tier = 1, side = 'LONG') {
         head.position.y = 2.7 * sc; 
         group.add(head);
         
-        // 步兵轉向：紅軍面右，綠軍面左
-        group.rotation.y = side === 'LONG' ? Math.PI / 2 : -Math.PI / 2;
-
+        // 步兵能量步槍
         const wColor = color === 0xdd3333 ? 0xff4444 : 0x44ff44;
         const wpn = new THREE.Mesh(new THREE.CylinderGeometry(0.06*sc, 0.06*sc, 5.5*sc, 4), new THREE.MeshStandardMaterial({
             color: wColor, 
@@ -930,6 +939,8 @@ function createSoldier(color, isPlayer, tier = 1, side = 'LONG') {
         wpn.rotation.x = Math.PI / 2; 
         group.add(wpn);
         
+        // 【關鍵修復】步兵轉向：紅軍向右(-90度)，綠軍向左(90度)
+        group.rotation.y = side === 'LONG' ? -Math.PI / 2 : Math.PI / 2;
         group.userData.cannonPos = new THREE.Vector3(0, 1.5*sc, 4.0*sc);
     }
     
@@ -942,11 +953,8 @@ function createSoldier(color, isPlayer, tier = 1, side = 'LONG') {
     return group;
 }
 
-// 漲停慶典：全螢幕煙火
-function triggerFireworks() {
-    for (let i = 0; i < 6; i++) {
-        setTimeout(() => {
-            const color = Math.random() > 0.5 ? 0xff3333 : 0xffaa00; 
+/**
+ * 全螢幕漲停慶典：多點煙火齊發
             const x = (Math.random() - 0.5) * 80;
             const y = 40 + Math.random() * 20;
             const z = (Math.random() - 0.5) * 40;
@@ -985,7 +993,7 @@ function triggerFireworks() {
 
 // 跌停城破動畫：城池冒出無情黑煙與火焰
 function triggerCastleSmoke() {
-    if (smokeParticles) return; 
+    if (smokeParticles) return; // 避免重複生成導致卡頓
     
     const geom = new THREE.BufferGeometry();
     const pos = new Float32Array(200 * 3);
@@ -1014,28 +1022,28 @@ function triggerCastleSmoke() {
     
     smokeParticles.userData = { vels };
     scene.add(smokeParticles);
-
-    // 加入底部火光粒子
-    const fireGeom = new THREE.BufferGeometry();
-    const firePos = new Float32Array(100 * 3);
-    for(let i=0; i<100; i++) {
-        firePos[i*3] = -35 + (Math.random() - 0.5) * 20;
-        firePos[i*3+1] = Math.random() * 15;
-        firePos[i*3+2] = (Math.random() - 0.5) * 60;
-    }
-    fireGeom.setAttribute('position', new THREE.BufferAttribute(firePos, 3));
-    fireParticles = new THREE.Points(fireGeom, new THREE.PointsMaterial({
-        color: 0xff3300, size: 5.0, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending
-    }));
-    scene.add(fireParticles);
 }
 
-function clearCastleSmoke() {
-    if(smokeParticles) { scene.remove(smokeParticles); smokeParticles = null; }
-    if(fireParticles) { scene.remove(fireParticles); fireParticles = null; }
+/**
+ * 城池防禦火砲射擊特效 (針對高價股)
+ */
+function shootLaserFromCastle() {
+    const laserMat = new THREE.MeshBasicMaterial({color: 0xffaa00, transparent: true, opacity: 0.9}); 
+    const laserGeo = new THREE.CylinderGeometry(0.4, 0.4, 15, 4);
+    const laser = new THREE.Mesh(laserGeo, laserMat);
+    
+    // 從砲塔位置隨機發射
+    const startPos = new THREE.Vector3(-30, 20 + Math.random()*10, (Math.random() - 0.5) * 40);
+    laser.position.copy(startPos);
+    laser.rotation.z = Math.PI / 2; // 水平向右
+    
+    scene.add(laser);
+    lasers.push({ mesh: laser, life: 1.0, dir: 1, speed: 4.5 });
 }
 
-// 雷射光束射擊特效
+/**
+ * 新增武器系統：雷射光束射擊特效
+ */
 function shootLaser(attacker) {
     const side = attacker.userData.side;
     const color = side === 'LONG' ? 0xff3333 : 0x33ff33;
@@ -1044,7 +1052,7 @@ function shootLaser(attacker) {
     const laserGeo = new THREE.CylinderGeometry(0.2, 0.2, 8, 4);
     const laser = new THREE.Mesh(laserGeo, laserMat);
     
-    // 計算發射點與目標
+    // 計算發射起始點
     const startPos = attacker.position.clone();
     startPos.y += 3; 
     const dir = side === 'LONG' ? 1 : -1;
@@ -1745,29 +1753,31 @@ function localTick() {
         updateUI();
     }
     
-    // 【全新實裝】常駐性環境雷射交火 (每秒判定，增加戰場氛圍)
+    // 【全新實裝】真實世界環境雷射交火 (每秒判定，增加盯盤戰場氛圍)
     if (!isSimMode && currentMarketState === "OPEN") {
-        if (baseRedArmy.length > 0 && Math.random() > 0.7) {
+        if (baseRedArmy.length > 0 && Math.random() > 0.8) {
             const shooter = baseRedArmy[Math.floor(Math.random() * baseRedArmy.length)];
             if (shooter.visible && !shooter.userData.isAttacking) shootLaser(shooter);
         }
-        if (baseGreenArmy.length > 0 && Math.random() > 0.7) {
+        if (baseGreenArmy.length > 0 && Math.random() > 0.8) {
             const shooter = baseGreenArmy[Math.floor(Math.random() * baseGreenArmy.length)];
             if (shooter.visible && !shooter.userData.isAttacking) shootLaser(shooter);
         }
         const city = CITIES[gameState.activeCity];
-        if (city && getPriceTier(window.safeNum(city.basePrice)) >= 4 && Math.random() > 0.8) {
+        if (city && getPriceTier(window.safeNum(city.basePrice)) >= 4 && Math.random() > 0.85) {
             shootLaserFromCastle();
         }
     }
 
     if(!isSimMode) return;
     
-    // 沙盤推演心跳：模擬隨機走勢
+    // ==========================================
+    // 沙盤推演心跳：模擬隨機走勢與 K 線生長
+    // ==========================================
     const city = CITIES[gameState.activeCity]; 
     if(!city) return;
     
-    // 沙盤環境雷射交火
+    // 【全新實裝】沙盤環境雷射交火 (模擬更激烈的戰況)
     if (baseRedArmy.length > 0 && Math.random() > 0.6) {
         const shooter = baseRedArmy[Math.floor(Math.random() * baseRedArmy.length)];
         if (shooter.visible && !shooter.userData.isAttacking) shootLaser(shooter);
