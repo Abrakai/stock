@@ -182,6 +182,7 @@
             <h2 class="text-base md:text-lg font-black text-white tracking-widest">軍師戰略室</h2>
         </div>
         <div class="flex items-center gap-2">
+            <span id="chart-realtime-price" class="text-yellow-400 font-mono font-bold text-sm">--</span>
             <button onclick="window.closeChartPage()" class="bg-white/10 border border-white/20 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-white/20 transition-all cursor-pointer">返回戰場</button>
         </div>
     </div>
@@ -342,7 +343,6 @@ let app, auth, db;
 let isFirebaseActive = false;
 let user = null;
 
-// 自動偵測環境
 const envConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
 const finalConfig = envConfig || MY_FIREBASE_CONFIG;
 const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'abula-battlefield';
@@ -399,6 +399,7 @@ let currentPrice = 0;
 let lastPriceForAnim = 0; 
 let pendingPriceCity = "";
 let currentTab = "units";
+let isGameStarted = false; // ★絕對鎖定機制：防止重複啟動與提前渲染
 
 // 3D & Chart Globals
 let scene, camera, renderer, battleLine;
@@ -415,7 +416,7 @@ window.safeNum = function(val, fallback = 0) { const n = Number(val); return (is
 let msgTimeout;
 window.showMsg = function(t) { 
     const el = document.getElementById('msg-box'); if(!el) return;
-    el.innerText = t; el.classList.remove('opacity-0', 'translate-y-4'); el.classList.add('opacity-100', 'translate-y-0');
+    el.innerText = String(t); el.classList.remove('opacity-0', 'translate-y-4'); el.classList.add('opacity-100', 'translate-y-0');
     if(msgTimeout) clearTimeout(msgTimeout);
     msgTimeout = setTimeout(()=>{ el.classList.remove('opacity-100', 'translate-y-0'); el.classList.add('opacity-0', 'translate-y-4'); }, 3000); 
 };
@@ -452,10 +453,11 @@ function loadLocal() {
         if (saved) {
             const parsed = JSON.parse(saved);
             Object.assign(gameState, parsed);
-            if(!SECTORS[gameState.activeSector]) gameState.activeSector = Object.keys(SECTORS)[0] || "";
-            if(!SECTORS[gameState.activeSector]?.cities.includes(gameState.activeCity)) gameState.activeCity = SECTORS[gameState.activeSector]?.cities[0] || "";
         }
     } catch(e) { initDefaultDatabase(); }
+    
+    // ★ 啟動絕對鎖：資料備妥後，統一放行
+    window.checkAndStartGame();
 }
 
 async function syncToCloud() {
@@ -476,10 +478,17 @@ async function loadFromCloud(uid) {
             if(data.state) Object.assign(gameState, data.state);
             if(data.sectors) SECTORS = data.sectors;
             if(data.cities) { for(let key in data.cities) CITIES[key] = { ...data.cities[key], chartData: {} }; }
-            if(!SECTORS[gameState.activeSector]) gameState.activeSector = Object.keys(SECTORS)[0] || "";
-            if(!SECTORS[gameState.activeSector]?.cities.includes(gameState.activeCity)) gameState.activeCity = SECTORS[gameState.activeSector]?.cities[0] || "";
-            updateUI();
-        } else if (!docSnap.exists() && !isSimMode) { initDefaultDatabase(); syncToCloud(); updateUI(); }
+            
+            window.checkAndStartGame();
+            if(isGameStarted) updateUI();
+            
+        } else if (!docSnap.exists() && !isSimMode) { 
+            // 首次註冊的新兵，強制注入預設資料以防當機
+            initDefaultDatabase(); 
+            syncToCloud(); 
+            window.checkAndStartGame();
+            if(isGameStarted) updateUI(); 
+        }
     });
     const statsRef = doc(db, 'artifacts', currentAppId, 'public', 'data', 'stats', 'global');
     onSnapshot(statsRef, (docSnap) => {
@@ -503,14 +512,14 @@ async function updateGlobalStats(uid) {
 
 function updateLoginUI() {
     const t = document.getElementById('stat-total-users'); const a = document.getElementById('stat-today-active');
-    if(t) t.innerText = globalStats.totalUsers; if(a) a.innerText = globalStats.todayActive;
+    if(t) t.innerText = String(globalStats.totalUsers); if(a) a.innerText = String(globalStats.todayActive);
 }
 
 window.anonLogin = async function() {
     if(!isFirebaseActive) {
         document.getElementById('login-overlay').classList.add('hidden');
         document.getElementById('main-ui').classList.remove('hidden');
-        startGame(); return;
+        loadLocal(); return;
     }
     try {
         document.getElementById('login-status-text').innerText = "軍令核發中...";
@@ -700,7 +709,7 @@ function animate() {
 
 
 // ==========================================
-// 6. 圖表引擎 (完美降維，純 JS 生成)
+// 6. 圖表引擎 (動能計算與雙軸自適應)
 // ==========================================
 function calcEMA(data, period) { if(data.length === 0) return []; let k = 2 / (period + 1); let ema = [data[0]]; for(let i = 1; i < data.length; i++) { ema.push(data[i] * k + ema[i - 1] * (1 - k)); } return ema; }
 function calcSMA(data, period) { let sma = []; for(let i = 0; i < data.length; i++) { if(i < period - 1) { sma.push(data[i]); continue; } let sum = 0; for(let j = 0; j < period; j++) { sum += data[i - j]; } sma.push(sum / period); } return sma; }
@@ -747,9 +756,9 @@ window.renderChartInstance = function() {
 
     if(mainChart) mainChart.destroy();
     mainChart = new Chart(document.getElementById('mainChartCanvas').getContext('2d'), {
-        type: 'line',
-        data: { labels: labels, datasets: [{ label: '價格走勢', data: closePrices, borderColor: '#eab308', backgroundColor: 'rgba(234, 179, 8, 0.1)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.1 }] },
-        options: { animation: false, responsive: true, maintainAspectRatio: false, scales: { x: { type: 'category', display: false, labels }, y: { position: 'right', ticks: { color: '#ccc' }, grid: { color: 'rgba(255,255,255,0.1)' } } }, plugins: { legend: { display: false } } }
+        type: 'candlestick',
+        data: { datasets: [{ data: candleData, color: { up: upCol, down: dnCol, unchanged: '#999' }, borderColor: { up: upCol, down: dnCol, unchanged: '#999' }, barThickness: barWidth }] },
+        options: { animation: false, responsive: true, maintainAspectRatio: false, scales: { x: { type: 'category', labels: labels, display: false }, y: { position: 'right', ticks: { color: '#ccc' }, grid: { color: 'rgba(255,255,255,0.1)' } } }, plugins: { legend: { display: false } } }
     });
     
     if(volChart) volChart.destroy();
@@ -785,7 +794,7 @@ window.renderChartInstance = function() {
 };
 
 // ==========================================
-// 7. 核心邏輯與時鐘輪詢
+// 7. 核心邏輯與時鐘輪詢 (加入資料絕對鎖)
 // ==========================================
 async function fetchRealMarketData() {
     if(isSimMode) return;
@@ -835,13 +844,14 @@ function localTick() {
             city.price = np; setCurrentPrice(np);
             
             if(Math.abs(np - lastPriceForAnim) > 0.01) { triggerAttackAnim(np > lastPriceForAnim ? 'LONG' : 'SHORT'); lastPriceForAnim = np; }
-            if(city.chartData && city.chartData[gameState.timeframe]) {
-                let chartArr = city.chartData[gameState.timeframe];
-                if(chartArr.length > 0) {
-                    let lastBar = chartArr[chartArr.length - 1]; let timeNow = Date.now();
-                    if (timeNow - lastBar.x > 30000) { chartArr.push({ x: timeNow, o: np, h: np, l: np, c: np, v: Math.random() * 50 }); if (chartArr.length > 150) chartArr.shift(); } 
-                    else { lastBar.c = np; lastBar.h = Math.max(lastBar.h, np); lastBar.l = Math.min(lastBar.l, np); lastBar.v += Math.random() * 10; }
-                }
+            
+            if(!city.chartData || !city.chartData[gameState.timeframe] || city.chartData[gameState.timeframe].length === 0) initKbars(city);
+            
+            let chartArr = city.chartData[gameState.timeframe];
+            if(chartArr && chartArr.length > 0) {
+                let lastBar = chartArr[chartArr.length - 1]; let timeNow = Date.now();
+                if (timeNow - lastBar.x > 30000) { chartArr.push({ x: timeNow, o: np, h: np, l: np, c: np, v: Math.random() * 50 }); if (chartArr.length > 150) chartArr.shift(); } 
+                else { lastBar.c = np; lastBar.h = Math.max(lastBar.h, np); lastBar.l = Math.min(lastBar.l, np); lastBar.v += Math.random() * 10; }
             }
         }
     } else if (currentMarketState === "OPEN" && Math.random() > 0.8) { fetchRealMarketData(); }
@@ -972,14 +982,20 @@ window.toggleSimMode = function(isAuto = false) {
             gameState.history.unshift({ time: new Date().toLocaleTimeString('zh-TW', { hour12: false }), city: "沙盤練兵甘霖結算", side: "SYS", pnl: reward, isSim: false });
             document.getElementById('sim-reward-profit').innerText = Math.floor(simProfit).toLocaleString(); document.getElementById('sim-reward-final').innerText = reward.toLocaleString();
             document.getElementById('sim-reward-modal').classList.remove('opacity-0', 'pointer-events-none');
-        } else { window.triggerThunder(); window.showMsg(auto ? "試撮啟動 沙盤結束" : "結束沙盤"); }
+        } else { window.triggerThunder(); window.showMsg(isAuto ? "試撮啟動 沙盤結束" : "結束沙盤"); }
         
         document.getElementById('sim-pnl-container').classList.add('hidden'); document.getElementById('real-pnl-container').classList.remove('hidden'); document.getElementById('base-price-label').innerText = '昨收';
         ['main-dashboard','tab-container','order-panel'].forEach(id => { document.getElementById(id).classList.replace('glass-sim', 'glass'); });
         updateOrderButtonsUI(); updateUI(); syncToCloud(); window.fetchFullChartData();
     } else {
         realStateSnapshot = JSON.parse(JSON.stringify(gameState)); isSimMode = true;
-        Object.keys(CITIES).forEach(c => { if(!isAuto) CITIES[c].simBasePrice = window.safeNum(CITIES[c].price, CITIES[c].basePrice); if(!CITIES[c].chartData["1m"]) initKbars(CITIES[c]); });
+        Object.keys(CITIES).forEach(c => { 
+            if(!isAuto) { CITIES[c].simBasePrice = window.safeNum(CITIES[c].price, CITIES[c].basePrice); } 
+            if(!CITIES[c].chartData || !CITIES[c].chartData["1m"] || CITIES[c].chartData["1m"].length < 10) initKbars(CITIES[c]); 
+        });
+        
+        setCurrentPrice(window.safeNum(CITIES[gameState.activeCity].simBasePrice));
+        
         document.getElementById('real-pnl-container').classList.add('hidden'); document.getElementById('sim-pnl-container').classList.remove('hidden'); document.getElementById('base-price-label').innerText = '沙盤基準';
         ['main-dashboard','tab-container','order-panel'].forEach(id => { document.getElementById(id).classList.replace('glass', 'glass-sim'); });
         window.triggerSimThunder(); window.showMsg(isAuto ? "週末休市 自動進入沙盤" : "啟動沙盤練兵"); updateOrderButtonsUI(); updateUI();
@@ -1018,20 +1034,31 @@ window.closePricePrompt = function() { document.getElementById('price-prompt-mod
 window.forceStartSim = function() { const city = CITIES[pendingPriceCity]; if(city && city.basePrice > 0) { city.simBasePrice = city.basePrice; city.price = city.basePrice; city.realPrice = city.basePrice; initKbars(city); rebuildEnvironment(); } window.closePricePrompt(); if(!isSimMode) { window.showMsg("使用歷史強制啟動沙盤"); window.toggleSimMode(true); } };
 window.submitManualPrice = function() { const val = parseFloat(document.getElementById('manual-price-input').value); if(isNaN(val) || val <= 0) return; const city = CITIES[pendingPriceCity]; city.basePrice = val; city.price = val; city.simBasePrice = val; initKbars(city); rebuildEnvironment(); window.closePricePrompt(); window.toggleSimMode(true); };
 
-window.startGame = function() {
+window.checkAndStartGame = function() {
+    if (isGameStarted) return;
+    isGameStarted = true;
+    
     init3D(); 
     const sec = document.getElementById('sector-selector');
+    sec.innerHTML = '';
     for(let k in SECTORS) { sec.appendChild(new Option(SECTORS[k].name, k)); }
+    
+    if(!SECTORS[gameState.activeSector]) gameState.activeSector = Object.keys(SECTORS)[0] || "";
+    if(gameState.activeSector && !SECTORS[gameState.activeSector]?.cities.includes(gameState.activeCity)) gameState.activeCity = SECTORS[gameState.activeSector]?.cities[0] || "";
+    
     window.switchSector(gameState.activeSector); 
     
-    currentPrice = window.safeNum(CITIES[gameState.activeCity].basePrice);
-    localTick(); updateOrderButtonsUI(); 
+    let cp = window.safeNum(CITIES[gameState.activeCity]?.price, CITIES[gameState.activeCity]?.basePrice);
+    if (cp <= 0) cp = 100;
+    setCurrentPrice(cp);
+    
+    localTick(); 
+    updateOrderButtonsUI(); 
     
     fetchRealMarketData();
     setInterval(localTick, 1000); 
 };
 
-// 雲端連線保護與系統啟動點
 window.addEventListener('DOMContentLoaded', async () => {
     if (!isFirebaseActive) {
         document.getElementById('login-status-text').innerText = "未設定雲端金鑰，啟用單機模式";
@@ -1055,7 +1082,6 @@ window.addEventListener('DOMContentLoaded', async () => {
             }, 500);
             updateGlobalStats(currentUser.uid);
             loadFromCloud(currentUser.uid);
-            setTimeout(() => window.startGame(), 1000); // 等待資料庫載入
         } else {
             document.getElementById('btn-anon-login').classList.remove('hidden');
             document.getElementById('login-status-text').innerText = "請點擊按鈕，以匿名身分入伍。";
