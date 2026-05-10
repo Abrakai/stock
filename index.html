@@ -66,8 +66,7 @@
 <div id="login-overlay" class="fixed inset-0 z-[100] bg-[#02050a] flex items-center justify-center p-4 transition-opacity duration-500">
     <div class="glass p-8 rounded-2xl max-w-sm w-full text-center border border-yellow-500/30 shadow-[0_0_30px_rgba(234,179,8,0.15)]">
         <h1 class="text-3xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600 tracking-widest">天道戰紀</h1>
-        <p class="text-xs text-gray-400 mb-8 tracking-widest">傭兵與貪婪之城</p>
-        <p class="text-xs text-sky-400 mb-4 font-bold animate-pulse" id="login-status-text">環境配置偵測中...</p>
+        <p class="text-xs text-gray-400 mb-8 tracking-widest" id="login-status-text">環境配置偵測中...</p>
         
         <button id="btn-anon-login" onclick="window.anonLogin()" class="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-black py-3 rounded-xl mb-4 transition-all shadow-lg active:scale-95 tracking-widest hidden">
             一鍵簽署傭兵契約
@@ -327,7 +326,7 @@
 </div>
 
 <!-- ==========================================
-     核心腳本區 (純 Vanilla JS)
+     核心腳本區 (純 Vanilla JS 支援 GitHub Pages)
      ========================================== -->
 <script type="module">
 // ==========================================
@@ -401,11 +400,13 @@ let realStateSnapshot = null;
 let currentMarketState = "CLOSED"; 
 let currentPrice = 0; 
 let lastPriceForAnim = 0; 
+let pendingPriceCity = "";
 let currentTab = "units";
 
-// 同步鎖與神秘客
+// ★ 同步絕對鎖與神秘客
 let isGameReady = false; 
-let isBooting = true;
+let is3DInitialized = false; // 絕對鎖：避免重複渲染或空值崩潰
+let gameTickInterval = null; // 絕對鎖：避免時鐘多開
 let mysteryGuestActive = null; 
 
 // 3D & Chart Globals
@@ -466,8 +467,8 @@ function loadLocal() {
         }
     } catch(e) { initDefaultDatabase(); }
     
-    // 開局載入完成，進入絕對鎖等待
-    initialFetchAndStart();
+    // 啟動絕對鎖：資料備妥後，統一呼叫點火
+    window.initialFetchAndStart();
 }
 
 async function syncToCloud() {
@@ -480,6 +481,7 @@ async function syncToCloud() {
     } catch(e) {}
 }
 
+let isCloudLoadedOnce = false;
 async function loadFromCloud(uid) {
     const userRef = doc(db, 'artifacts', currentAppId, 'users', uid, 'gameData', 'save');
     onSnapshot(userRef, (docSnap) => {
@@ -491,12 +493,12 @@ async function loadFromCloud(uid) {
             if(!SECTORS[gameState.activeSector]) gameState.activeSector = Object.keys(SECTORS)[0] || "";
             if(!SECTORS[gameState.activeSector]?.cities.includes(gameState.activeCity)) gameState.activeCity = SECTORS[gameState.activeSector]?.cities[0] || "";
             
-            if(isBooting) { isBooting = false; initialFetchAndStart(); } else if(isGameReady) updateUI();
+            if(!isCloudLoadedOnce) { isCloudLoadedOnce = true; window.initialFetchAndStart(); } else if(isGameReady) updateUI();
             
         } else if (!docSnap.exists() && !isSimMode) { 
             initDefaultDatabase(); 
             syncToCloud(); 
-            if(isBooting) { isBooting = false; initialFetchAndStart(); } else if(isGameReady) updateUI(); 
+            if(!isCloudLoadedOnce) { isCloudLoadedOnce = true; window.initialFetchAndStart(); } else if(isGameReady) updateUI(); 
         }
     });
     const statsRef = doc(db, 'artifacts', currentAppId, 'public', 'data', 'stats', 'global');
@@ -537,7 +539,7 @@ window.anonLogin = async function() {
 }
 
 // ==========================================
-// 5. 3D 渲染引擎核心
+// 5. 3D 渲染引擎核心 (包含初始點火)
 // ==========================================
 function getSeason() { const m = new Date().getMonth() + 1; if(m >= 3 && m <= 5) return 'SPRING'; if(m >= 6 && m <= 8) return 'SUMMER'; if(m >= 9 && m <= 11) return 'AUTUMN'; return 'WINTER'; }
 function getPriceTier(price) { if(price < 100) return 1; if(price <= 200) return 2; if(price <= 500) return 3; if(price <= 999) return 4; return 5; }
@@ -569,7 +571,7 @@ function createForest(season) {
     const mat = new THREE.MeshStandardMaterial({color: leafColor, flatShading: true, roughness: 0.9});
     for(let i=0; i<45; i++) {
         const tree = new THREE.Group(); const tk = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.2, 4, 6), new THREE.MeshStandardMaterial({color: 0x1e293b, metalness: 0.6})); tk.position.y = 2;
-        const l1 = new THREE.Mesh(new THREE.ConeGeometry(4.5, 10, 6), mat); l1.position.y = 7; const l2 = new THREE.Mesh(new THREE.ConeGeometry(3.5, 8, 6), mat); l2.position.y = 12;
+        const l1 = new THREE.Mesh(new THREE.ConeGeometry(4.5, 8, 7), mat); l1.position.y = 6; const l2 = new THREE.Mesh(new THREE.ConeGeometry(3.5, 6, 7), mat); l2.position.y = 11;
         tree.add(tk, l1, l2); tree.scale.setScalar(0.8 + Math.random() * 0.8); tree.position.set(30 + Math.random()*25, 0, (Math.random()-0.5)*75); group.add(tree);
     }
     return group;
@@ -599,6 +601,7 @@ function createSoldier(colorHex, isPlayer, tier = 1, side = 'LONG') {
 }
 
 function rebuildEnvironment() {
+    if(!is3DInitialized) return; // 絕對鎖：防禦呼叫
     const city = CITIES[gameState.activeCity]; if(!city) return;
     const tier = getPriceTier(window.safeNum(city.basePrice, 100)); const season = getSeason();
     if(castleGroup) scene.remove(castleGroup); if(forestGroup) scene.remove(forestGroup); if(decorationsGroup) scene.remove(decorationsGroup); if(snowParticles) { scene.remove(snowParticles); snowParticles = null; }
@@ -629,6 +632,7 @@ function rebuildEnvironment() {
 }
 
 function syncPlayerTroopsFromState(tier) {
+    if(!is3DInitialized) return; // 絕對鎖：防禦呼叫
     [...playerRedArmy, ...playerGreenArmy].forEach(m => scene.remove(m)); playerRedArmy = []; playerGreenArmy = [];
     if(!tier) tier = getPriceTier(window.safeNum(CITIES[gameState.activeCity]?.basePrice, 100));
     gameState.units.forEach(u => {
@@ -641,6 +645,7 @@ function syncPlayerTroopsFromState(tier) {
 }
 
 function updateVisuals() {
+    if(!isGameReady || !is3DInitialized) return;
     const city = CITIES[gameState.activeCity]; if(!city) return;
     const base = isSimMode ? city.simBasePrice : city.basePrice; const diff = base > 0 ? (currentPrice - base) / base : 0;
     const drift = window.safeNum(diff * 600, 0);
@@ -651,6 +656,7 @@ function updateVisuals() {
 }
 
 function fireLaser(attacker) {
+    if(!is3DInitialized) return;
     const s = attacker.userData.side; const c = s === 'LONG' ? 0xff3333 : 0x33ff33;
     const laser = new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.2,8,4), new THREE.MeshBasicMaterial({color: c, transparent: true, opacity: 0.9}));
     const pos = attacker.position.clone(); pos.y += 3; const dir = s === 'LONG' ? 1 : -1; pos.x += dir*2;
@@ -659,6 +665,7 @@ function fireLaser(attacker) {
 }
 
 function spawnExplosion(x, y, z, color) {
+    if(!is3DInitialized) return;
     const geom = new THREE.BufferGeometry(); const pos = new Float32Array(30 * 3); const vels = [];
     for(let j=0; j<30; j++) { pos[j*3]=x; pos[j*3+1]=y; pos[j*3+2]=z; vels.push({x:(Math.random()-0.5)*1.5, y:(Math.random()-0.5)*1.5, z:(Math.random()-0.5)*1.5}); }
     geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -667,6 +674,7 @@ function spawnExplosion(x, y, z, color) {
 }
 
 function triggerAttackAnim(side) {
+    if(!is3DInitialized) return;
     const attackers = side === 'LONG' ? [...playerRedArmy, ...baseRedArmy] : [...playerGreenArmy, ...baseGreenArmy];
     const dir = side === 'LONG' ? 1 : -1;
     attackers.slice(0, 12).forEach((m, idx) => {
@@ -677,7 +685,10 @@ function triggerAttackAnim(side) {
     });
 }
 
+// ★ 初始化 3D 空間，保證絕對點火一次
 function init3D() {
+    if (is3DInitialized) return;
+    
     scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0x02050a, 0.008);
     camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); renderer.setSize(window.innerWidth, window.innerHeight);
@@ -688,7 +699,9 @@ function init3D() {
     battleLine = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 75), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })); scene.add(battleLine);
     
     camera.position.set(0, 50, 85); camera.lookAt(0, 5, 0);
-    rebuildEnvironment();
+    
+    is3DInitialized = true; // 解鎖標記
+    
     window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
     animate();
 }
@@ -696,7 +709,7 @@ function init3D() {
 function animate() {
     requestAnimationFrame(animate); TWEEN.update();
     const time = Date.now() * 0.003;
-    if(isGameReady) {
+    if(isGameReady && is3DInitialized) {
         [...baseRedArmy, ...baseGreenArmy, ...playerRedArmy, ...playerGreenArmy].forEach(m => { if (!m.userData.isAttacking && m.visible) m.position.y = Math.sin(time + m.userData.randomOffset) * 0.3; });
     }
 
@@ -726,7 +739,8 @@ function animate() {
         exp.geometry.attributes.position.needsUpdate = true;
         if(exp.userData.life <= 0) { scene.remove(exp); explosions.splice(i, 1); }
     }
-    updateVisuals(); renderer.render(scene, camera);
+    updateVisuals(); 
+    if(renderer && scene && camera) renderer.render(scene, camera);
 }
 
 
@@ -762,7 +776,7 @@ window.fetchFullChartData = async function() {
         }
     } catch(e) {}
     
-    if (!fetched || !city.chartData[gameState.timeframe] || city.chartData[gameState.timeframe].length < 10) initKbars(city);
+    if (!fetched || !city.chartData[gameState.timeframe] || city.chartData[gameState.timeframe].length < 10) initKbars(city, currentPrice);
     if(!document.getElementById('chart-page').classList.contains('hidden')) window.renderChartInstance(); 
 };
 
@@ -850,12 +864,17 @@ async function fetchRealMarketData(isInitial = false) {
 
 function setCurrentPrice(p) { currentPrice = p; if(isGameReady) updateUI(); }
 
-// ★ 資料同步絕對鎖：開局強制等待真實數據
-async function initialFetchAndStart() {
+// ★ 絕對點火鎖定機制：保證 3D 空間與圖表已經妥當
+window.initialFetchAndStart = async function() {
     document.getElementById('market-status-label').innerText = "連線天界獲取最新報價中...";
     document.getElementById('market-status-label').className = "text-[10px] md:text-xs text-sky-400 font-bold uppercase tracking-widest bg-sky-500/20 px-2 py-1 rounded border border-sky-500/30 animate-pulse";
     
+    // 【第一重鎖】：確保 3D 渲染器已經啟動
+    init3D();
+    
+    // 【第二重鎖】：確保拿到最真實股價
     await fetchRealMarketData(true);
+    
     isGameReady = true;
     
     const sec = document.getElementById('sector-selector');
@@ -865,11 +884,15 @@ async function initialFetchAndStart() {
     
     localTick(); 
     updateOrderButtonsUI(); 
-    setInterval(localTick, 1000); 
-}
+    
+    // 確保定時器不會重複啟動
+    if(!gameTickInterval) {
+        gameTickInterval = setInterval(localTick, 1000); 
+    }
+};
 
 function localTick() {
-    if(!isGameReady) return; // 鎖死：未準備好前不執行任何跳動
+    if(!isGameReady || !is3DInitialized) return; // 雙重鎖死：未準備好前不執行任何跳動
 
     const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Taipei"}));
     const day = now.getDay(); const t = now.getHours() * 100 + now.getMinutes();
@@ -884,7 +907,7 @@ function localTick() {
     if (!isSimMode && currentMarketState === "CLOSED" && currentPrice === 0) { const c = CITIES[gameState.activeCity]; if (c && c.basePrice > 0) setCurrentPrice(c.basePrice); }
 
     // ★ 神秘客觸發機制：必須在能下單的時空 (真實開盤或沙盤中) 才現身
-    if (isGameReady && ((!isSimMode && currentMarketState === "OPEN") || isSimMode)) {
+    if ((!isSimMode && currentMarketState === "OPEN") || isSimMode) {
         if (Math.random() < 0.05 && !mysteryGuestActive) {
             const isLong = Math.random() > 0.5;
             mysteryGuestActive = { side: isLong ? 'LONG' : 'SHORT' };
@@ -1032,7 +1055,7 @@ window.ignoreMysteryGuest = function() {
 window.switchCity = function(code) { gameState.activeCity = code; setCurrentPrice(window.safeNum(CITIES[code].price, CITIES[code].basePrice)); document.getElementById('chart-city-name').innerText = CITIES[code].name; window.showMsg(`軍令轉移 至 ${CITIES[code].name}`); rebuildEnvironment(); window.fetchFullChartData(); updateUI(); };
 window.switchSector = function(code) { gameState.activeSector = code; const sel = document.getElementById('city-selector'); sel.innerHTML = ''; SECTORS[code].cities.forEach(c => sel.appendChild(new Option(CITIES[c].name, c))); window.switchCity(SECTORS[code].cities[0]); };
 
-// 修正下單失效：確保軍隊渲染能吃得到新的陣列資料
+// 確保軍隊渲染能吃得到新的陣列資料
 window.issueOrder = function(side, isFromGuest = false) {
     if (currentMarketState === "CLOSED" && !isSimMode) { window.showMsg("天道休市期間 僅開放沙盤練兵下單"); window.triggerThunder(); return; }
     const qty = parseInt(document.getElementById('order-qty').value) || 1; const vol = currentPrice * qty * 1000;
@@ -1054,7 +1077,7 @@ window.settle = function(id) {
     
     // ★ 神秘客 5% 槓桿與天使妖怪判定
     if (u.isFromGuest) {
-        profit = profit * 1.05;
+        profit = profit * 1.05; // 放大盈虧 5%
         if (profit >= 0) {
             modalStyle = 'glass-angel';
             titleStr = '👼 神秘客的饋贈';
@@ -1183,7 +1206,7 @@ window.showDailySummary = function() {
     const wins = gameState.history.filter(h => h.pnl > 0 && !h.isSim).length; const reals = gameState.history.filter(h => !h.isSim).length; const rate = reals === 0 ? 0 : (wins / reals * 100);
     const longWins = gameState.history.filter(h => h.side === 'LONG' && h.pnl > 0 && !h.isSim).length;
     const shortWins = gameState.history.filter(h => h.side === 'SHORT' && h.pnl > 0 && !h.isSim).length;
-    let realUnrealized = 0; gameState.units.forEach(u => { if(!u.isSim) { const c = CITIES[u.city]; if(c) realUnrealized += calcProfit(u.side, u.cost, safeNum(c.price, c.basePrice), u.qty); } });
+    let realUnrealized = 0; gameState.units.forEach(u => { if(!u.isSim) { const c = CITIES[u.city]; if(c) realUnrealized += calcProfit(u.side, u.cost, window.safeNum(c.price, c.basePrice), u.qty); } });
     
     document.getElementById('modal-window').className = 'glass p-6 w-full max-w-md transform scale-95 transition-transform duration-300 shadow-2xl rounded-2xl';
 
