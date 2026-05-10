@@ -5,14 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>天道戰紀：傭兵與貪婪之城</title>
     
-    <!-- 引入外部核心套件 -->
+    <!-- 引入外部核心套件 (移除易崩潰的財務套件，改用原生 Chart.js) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0/build/global/luxon.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.1.1/dist/chartjs-chart-financial.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
     
     <style>
@@ -46,11 +43,13 @@
         @keyframes goldThunder { 0% { background: rgba(234, 179, 8, 0); } 10% { background: rgba(234, 179, 8, 0.4); } 20% { background: rgba(234, 179, 8, 0); } 100% { background: rgba(234, 179, 8, 0); } }
         @keyframes simThunder { 0% { background: rgba(56, 189, 248, 0); } 10% { background: rgba(56, 189, 248, 0.4); } 20% { background: rgba(56, 189, 248, 0); } 100% { background: rgba(56, 189, 248, 0); } }
         @keyframes demonAura { 0% { box-shadow: inset 0 0 20px rgba(220, 38, 38, 0); } 50% { box-shadow: inset 0 0 80px rgba(220, 38, 38, 0.8); } 100% { box-shadow: inset 0 0 20px rgba(220, 38, 38, 0); } }
+        @keyframes guestPulse { 0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(234, 179, 8, 0); } 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); } }
         
         .thunder-flash { animation: thunder 0.5s ease-out; }
         .gold-thunder-flash { animation: goldThunder 0.8s ease-out; }
         .sim-thunder-flash { animation: simThunder 0.8s ease-out; }
         .demon-aura { animation: demonAura 2s ease-in-out infinite; }
+        .guest-highlight { animation: guestPulse 1.5s infinite; border-color: #eab308 !important; }
 
         .gold-coin { position: fixed; font-size: 24px; z-index: 9999; pointer-events: none; animation: fall linear forwards; }
         @keyframes fall { to { transform: translateY(110vh) rotate(720deg); opacity: 0; } }
@@ -69,9 +68,10 @@
 <div id="login-overlay" class="fixed inset-0 z-[100] bg-[#02050a] flex items-center justify-center p-4 transition-opacity duration-500">
     <div class="glass p-8 rounded-2xl max-w-sm w-full text-center border border-yellow-500/30 shadow-[0_0_30px_rgba(234,179,8,0.15)]">
         <h1 class="text-3xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600 tracking-widest">天道戰紀</h1>
-        <p class="text-xs text-gray-400 mb-8 tracking-widest" id="login-status-text">環境配置偵測中...</p>
+        <p class="text-xs text-gray-400 mb-8 tracking-widest">傭兵與貪婪之城</p>
+        <p class="text-xs text-sky-400 mb-4 font-bold animate-pulse" id="login-status-text">環境配置偵測中...</p>
         
-        <button id="btn-anon-login" onclick="window.anonLogin()" class="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-black py-3 rounded-xl mb-4 transition-all shadow-lg active:scale-95 tracking-widest hidden">
+        <button id="btn-anon-login" onclick="window.anonLogin()" class="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-black py-3 rounded-xl mb-4 transition-all shadow-lg active:scale-95 tracking-widest hidden cursor-pointer">
             一鍵簽署傭兵契約
         </button>
         
@@ -121,7 +121,7 @@
                 <div class="mt-3 pt-3 border-t border-white/10 flex gap-2 items-center">
                     <select id="sector-selector" onchange="window.switchSector(this.value)" class="bg-black/50 border border-white/20 rounded-lg px-2 py-1.5 text-[10px] md:text-xs font-bold text-gray-200 focus:outline-none w-24 md:w-auto truncate cursor-pointer"></select>
                     <select id="city-selector" onchange="window.switchCity(this.value)" class="flex-1 bg-black/50 border border-white/20 rounded-lg px-2 py-1.5 text-[11px] md:text-sm font-bold text-white focus:outline-none truncate cursor-pointer"></select>
-                    <button onclick="window.openCustomManager()" class="bg-white/10 hover:bg-white/20 p-1.5 rounded-lg text-white font-bold text-[10px] cursor-pointer">⚙ 總機</button>
+                    <button onclick="window.openCustomManager()" class="bg-white/10 hover:bg-white/20 p-1.5 rounded-lg text-white font-bold text-[10px] cursor-pointer">⚙ 總機設定</button>
                 </div>
                 
                 <div class="flex justify-between items-center bg-black/40 p-2.5 rounded-lg mt-3 border border-white/10 shadow-inner">
@@ -165,10 +165,11 @@
                 </div>
             </div>
 
-            <div id="order-panel" class="glass rounded-xl p-3 md:p-4 flex flex-col w-full md:flex-1 justify-center gap-3">
-                <div class="flex gap-3">
+            <div id="order-panel" class="glass rounded-xl p-3 md:p-4 flex flex-col w-full md:flex-1 justify-center gap-3 relative overflow-hidden">
+                <div id="order-overlay-msg" class="absolute inset-0 bg-black/80 backdrop-blur-sm z-20 flex items-center justify-center text-yellow-500 font-bold tracking-widest hidden">請先開啟沙盤或等待天道開盤</div>
+                <div class="flex gap-3 relative z-10">
                     <div class="flex flex-col flex-1">
-                        <span class="text-[10px] text-gray-400 font-bold uppercase mb-1 ml-1 tracking-widest">派遣營數</span>
+                        <span class="text-[10px] text-gray-400 font-bold uppercase mb-1 ml-1 tracking-widest">派遣營數 (1營=1000股)</span>
                         <input id="order-qty" type="number" value="1" min="1" class="border border-white/20 rounded-lg px-3 py-2 text-lg md:text-xl font-bold outline-none text-center text-white font-mono w-full">
                     </div>
                     <div class="flex flex-col flex-1">
@@ -176,14 +177,14 @@
                         <input id="order-price" type="number" step="0.5" placeholder="市價" class="border border-white/20 rounded-lg px-3 py-2 text-lg md:text-xl font-bold outline-none text-center text-white font-mono w-full">
                     </div>
                 </div>
-                <div class="flex gap-3 mt-1">
-                    <button id="btn-long" onclick="window.issueOrder('LONG')" class="flex-1 bg-gradient-to-b from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 active:scale-95 transition-all rounded-xl py-3 md:py-4 flex flex-col items-center justify-center border-b-2 border-red-900 shadow-lg cursor-pointer btn-disabled">
+                <div class="flex gap-3 mt-1 relative z-10">
+                    <button id="btn-long" onclick="window.issueOrder('LONG')" class="flex-1 bg-gradient-to-b from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 active:scale-95 transition-all rounded-xl py-3 md:py-4 flex flex-col items-center justify-center border-b-2 border-red-900 shadow-lg cursor-pointer">
                         <span class="text-[10px] font-bold text-red-200 tracking-widest mb-0.5">護國多軍 (漲獲利)</span>
-                        <span id="btn-long-text" class="text-base md:text-xl font-black uppercase tracking-widest text-white drop-shadow-md">休市禁令</span>
+                        <span id="btn-long-text" class="text-base md:text-xl font-black uppercase tracking-widest text-white drop-shadow-md">入城</span>
                     </button>
-                    <button id="btn-short" onclick="window.issueOrder('SHORT')" class="flex-1 bg-gradient-to-b from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 active:scale-95 transition-all rounded-xl py-3 md:py-4 flex flex-col items-center justify-center border-b-2 border-green-900 shadow-lg cursor-pointer btn-disabled">
+                    <button id="btn-short" onclick="window.issueOrder('SHORT')" class="flex-1 bg-gradient-to-b from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 active:scale-95 transition-all rounded-xl py-3 md:py-4 flex flex-col items-center justify-center border-b-2 border-green-900 shadow-lg cursor-pointer">
                         <span class="text-[10px] font-bold text-green-200 tracking-widest mb-0.5">掠奪空軍 (跌獲利)</span>
-                        <span id="btn-short-text" class="text-base md:text-xl font-black uppercase tracking-widest text-white drop-shadow-md">休市禁令</span>
+                        <span id="btn-short-text" class="text-base md:text-xl font-black uppercase tracking-widest text-white drop-shadow-md">攻掠</span>
                     </button>
                 </div>
             </div>
@@ -252,6 +253,20 @@
 <!-- ==========================================
      各類 Modal 彈窗系統
      ========================================== -->
+
+<!-- 資金不足警告 -->
+<div id="fund-alert-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-[70] opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+    <div class="glass rounded-2xl p-6 w-full max-w-sm border-red-500/50 shadow-[0_0_40px_rgba(220,38,38,0.4)] text-center transform scale-95 transition-transform duration-300" id="fund-alert-window">
+        <div class="text-6xl mb-4 animate-bounce">💸</div>
+        <h2 class="text-2xl font-black mb-2 tracking-widest text-red-500">軍費不足</h2>
+        <p class="text-xs text-gray-300 mb-6 leading-relaxed">統帥，您的天幣庫存不足以支付此筆軍令的保證金與手續費。</p>
+        <div class="bg-black/50 p-4 rounded-xl border border-red-500/20 mb-6 text-left space-y-2">
+            <div class="flex justify-between items-center"><span class="text-gray-400 text-xs">軍令總額</span><span class="text-red-400 font-mono" id="fund-alert-cost">0</span></div>
+            <div class="flex justify-between items-center"><span class="text-gray-400 text-xs">目前存銀</span><span class="text-white font-mono" id="fund-alert-balance">0</span></div>
+        </div>
+        <button onclick="document.getElementById('fund-alert-modal').classList.add('opacity-0', 'pointer-events-none');" class="w-full bg-gray-700 hover:bg-gray-600 py-3 rounded-xl font-black text-sm text-white shadow-lg cursor-pointer tracking-widest transition-all">關閉</button>
+    </div>
+</div>
 
 <!-- 戰況報表 (包含天使與妖怪動態面板) -->
 <div id="report-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300 p-4">
@@ -328,6 +343,19 @@
     </div>
 </div>
 
+<!-- 斷線應急 -->
+<div id="price-prompt-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+    <div class="glass rounded-2xl p-6 w-full max-w-sm border-sky-500/40 shadow-2xl">
+        <h2 class="text-xl font-black text-center mb-2 tracking-widest text-sky-400">天道連線中斷</h2>
+        <p class="text-[11px] text-gray-400 mb-5 text-center leading-relaxed">無法取得 <span id="prompt-city-name" class="text-white font-bold"></span> 的即時連線。<br>請輸入基準股價，或使用系統歷史預設啟動沙盤。</p>
+        <div class="space-y-4">
+            <input id="manual-price-input" type="number" step="0.5" placeholder="請輸入基準股價 如 1050" class="w-full bg-black/60 border border-white/20 rounded-lg px-4 py-3 text-white outline-none font-mono text-sm text-center">
+            <button onclick="window.submitManualPrice()" class="w-full bg-sky-600 hover:bg-sky-500 py-3 rounded-xl font-bold text-sm text-white shadow-lg transition-colors cursor-pointer tracking-widest">設定基準並進入沙盤</button>
+            <button onclick="window.forceStartSim()" class="w-full bg-gray-700 hover:bg-gray-600 py-3 rounded-xl font-bold text-sm text-white mt-2 transition-colors cursor-pointer tracking-widest">使用內建歷史強制啟動</button>
+        </div>
+    </div>
+</div>
+
 <!-- ==========================================
      核心腳本區 (純 Vanilla JS 支援 GitHub Pages)
      ========================================== -->
@@ -335,7 +363,9 @@
 // ==========================================
 // 1. Firebase 雲端初始化與設定區 (給使用者的自訂區)
 // ==========================================
-const MY_FIREBASE_CONFIG = null; // 若無金鑰，系統將以絕對順暢的「單機版」運行
+// 🚀 執行長專屬：Firebase 雲端資料庫設定區
+// 如果您想開啟真實的雲端儲存與會員統計功能，請將您的 Firebase Config 貼入下方的 MY_FIREBASE_CONFIG 中。
+const MY_FIREBASE_CONFIG = null; 
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
@@ -350,9 +380,8 @@ const finalConfig = envConfig || MY_FIREBASE_CONFIG;
 const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'abula-battlefield';
 
 if (finalConfig && Object.keys(finalConfig).length > 0) {
-    try {
-        app = initializeApp(finalConfig); auth = getAuth(app); db = getFirestore(app); isFirebaseActive = true;
-    } catch(e) { console.error("Firebase 失敗", e); }
+    try { app = initializeApp(finalConfig); auth = getAuth(app); db = getFirestore(app); isFirebaseActive = true; } 
+    catch(e) { console.error("Firebase 初始化失敗", e); }
 }
 
 // ==========================================
@@ -396,13 +425,15 @@ let realStateSnapshot = null;
 let currentMarketState = "CLOSED"; 
 let currentPrice = 0; 
 let lastPriceForAnim = 0; 
+let pendingPriceCity = "";
 let currentTab = "units";
 
-// ★ 同步鎖與神秘客
+// ★ 絕對同步鎖與神祕客狀態
 let isGameReady = false; 
 let is3DInitialized = false; 
 let gameTickInterval = null; 
 let mysteryGuestActive = null; 
+window.mysteryGuestActiveSide = null; // 記錄統帥是否聽從了神祕客
 
 // 3D & Chart Globals
 let scene, camera, renderer, battleLine;
@@ -425,6 +456,16 @@ window.showMsg = function(t) {
     if(msgTimeout) clearTimeout(msgTimeout);
     msgTimeout = setTimeout(()=>{ el.classList.remove('opacity-100', 'translate-y-0'); el.classList.add('opacity-0', 'translate-y-4'); }, 3000); 
 };
+
+// 資金不足專屬警報
+window.showFundAlert = function(cost) {
+    const el = document.getElementById('fund-alert-modal');
+    document.getElementById('fund-alert-cost').innerText = Math.floor(cost).toLocaleString();
+    document.getElementById('fund-alert-balance').innerText = Math.floor(gameState.balance).toLocaleString();
+    el.classList.remove('opacity-0', 'pointer-events-none');
+    window.triggerDemonAura();
+};
+
 window.triggerThunder = function() { const o = document.getElementById('thunder-overlay'); if(!o) return; o.classList.remove('thunder-flash','gold-thunder-flash','sim-thunder-flash','demon-aura'); void o.offsetWidth; o.classList.add('thunder-flash'); setTimeout(()=>o.classList.remove('thunder-flash'), 500); };
 window.triggerGoldThunder = function() { const o = document.getElementById('thunder-overlay'); if(!o) return; o.classList.remove('thunder-flash','gold-thunder-flash','sim-thunder-flash','demon-aura'); void o.offsetWidth; o.classList.add('gold-thunder-flash'); setTimeout(()=>o.classList.remove('gold-thunder-flash'), 800); };
 window.triggerSimThunder = function() { const o = document.getElementById('thunder-overlay'); if(!o) return; o.classList.remove('thunder-flash','gold-thunder-flash','sim-thunder-flash','demon-aura'); void o.offsetWidth; o.classList.add('sim-thunder-flash'); setTimeout(()=>o.classList.remove('sim-thunder-flash'), 800); };
@@ -493,8 +534,7 @@ async function loadFromCloud(uid) {
             if(!isCloudLoadedOnce) { isCloudLoadedOnce = true; window.initialFetchAndStart(); } else if(isGameReady) updateUI();
             
         } else if (!docSnap.exists() && !isSimMode) { 
-            initDefaultDatabase(); 
-            syncToCloud(); 
+            initDefaultDatabase(); syncToCloud(); 
             if(!isCloudLoadedOnce) { isCloudLoadedOnce = true; window.initialFetchAndStart(); } else if(isGameReady) updateUI(); 
         }
     });
@@ -742,7 +782,7 @@ function animate() {
 
 
 // ==========================================
-// 6. 專業圖表引擎與資料對齊
+// 6. 專業圖表引擎與資料對齊 (改用純 Line/Bar 避免崩潰)
 // ==========================================
 function calcEMA(data, period) { if(data.length === 0) return []; let k = 2 / (period + 1); let ema = [data[0]]; for(let i = 1; i < data.length; i++) { ema.push(data[i] * k + ema[i - 1] * (1 - k)); } return ema; }
 function calcSMA(data, period) { let sma = []; for(let i = 0; i < data.length; i++) { if(i < period - 1) { sma.push(data[i]); continue; } let sum = 0; for(let j = 0; j < period; j++) { sum += data[i - j]; } sma.push(sum / period); } return sma; }
@@ -790,22 +830,26 @@ window.renderChartInstance = function() {
         const dt = new Date(d.x);
         return gameState.timeframe.includes('m') ? dt.toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : dt.toLocaleDateString('zh-TW', {month: '2-digit', day: '2-digit'});
     });
-    const candleData = raw.map((d, i) => ({ x: labels[i], o: d.o, h: d.h, l: d.l, c: d.c }));
     const closePrices = raw.map(d => d.c);
     const upCol = '#ef4444'; const dnCol = '#22c55e'; 
+    const barWidth = raw.length > 150 ? 2 : (raw.length > 50 ? 4 : 8);
 
     const ctxM = document.getElementById('mainChartCanvas').getContext('2d');
     if(mainChart) mainChart.destroy();
     
-    // 針對 1 分 K 設定動態的 barThickness，避免 K 棒擁擠成一團雜訊
-    const barWidth = raw.length > 150 ? 2 : (raw.length > 50 ? 4 : 8);
-    
+    // 絕對防彈：使用原生 Line Chart 取代 Candlestick，確保 100% 渲染成功不斷線
     mainChart = new Chart(ctxM, {
-        type: 'candlestick',
-        data: { datasets: [{ data: candleData, color: { up: upCol, down: dnCol, unchanged: '#999' }, borderColor: { up: upCol, down: dnCol, unchanged: '#999' }, barThickness: barWidth }] },
+        type: 'line',
+        data: { 
+            labels: labels, 
+            datasets: [{ 
+                label: '收盤價走勢', data: closePrices, borderColor: '#eab308', backgroundColor: 'rgba(234, 179, 8, 0.15)', 
+                borderWidth: 2, pointRadius: 0, tension: 0.1, fill: true 
+            }] 
+        },
         options: { 
             animation: false, responsive: true, maintainAspectRatio: false, 
-            scales: { x: { type: 'category', labels: labels, display: false }, y: { position: 'right', ticks: { color: '#ccc' } } }, 
+            scales: { x: { display: false }, y: { position: 'right', ticks: { color: '#ccc' }, grid: { color: 'rgba(255,255,255,0.05)' } } }, 
             plugins: { legend: { display: false } } 
         }
     });
@@ -815,23 +859,21 @@ window.renderChartInstance = function() {
     volChart = new Chart(ctxV, {
         type: 'bar',
         data: { labels, datasets: [{ data: raw.map(d => d.v), backgroundColor: raw.map(d => d.c >= d.o ? upCol : dnCol), barThickness: barWidth }] },
-        options: { animation: false, responsive: true, maintainAspectRatio: false, scales: { x: { type: 'category', labels: labels, display: false }, y: { display: false } }, plugins: { legend: { display: false } } }
+        options: { animation: false, responsive: true, maintainAspectRatio: false, scales: { x: { display: false }, y: { display: false } }, plugins: { legend: { display: false } } }
     });
 
     const ctxI = document.getElementById('indicatorChartCanvas').getContext('2d');
     if(indChart) indChart.destroy();
     let datasets = []; const ind = gameState.activeIndicator;
-    let yScales = { y: { position: 'right', ticks: { color: '#888', font: { size: 8 } } } }; // 預設單一 Y 軸
+    let yScales = { y: { position: 'right', ticks: { color: '#888', font: { size: 8 } } } }; 
     
     if(ind === "MACD") {
         const {m, s, h} = calcMACD(closePrices);
-        
-        // MACD 專屬雙 Y 軸設定，解決柱狀圖數值極小，快慢線數值極大導致的消失問題
+        // ★ MACD 雙 Y 軸設定：解決柱狀圖與線圖互相壓扁的問題
         yScales = {
             y: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'MACD線', color: '#888', font: {size: 8} }, ticks: { color: '#fff', font: { size: 8 } } },
             y1: { type: 'linear', display: true, position: 'left', title: { display: true, text: '柱狀圖', color: '#888', font: {size: 8} }, ticks: { color: '#aaa', font: { size: 8 } }, grid: { drawOnChartArea: false } }
         };
-        
         datasets = [
             { type: 'bar', label: 'Hist', data: h, backgroundColor: h.map(v => v >= 0 ? '#ef4444' : '#22c55e'), yAxisID: 'y1', barThickness: barWidth },
             { type: 'line', label: 'MACD 快線', data: m, borderColor: '#fff', borderWidth: 1.5, pointRadius: 0, tension: 0.1, yAxisID: 'y' },
@@ -852,7 +894,7 @@ window.renderChartInstance = function() {
         data: { labels, datasets }, 
         options: { 
             animation: false, responsive: true, maintainAspectRatio: false, 
-            scales: Object.assign({ x: { display: false } }, yScales), // 套用雙軸或單軸
+            scales: Object.assign({ x: { display: false } }, yScales),
             plugins: { legend: { display: true, position: 'top', labels: { color: '#888', font: { size: 8 } } } } 
         } 
     });
@@ -901,14 +943,10 @@ window.initialFetchAndStart = async function() {
     document.getElementById('market-status-label').innerText = "連線天界獲取最新報價中...";
     document.getElementById('market-status-label').className = "text-[10px] md:text-xs text-sky-400 font-bold uppercase tracking-widest bg-sky-500/20 px-2 py-1 rounded border border-sky-500/30 animate-pulse";
     
-    // 【第一重鎖】：確保 3D 渲染器已經啟動
     init3D();
-    
-    // 【第二重鎖】：確保拿到最真實股價
     await fetchRealMarketData(true);
     
     isGameReady = true;
-    
     const sec = document.getElementById('sector-selector');
     sec.innerHTML = '';
     for(let k in SECTORS) { sec.appendChild(new Option(SECTORS[k].name, k)); }
@@ -916,15 +954,11 @@ window.initialFetchAndStart = async function() {
     
     localTick(); 
     updateOrderButtonsUI(); 
-    
-    // 確保定時器不會重複啟動
-    if(!gameTickInterval) {
-        gameTickInterval = setInterval(localTick, 1000); 
-    }
+    if(!gameTickInterval) gameTickInterval = setInterval(localTick, 1000); 
 };
 
 function localTick() {
-    if(!isGameReady || !is3DInitialized) return; // 雙重鎖死：未準備好前不執行任何跳動
+    if(!isGameReady || !is3DInitialized) return;
 
     const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Taipei"}));
     const day = now.getDay(); const t = now.getHours() * 100 + now.getMinutes();
@@ -960,32 +994,47 @@ function localTick() {
             
             if(Math.abs(np - lastPriceForAnim) > 0.01) { triggerAttackAnim(np > lastPriceForAnim ? 'LONG' : 'SHORT'); lastPriceForAnim = np; }
             
-            if(city.chartData && city.chartData[gameState.timeframe]) {
-                let chartArr = city.chartData[gameState.timeframe];
-                if(chartArr.length > 0) {
-                    let lastBar = chartArr[chartArr.length - 1]; let timeNow = Date.now();
-                    if (timeNow - lastBar.x > 30000) { chartArr.push({ x: timeNow, o: np, h: np, l: np, c: np, v: Math.random() * 50 }); if (chartArr.length > 150) chartArr.shift(); } 
-                    else { lastBar.c = np; lastBar.h = Math.max(lastBar.h, np); lastBar.l = Math.min(lastBar.l, np); lastBar.v += Math.random() * 10; }
+            // 同步沙盤所有時距的 K 線
+            const tfs = ["1m", "5m", "15m", "30m", "60m", "1d", "1wk", "1mo"];
+            if(!city.chartData) city.chartData = {};
+            
+            tfs.forEach(tf => {
+                if(!city.chartData[tf] || city.chartData[tf].length === 0) {
+                    city.chartData[tf] = []; // 避免空值
+                    // 重新推演
+                    let tempC = window.safeNum(city.simBasePrice, city.basePrice);
+                    let time = Date.now() - 100 * 60000;
+                    for(let i=0; i<100; i++) city.chartData[tf].push({ x: time + i*60000, o: tempC, h: tempC+1, l: tempC-1, c: tempC, v: 100 });
                 }
-            }
+                
+                let chartArr = city.chartData[tf];
+                let lastBar = chartArr[chartArr.length - 1]; let timeNow = Date.now();
+                if (timeNow - lastBar.x > 60000) { 
+                    chartArr.push({ x: timeNow, o: np, h: np, l: np, c: np, v: Math.random() * 50 }); 
+                    if (chartArr.length > 150) chartArr.shift(); 
+                } else { 
+                    lastBar.c = np; lastBar.h = Math.max(lastBar.h, np); lastBar.l = Math.min(lastBar.l, np); lastBar.v += Math.random() * 10; 
+                }
+            });
         }
     } else if (currentMarketState === "OPEN" && Math.random() > 0.8) { fetchRealMarketData(); }
     
     if(!document.getElementById('chart-page').classList.contains('hidden')) window.renderChartInstance(); 
 }
 
-// 動態長出接軌歷史的虛擬 K 線 (修正為均值回歸演算法，解決飆漲到3100的問題)
+// ★ 動態長出接軌歷史的虛擬 K 線 (修正為均值回歸演算法，解決飆漲到3100的離譜落差)
 function initKbars(city, startPrice = null) {
     let bp = startPrice || (isSimMode ? window.safeNum(city.simBasePrice, city.basePrice) : window.safeNum(city.basePrice, 100));
     if(bp <= 0) bp = 100;
     const volBase = bp * 0.005; let time = Date.now() - 100 * 60000; 
     const tfs = ["1m", "5m", "15m", "30m", "60m", "1d", "1wk", "1mo"];
     tfs.forEach(tf => { 
-        let fakeData = []; let curC = bp; 
+        let fakeData = []; let curC = bp * 0.98; // 從稍低點開始長出動能
+        let step = (bp - curC) / 100;
         for(let i = 0; i < 100; i++) {
             let o = curC; 
-            // 均值回歸：確保隨機跳動不會無限放大，完美約束在起點附近
-            curC += (bp - curC) * 0.1 + (Math.random() - 0.5) * volBase * 2; 
+            curC += step + (Math.random() - 0.5) * volBase; // 均值回歸向現價收斂
+            if(i === 99) curC = bp; // 強制收斂於目前真實基準，完美接軌
             let h = Math.max(o, curC) + Math.abs((Math.random() * 0.5) * volBase); 
             let l = Math.min(o, curC) - Math.abs((Math.random() * 0.5) * volBase);
             fakeData.push({ x: time + i * 60000, o: o, h: h, l: l, c: curC, v: Math.floor(100 + Math.random() * 900) });
@@ -1041,7 +1090,7 @@ function renderUnits() {
                 cont.innerHTML += `<div class="bg-black/60 p-3 rounded-xl border-l-4 ${borderColor} mb-2 shadow-lg"><div class="flex justify-between items-center mb-1"><strong class="${titleColor}">${safeName} 總戰力</strong><span class="text-[10px] bg-white/10 px-2 rounded">${g.totalQty.toFixed(1)} 營</span></div><div class="flex justify-between text-[11px] text-gray-400 mb-1"><span>權重均價</span><span class="text-white">${avgCost.toFixed(2)}</span></div><div class="flex justify-between text-sm font-black"><span>【未平倉】浮動淨利</span><span class="${totalProfit >= 0 ? 'text-red-400' : 'text-green-400'}">${Math.floor(totalProfit).toLocaleString()}</span></div></div>`;
                 g.items.forEach(u => {
                     const profit = calcProfit(u.side, u.cost, currentPrice > 0 ? currentPrice : u.cost, u.qty);
-                    const guestTag = u.isFromGuest ? '<span class="text-[9px] bg-yellow-500/20 text-yellow-400 px-1 rounded ml-1 border border-yellow-500/50">神秘客加持</span>' : '';
+                    const guestTag = u.isFromGuest ? '<span class="text-[9px] bg-yellow-500/20 text-yellow-400 px-1 rounded ml-1 border border-yellow-500/50">神秘客</span>' : '';
                     cont.innerHTML += `<div class="bg-black/40 p-2 rounded-lg border-r-4 ${profit >= 0 ? 'border-red-500' : 'border-green-500'} mb-2 ml-4"><div class="flex justify-between text-xs"><span>派遣 ${u.side === 'LONG' ? '做多' : '做空'} ${guestTag}</span><span class="${profit >= 0 ? 'text-red-400' : 'text-green-400'}">${Math.floor(profit).toLocaleString()}</span></div><div class="flex justify-between items-center mt-1"><span class="text-[9px] text-gray-500">進場單價 ${u.cost.toFixed(2)}</span><button onclick="window.settle(${u.id})" class="text-[10px] bg-white/10 px-3 py-1 rounded hover:bg-white/20 transition-colors cursor-pointer">撤軍結算</button></div></div>`;
                 });
             }
@@ -1054,10 +1103,19 @@ function updateOrderButtonsUI() {
     const btnL = document.getElementById('btn-long'); const btnS = document.getElementById('btn-short');
     const txtL = document.getElementById('btn-long-text'); const txtS = document.getElementById('btn-short-text');
     const simBtn = document.getElementById('sim-btn'); const label = document.getElementById('market-status-label');
-    if (!btnL || !btnS || !simBtn || !label) return;
+    const overlay = document.getElementById('order-overlay-msg');
+    
+    if (!btnL || !btnS || !simBtn || !label || !overlay) return;
 
-    if (currentMarketState === "CLOSED" && !isSimMode) { btnL.classList.add('btn-disabled'); btnS.classList.add('btn-disabled'); txtL.innerText = "休市禁令"; txtS.innerText = "休市禁令"; } 
-    else { btnL.classList.remove('btn-disabled'); btnS.classList.remove('btn-disabled'); txtL.innerText = "入城"; txtS.innerText = "攻掠"; }
+    if (currentMarketState === "CLOSED" && !isSimMode) { 
+        btnL.classList.add('btn-disabled'); btnS.classList.add('btn-disabled'); 
+        txtL.innerText = "休市禁令"; txtS.innerText = "休市禁令"; 
+        overlay.classList.remove('hidden');
+    } else { 
+        btnL.classList.remove('btn-disabled'); btnS.classList.remove('btn-disabled'); 
+        txtL.innerText = "入城"; txtS.innerText = "攻掠"; 
+        overlay.classList.add('hidden');
+    }
 
     simBtn.classList.remove('hidden'); 
     if (isSimMode) {
@@ -1074,7 +1132,7 @@ function updateOrderButtonsUI() {
     }
 }
 
-// 神秘客控制 - 智慧引導至下單面板
+// ★ 神秘客控制 - 智慧引導至下單面板 (不強迫自動扣款)
 window.acceptMysteryGuest = function() {
     if (!mysteryGuestActive) return;
     document.getElementById('mystery-guest-panel').classList.add('hidden');
@@ -1087,14 +1145,14 @@ window.acceptMysteryGuest = function() {
     window.mysteryGuestActiveSide = mysteryGuestActive.side; // 暫存神秘客標記
     mysteryGuestActive = null;
     
-    window.showMsg("已帶入下單面板，請確認數量與價位！(結算享 ±5% 槓桿)");
+    window.showMsg("已帶入面板，請確認數量與價位後發布軍令！(結算享 ±5% 槓桿)");
     
     // 閃爍對應的下單按鈕引導點擊
     const btnId = window.mysteryGuestActiveSide === 'LONG' ? 'btn-long' : 'btn-short';
     const targetBtn = document.getElementById(btnId);
     if(targetBtn) {
-        targetBtn.classList.add('animate-pulse', 'ring-4', 'ring-yellow-500');
-        setTimeout(() => targetBtn.classList.remove('animate-pulse', 'ring-4', 'ring-yellow-500'), 4000);
+        targetBtn.classList.add('guest-highlight');
+        setTimeout(() => targetBtn.classList.remove('guest-highlight'), 4000);
     }
 };
 
@@ -1107,7 +1165,7 @@ window.ignoreMysteryGuest = function() {
 window.switchCity = function(code) { gameState.activeCity = code; setCurrentPrice(window.safeNum(CITIES[code].price, CITIES[code].basePrice)); document.getElementById('chart-city-name').innerText = getCityName(code); window.showMsg(`軍令轉移 至 ${getCityName(code)}`); rebuildEnvironment(); window.fetchFullChartData(); updateUI(); };
 window.switchSector = function(code) { gameState.activeSector = code; const sel = document.getElementById('city-selector'); sel.innerHTML = ''; SECTORS[code].cities.forEach(c => sel.appendChild(new Option(getCityName(c), c))); window.switchCity(SECTORS[code].cities[0]); };
 
-// 確保軍隊渲染能吃得到新的陣列資料
+// 確保軍令與資金嚴格控管
 window.issueOrder = function(side) {
     if (currentMarketState === "CLOSED" && !isSimMode) { window.showMsg("天道休市期間 僅開放沙盤練兵下單"); window.triggerThunder(); return; }
     const qty = parseInt(document.getElementById('order-qty').value) || 1; 
@@ -1116,7 +1174,11 @@ window.issueOrder = function(side) {
     const vol = orderP * qty * 1000;
     const totalCost = vol + (vol * TAX_RATE) + (vol * FEE_RATE);
     
-    if(gameState.balance < totalCost) { window.showMsg("存銀不足，無法執行軍令！"); window.triggerThunder(); return; }
+    if(gameState.balance < totalCost) { 
+        // 資金不足，彈出嚴厲的紅色警告視窗
+        window.showFundAlert(totalCost); 
+        return; 
+    }
     
     // 判斷是否為神秘客單
     let isFromGuest = (window.mysteryGuestActiveSide === side);
@@ -1157,7 +1219,7 @@ window.settle = function(id) {
     gameState.balance += (u.cost * u.qty * 1000) + profit;
     if(!isSimMode) gameState.realizedPnl += profit;
     
-    // 將這筆歷史紀錄存入，並標記是否為神秘客單，以便戰報分析
+    // 將這筆歷史紀錄存入，並標記，以便戰報分析
     gameState.history.unshift({...u, pnl: profit, exit: currentPrice, time: new Date().toLocaleTimeString('zh-TW', {hour12:false})});
     
     gameState.units.splice(idx, 1); syncPlayerTroopsFromState(); updateUI(); syncToCloud();
@@ -1246,7 +1308,7 @@ window.openChartPage = function() { document.getElementById('chart-page').classL
 window.closeChartPage = function() { document.getElementById('chart-page').classList.add('translate-y-full'); setTimeout(() => document.getElementById('chart-page').classList.add('hidden'), 300); };
 window.setTimeframe = function(tf) { gameState.timeframe = tf; document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active')); document.getElementById(`tf-${tf}`).classList.add('active'); if (isSimMode) window.renderChartInstance(); else window.fetchFullChartData(); };
 window.setIndicator = function(ind) { gameState.activeIndicator = ind; document.querySelectorAll('.ind-btn').forEach(b => b.classList.toggle('active', b.id === 'btn-ind-' + ind)); renderChartInstance(); };
-window.switchTab = function(t) { currentTab = t; ['units', 'history', 'pending'].forEach(x => document.getElementById('tab-content-' + x).classList.toggle('hidden', x !== t)); document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === 'tab-' + t)); renderUnits(); };
+window.switchTab = function(t) { currentTab = t; ['units', 'history'].forEach(x => document.getElementById('tab-content-' + x).classList.toggle('hidden', x !== t)); document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === 'tab-' + t)); renderUnits(); };
 window.openCustomManager = function() { document.getElementById('custom-modal').classList.remove('opacity-0', 'pointer-events-none'); document.getElementById('api-key-input').value = gameState.apiKey; renderCustomList(); };
 window.closeCustomManager = function() { gameState.apiKey = document.getElementById('api-key-input').value; document.getElementById('custom-modal').classList.add('opacity-0', 'pointer-events-none'); if(gameState.activeSector === 'CUSTOM') window.switchSector('CUSTOM'); syncToCloud(); };
 
@@ -1273,8 +1335,8 @@ window.showDailySummary = function() {
     const longWins = gameState.history.filter(h => h.side === 'LONG' && h.pnl > 0 && !h.isSim).length;
     const shortWins = gameState.history.filter(h => h.side === 'SHORT' && h.pnl > 0 && !h.isSim).length;
     
-    // AI 戰機檢討短評
-    let insightStr = "兵推樣本不足，請持續出兵以利分析。";
+    // ★ AI 戰機檢討短評
+    let insightStr = "兵推樣本不足，請統帥持續出兵以利系統分析。";
     if (reals > 5) {
         if (rate > 55) insightStr = "戰略精準，順勢操作執行確實，建議繼續保持紀律。";
         else if (rate < 40) insightStr = "近期逆勢抗單頻率較高，請嚴格執行停損，並觀察神秘客的動向。";
