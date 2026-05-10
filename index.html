@@ -1,0 +1,1572 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>三界戰場 傭兵統帥傳奇</title>
+    
+    <!-- ==========================================
+         1. 引入外部核心套件 (CDN)
+         ========================================== -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0/build/global/luxon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.1.1/dist/chartjs-chart-financial.min.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <!-- ==========================================
+         2. 企業級 CSS 樣式定義
+         ========================================== -->
+    <style>
+        body { 
+            margin: 0; overflow: hidden; background: #02050a; 
+            font-family: 'Noto Sans TC', sans-serif; color: white; touch-action: none; 
+        }
+        canvas.three-canvas { display: block; position: absolute; top: 0; left: 0; z-index: 0; }
+        
+        .glass { background: rgba(10, 15, 25, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .glass-sim { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(56, 189, 248, 0.3); box-shadow: 0 0 20px rgba(56, 189, 248, 0.1); }
+        
+        .ui-scroll-container { position: fixed; inset: 0; overflow-y: auto; overflow-x: hidden; z-index: 10; pointer-events: auto; }
+        .ui-content-wrapper { display: flex; flex-direction: column; justify-content: space-between; min-height: 100%; padding: 0.5rem; gap: 0.5rem; padding-bottom: 2rem; }
+        @media (min-width: 768px) { .ui-content-wrapper { padding: 1.5rem; gap: 1rem; } }
+        
+        .tab-btn { font-size: 12px; padding: 6px 12px; border-bottom: 2px solid transparent; transition: all 0.3s; color: #888; font-weight: bold; white-space: nowrap; flex: 1; text-align: center; cursor: pointer; }
+        .tab-btn.active { color: #eab308; border-color: #eab308; text-shadow: 0 0 10px rgba(234,179,8,0.5); }
+        .ind-btn { font-size: 10px; padding: 4px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); transition: all 0.2s; cursor: pointer; color: #aaa; background: rgba(0,0,0,0.3); }
+        .ind-btn.active { background: #3b82f6; color: white; border-color: #3b82f6; font-weight: bold; box-shadow: 0 0 10px rgba(59,130,246,0.5); }
+        .timeframe-btn { font-size: 11px; padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; cursor: pointer; }
+        .timeframe-btn.active { background: #eab308; color: black; border-color: #eab308; font-weight: 900; }
+        
+        input[type=number], input[type=text] { background: rgba(0,0,0,0.4); box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); transition: all 0.3s; color: white; border: 1px solid rgba(255,255,255,0.1); }
+        input[type=number]:focus, input[type=text]:focus { background: rgba(255,255,255,0.1); box-shadow: 0 0 10px rgba(234,179,8,0.3), inset 0 2px 4px rgba(0,0,0,0.5); border-color: #eab308; outline: none; }
+        .btn-disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(100%); pointer-events: none; }
+        
+        @keyframes thunder { 0% { background: rgba(255, 255, 255, 0); } 10% { background: rgba(255, 255, 255, 0.3); } 20% { background: rgba(255, 255, 255, 0); } 100% { background: rgba(255, 255, 255, 0); } }
+        @keyframes goldThunder { 0% { background: rgba(234, 179, 8, 0); } 10% { background: rgba(234, 179, 8, 0.4); } 20% { background: rgba(234, 179, 8, 0); } 100% { background: rgba(234, 179, 8, 0); } }
+        @keyframes simThunder { 0% { background: rgba(56, 189, 248, 0); } 10% { background: rgba(56, 189, 248, 0.4); } 20% { background: rgba(56, 189, 248, 0); } 100% { background: rgba(56, 189, 248, 0); } }
+        
+        .thunder-flash { animation: thunder 0.5s ease-out; }
+        .gold-thunder-flash { animation: goldThunder 0.8s ease-out; }
+        .sim-thunder-flash { animation: simThunder 0.8s ease-out; }
+        
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .gold-coin { position: fixed; font-size: 24px; z-index: 9999; pointer-events: none; animation: fall linear forwards; }
+        @keyframes fall { to { transform: translateY(110vh) rotate(720deg); opacity: 0; } }
+    </style>
+</head>
+<body>
+
+<!-- ==========================================
+     會員登入大廳 (防護全域系統)
+     ========================================== -->
+<div id="login-overlay" class="fixed inset-0 z-[100] bg-[#02050a] flex items-center justify-center p-4 transition-opacity duration-500">
+    <div class="glass p-8 rounded-2xl max-w-sm w-full text-center border border-yellow-500/30 shadow-[0_0_30px_rgba(234,179,8,0.15)]">
+        <h1 class="text-3xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600 tracking-widest">三界戰場</h1>
+        <p class="text-xs text-gray-400 mb-8 tracking-widest" id="login-status-text">連線天界中...</p>
+        
+        <button id="btn-anon-login" class="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-black py-3 rounded-xl mb-4 transition-all shadow-lg active:scale-95 tracking-widest hidden">
+            一鍵匿名入伍
+        </button>
+        
+        <div class="border-t border-white/10 pt-4 mt-4 flex justify-around text-[10px] text-gray-500">
+            <div class="flex flex-col"><span>總進駐兵力</span><span id="stat-total-users" class="text-gray-300 font-mono text-sm">--</span></div>
+            <div class="flex flex-col"><span>今日活躍</span><span id="stat-today-active" class="text-yellow-500 font-mono text-sm">--</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- ==========================================
+     特效遮罩層與粒子容器
+     ========================================== -->
+<div id="thunder-overlay" class="fixed inset-0 pointer-events-none z-50 transition-colors duration-500"></div>
+<div id="gold-rain-container" class="fixed inset-0 pointer-events-none z-[60] overflow-hidden"></div>
+<div id="msg-box" class="fixed top-16 md:bottom-24 md:top-auto left-1/2 -translate-x-1/2 bg-gray-900/95 backdrop-blur-md px-5 py-2.5 rounded-full text-xs md:text-sm font-bold opacity-0 transition-all duration-300 z-[60] pointer-events-none text-center w-max max-w-[85vw] border border-white/20 text-white tracking-widest shadow-[0_10px_25px_rgba(0,0,0,0.8)] whitespace-nowrap"></div>
+
+<!-- ==========================================
+     主 UI 佈局
+     ========================================== -->
+<div id="main-ui" class="ui-scroll-container scrollbar-hide transition-all duration-500 hidden">
+    <div class="ui-content-wrapper">
+        
+        <div class="w-full flex-none flex flex-col md:flex-row gap-2 justify-between items-start">
+            <div id="main-dashboard" class="glass rounded-xl p-3 w-full md:w-[26rem] shadow-lg transition-all duration-500">
+                <div class="flex justify-between items-center mb-2">
+                    <span id="market-status-label" class="text-[10px] md:text-xs text-yellow-400 font-bold uppercase tracking-widest bg-yellow-500/20 px-2 py-1 rounded border border-yellow-500/30">系統啟動中</span>
+                    <div class="flex gap-1.5">
+                        <button onclick="window.toggleSimMode()" id="sim-btn" class="bg-sky-600 hover:bg-sky-500 px-2.5 py-1.5 rounded text-[10px] text-white font-bold tracking-widest shadow-[0_0_10px_rgba(2,132,199,0.5)] transition-all cursor-pointer">啟動沙盤</button>
+                        <button onclick="window.openChartPage()" class="bg-white/10 hover:bg-white/20 border border-white/20 px-2.5 py-1.5 rounded text-[10px] text-white font-bold tracking-widest transition-all cursor-pointer">軍師圖表</button>
+                        <button onclick="window.showDailySummary()" class="bg-purple-900/50 hover:bg-purple-800 border border-purple-500/40 px-2.5 py-1.5 rounded text-[10px] text-purple-200 font-bold tracking-widest transition-all cursor-pointer">戰績大表</button>
+                    </div>
+                </div>
+                
+                <div class="flex justify-between items-end mt-2">
+                    <div>
+                        <div class="text-[10px] text-gray-400 mb-0.5 tracking-wider">人界存銀 天幣</div>
+                        <div id="user-balance" class="text-2xl md:text-3xl font-mono font-black text-white">讀取中</div>
+                        <div id="frozen-balance" class="text-[9px] text-gray-500 mt-0.5">凍結 0</div>
+                    </div>
+                    
+                    <div id="real-pnl-container" class="flex flex-col items-end">
+                        <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">【已入庫】累積實現淨利</span>
+                        <div id="today-total-result" class="text-xl md:text-2xl font-black font-mono">加 0</div>
+                    </div>
+                    
+                    <div id="sim-pnl-container" class="hidden flex flex-col items-end">
+                        <span class="text-[10px] text-sky-400 font-bold uppercase animate-pulse mb-0.5">【待結算】沙盤推演淨利</span>
+                        <div id="sim-total-result" class="text-xl md:text-2xl font-black font-mono text-sky-400 drop-shadow-[0_0_5px_rgba(56,189,248,0.5)]">加 0</div>
+                    </div>
+                </div>
+                
+                <div class="mt-3 pt-3 border-t border-white/10 flex gap-2 items-center">
+                    <select id="sector-selector" onchange="window.switchSector(this.value)" class="bg-black/50 border border-white/20 rounded-lg px-2 py-1.5 text-[10px] md:text-xs font-bold text-gray-200 focus:outline-none w-24 md:w-auto truncate cursor-pointer"></select>
+                    <select id="city-selector" onchange="window.switchCity(this.value)" class="flex-1 bg-black/50 border border-white/20 rounded-lg px-2 py-1.5 text-[11px] md:text-sm font-bold text-white focus:outline-none truncate cursor-pointer"></select>
+                    <button onclick="window.openCustomManager()" class="bg-white/10 hover:bg-white/20 p-1.5 rounded-lg text-white font-bold text-[10px] cursor-pointer">⚙ 總機設定</button>
+                </div>
+                
+                <div class="flex justify-between items-center bg-black/40 p-2.5 rounded-lg mt-3 border border-white/10 shadow-inner">
+                    <div class="flex items-baseline gap-2">
+                        <span id="market-price" class="text-2xl md:text-3xl font-mono font-black text-white">等待天道</span>
+                        <span id="price-change" class="text-[10px] md:text-[11px] font-bold text-gray-400">0.00 %</span>
+                    </div>
+                    <div class="text-right flex flex-col items-end">
+                        <span id="base-price-label" class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-0.5">基準昨收</span>
+                        <span id="base-price-display" class="text-sm md:text-base font-mono font-bold text-gray-300">---</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-1 min-h-[40vh] w-full pointer-events-none"></div>
+
+        <div class="w-full flex-none flex flex-col md:flex-row gap-2">
+            <div class="glass rounded-xl flex flex-col w-full md:w-96 flex-none h-[35vh] md:h-[40vh]">
+                <div class="flex border-b border-white/10 flex-none">
+                    <button onclick="window.switchTab('units')" id="tab-units" class="tab-btn active">戰力整編</button>
+                    <button onclick="window.switchTab('history')" id="tab-history" class="tab-btn">單筆戰紀</button>
+                    <button onclick="window.switchTab('pending')" id="tab-pending" class="tab-btn">待命軍令</button>
+                </div>
+                <div id="tab-container" class="p-2 flex-1 overflow-y-auto scrollbar-hide">
+                    <div id="tab-content-units" class="space-y-2"></div>
+                    <div id="tab-content-history" class="space-y-2 hidden"></div>
+                    <div id="tab-content-pending" class="space-y-2 hidden"></div>
+                </div>
+            </div>
+
+            <div id="order-panel" class="glass rounded-xl p-3 md:p-4 flex flex-col w-full md:flex-1 justify-center gap-3">
+                <div class="flex gap-3">
+                    <div class="flex flex-col flex-1">
+                        <span class="text-[10px] text-gray-400 font-bold uppercase mb-1 ml-1 tracking-widest">派遣營數</span>
+                        <input id="order-qty" type="number" value="1" min="1" class="border border-white/20 rounded-lg px-3 py-2 text-lg md:text-xl font-bold outline-none text-center text-white font-mono w-full">
+                    </div>
+                    <div class="flex flex-col flex-1">
+                        <span class="text-[10px] text-gray-400 font-bold uppercase mb-1 ml-1 tracking-widest">進場委託價</span>
+                        <input id="order-price" type="number" step="0.5" placeholder="市價" class="border border-white/20 rounded-lg px-3 py-2 text-lg md:text-xl font-bold outline-none text-center text-white font-mono w-full">
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-1">
+                    <button id="btn-long" onclick="window.issueOrder('LONG')" class="flex-1 bg-gradient-to-b from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 active:scale-95 transition-all rounded-xl py-3 md:py-4 flex flex-col items-center justify-center border-b-2 border-red-900 shadow-lg cursor-pointer">
+                        <span class="text-[10px] font-bold text-red-200 tracking-widest mb-0.5">護國多軍 (漲獲利)</span>
+                        <span id="btn-long-text" class="text-base md:text-xl font-black uppercase tracking-widest text-white drop-shadow-md">入城</span>
+                    </button>
+                    <button id="btn-short" onclick="window.issueOrder('SHORT')" class="flex-1 bg-gradient-to-b from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 active:scale-95 transition-all rounded-xl py-3 md:py-4 flex flex-col items-center justify-center border-b-2 border-green-900 shadow-lg cursor-pointer">
+                        <span class="text-[10px] font-bold text-green-200 tracking-widest mb-0.5">掠奪空軍 (跌獲利)</span>
+                        <span id="btn-short-text" class="text-base md:text-xl font-black uppercase tracking-widest text-white drop-shadow-md">攻掠</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==========================================
+     軍師分析圖頁
+     ========================================== -->
+<div id="chart-page" class="fixed inset-0 z-40 bg-[#02050a] flex flex-col hidden transition-all duration-300 transform translate-y-full">
+    <div class="flex justify-between items-center p-3 border-b border-white/10 bg-gray-900/80 backdrop-blur-md">
+        <div class="flex items-center gap-2">
+            <div class="w-1 h-5 bg-yellow-500 rounded-full"></div>
+            <h2 class="text-base md:text-lg font-black text-white tracking-widest">軍師戰略室</h2>
+        </div>
+        <div class="flex items-center gap-2">
+            <span id="chart-realtime-price" class="text-yellow-400 font-mono font-bold text-sm">--</span>
+            <button onclick="window.closeChartPage()" class="bg-white/10 border border-white/20 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-white/20 transition-all cursor-pointer">返回戰場</button>
+        </div>
+    </div>
+    
+    <div class="flex-1 p-2 md:p-4 overflow-y-auto w-full flex flex-col gap-2">
+        <div class="flex justify-between items-center bg-black/40 p-2 rounded-xl border border-white/10">
+            <div class="text-lg font-black tracking-wider text-white px-2" id="chart-city-name">城池名稱</div>
+            <div class="flex gap-1 overflow-x-auto scrollbar-hide">
+                <button onclick="window.setTimeframe('1m')" class="timeframe-btn active" id="tf-1m">1分</button>
+                <button onclick="window.setTimeframe('5m')" class="timeframe-btn" id="tf-5m">5分</button>
+                <button onclick="window.setTimeframe('15m')" class="timeframe-btn" id="tf-15m">15分</button>
+                <button onclick="window.setTimeframe('30m')" class="timeframe-btn" id="tf-30m">30分</button>
+                <button onclick="window.setTimeframe('60m')" class="timeframe-btn" id="tf-60m">60分</button>
+                <button onclick="window.setTimeframe('1d')" class="timeframe-btn" id="tf-1d">日</button>
+                <button onclick="window.setTimeframe('1wk')" class="timeframe-btn" id="tf-1wk">週</button>
+                <button onclick="window.setTimeframe('1mo')" class="timeframe-btn" id="tf-1mo">月</button>
+            </div>
+        </div>
+        
+        <div class="flex-1 min-h-[30vh] md:min-h-[40vh] bg-black/50 border border-white/10 p-2 rounded-xl relative flex flex-col shadow-inner">
+            <span class="text-[10px] text-gray-400 font-bold uppercase absolute top-2 left-3 z-10 tracking-widest">連續價格走勢 (紅漲綠跌)</span>
+            <div class="flex-1 relative w-full h-full mt-4">
+                <canvas id="mainChartCanvas"></canvas>
+            </div>
+        </div>
+
+        <div class="h-[12vh] min-h-[80px] bg-black/50 border border-white/10 p-2 rounded-xl relative flex flex-col shadow-inner">
+            <span class="text-[10px] text-gray-400 font-bold uppercase absolute top-2 left-3 z-10 tracking-widest">成交量矩陣</span>
+            <div class="flex-1 relative w-full h-full mt-3">
+                <canvas id="volumeChartCanvas"></canvas>
+            </div>
+        </div>
+        
+        <div class="h-[25vh] min-h-[150px] bg-black/50 border border-white/10 p-2 rounded-xl relative flex flex-col shadow-inner">
+            <div class="flex gap-2 absolute top-2 left-3 z-10">
+                <button onclick="window.setIndicator('MACD')" id="btn-ind-MACD" class="ind-btn active">MACD</button>
+                <button onclick="window.setIndicator('KD')" id="btn-ind-KD" class="ind-btn">KD</button>
+                <button onclick="window.setIndicator('RSI')" id="btn-ind-RSI" class="ind-btn">RSI</button>
+                <button onclick="window.setIndicator('BIAS')" id="btn-ind-BIAS" class="ind-btn">BIAS</button>
+            </div>
+            <div class="flex-1 relative w-full h-full mt-8">
+                <canvas id="indicatorChartCanvas"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==========================================
+     各類 Modal 彈窗系統
+     ========================================== -->
+
+<div id="sim-reward-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+    <div class="glass rounded-2xl p-6 w-full max-w-md border-yellow-500/40 transform scale-95 transition-transform duration-300 shadow-[0_0_40px_rgba(234,179,8,0.3)] text-center">
+        <div class="text-6xl mb-4">🌧️💰</div>
+        <h2 class="text-2xl font-black mb-2 tracking-widest text-yellow-400">天降甘霖 戰報結算</h2>
+        <p class="text-xs text-gray-300 mb-6 leading-relaxed">統帥卓越的沙盤推演，已轉化為真實世界的獎勵</p>
+        
+        <div class="space-y-3 bg-black/50 p-4 rounded-xl border border-yellow-500/20 mb-6 text-left">
+            <div class="flex justify-between items-center">
+                <span class="text-gray-400 text-sm tracking-widest">沙盤推演總淨利</span>
+                <span class="text-white font-mono text-lg" id="sim-reward-profit">0</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-gray-400 text-sm tracking-widest">時空轉換率</span>
+                <span class="text-yellow-500 font-mono text-sm">0.1 % (千分之一)</span>
+            </div>
+            <div class="border-t border-white/10 my-2"></div>
+            <div class="flex justify-between items-center">
+                <span class="text-yellow-400 font-bold tracking-widest">獲得天幣甘霖</span>
+                <span class="text-4xl text-yellow-400 font-black font-mono drop-shadow-md" id="sim-reward-final">0</span>
+            </div>
+        </div>
+        
+        <button onclick="document.getElementById('sim-reward-modal').classList.add('opacity-0', 'pointer-events-none'); window.triggerGoldRain();" class="w-full bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 py-3 rounded-xl font-black text-sm text-black shadow-lg cursor-pointer tracking-widest transition-all">收下天幣</button>
+    </div>
+</div>
+
+<div id="custom-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+    <div class="glass rounded-2xl p-4 md:p-5 w-full max-w-md shadow-2xl border-white/20 flex flex-col max-h-[90vh]">
+        <h2 class="text-xl font-black tracking-widest text-center mb-1 text-white">⚙ 統帥設定總機</h2>
+        <p class="text-[10px] text-gray-400 font-bold mb-3 text-center tracking-widest">自訂您的專屬領域與城池清單</p>
+        
+        <div class="flex-1 overflow-y-auto scrollbar-hide space-y-4">
+            
+            <div class="bg-black/40 p-4 rounded-xl border border-white/10">
+                <h3 class="text-xs text-yellow-400 font-bold uppercase tracking-widest mb-3 border-b border-white/10 pb-1">➕ 擴充新領域</h3>
+                <div class="flex gap-2">
+                    <input id="new-sector-id" type="text" placeholder="領域代號(限英文, 如 SHIP)" class="flex-1 bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white outline-none font-mono text-xs uppercase">
+                    <input id="new-sector-name" type="text" placeholder="領域名稱(如 航運領域)" class="flex-1 bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white outline-none text-xs">
+                </div>
+                <button onclick="window.addNewSector()" class="w-full bg-yellow-600 hover:bg-yellow-500 py-2 rounded-lg font-bold text-xs mt-2 transition-all shadow-lg text-black cursor-pointer tracking-widest">建立新領域</button>
+            </div>
+
+            <div class="bg-black/40 p-4 rounded-xl border border-white/10">
+                <h3 class="text-xs text-sky-400 font-bold uppercase tracking-widest mb-3 border-b border-white/10 pb-1">➕ 編列新城池</h3>
+                <div class="space-y-2">
+                    <select id="assign-sector-select" class="w-full bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white outline-none text-xs cursor-pointer"></select>
+                    <div class="flex gap-2">
+                        <input id="custom-symbol" type="text" placeholder="台股代號(如 2603)" class="w-1/3 bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white outline-none font-mono text-xs uppercase">
+                        <input id="custom-name" type="text" placeholder="城池名稱(如 長榮)" class="w-2/3 bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white outline-none text-xs">
+                    </div>
+                </div>
+                <button onclick="window.addCustomStock()" class="w-full bg-sky-600 hover:bg-sky-500 py-2 rounded-lg font-bold text-xs mt-2 transition-all shadow-lg cursor-pointer tracking-widest text-white">駐紮入軍</button>
+            </div>
+
+            <div class="bg-black/40 p-4 rounded-xl border border-white/10">
+                <h3 class="text-xs text-purple-400 font-bold uppercase tracking-widest mb-3 border-b border-white/10 pb-1">📋 當前領域與城池陣列</h3>
+                <div id="full-sector-list" class="space-y-3 max-h-40 overflow-y-auto pr-1 scrollbar-hide"></div>
+            </div>
+            
+        </div>
+        
+        <div class="flex gap-3 mt-4 pt-3 border-t border-white/10">
+            <button onclick="window.factoryResetData()" class="w-1/3 bg-red-900/50 hover:bg-red-800 border border-red-500/30 py-3 rounded-xl font-bold text-xs transition-all cursor-pointer text-red-200">還原預設</button>
+            <button onclick="window.closeCustomManager()" class="w-2/3 bg-gray-700 hover:bg-gray-600 py-3 rounded-xl font-bold text-sm transition-all cursor-pointer tracking-widest">完成配置</button>
+        </div>
+    </div>
+</div>
+
+<div id="report-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+    <div id="modal-window" class="glass rounded-2xl p-6 w-full max-w-md border-purple-500/40 transform scale-95 transition-transform duration-300 shadow-[0_0_30px_rgba(168,85,247,0.15)]">
+        <div id="modal-body"></div>
+        <button onclick="window.closeModal()" class="mt-6 w-full bg-purple-600 hover:bg-purple-500 py-3 rounded-xl font-black text-sm text-white shadow-lg cursor-pointer tracking-widest transition-all">關閉報表</button>
+    </div>
+</div>
+
+<div id="price-prompt-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+    <div class="glass rounded-2xl p-6 w-full max-w-sm border-sky-500/40 shadow-2xl">
+        <h2 class="text-xl font-black text-center mb-2 tracking-widest text-sky-400">天道斷線 請求支援</h2>
+        <p class="text-[11px] text-gray-400 mb-5 text-center leading-relaxed">無法取得 <span id="prompt-city-name" class="text-white font-bold"></span> 的即時連線。<br>請統帥即時提供基準平盤價，或使用系統歷史預設，以啟動沙盤演練。</p>
+        <div class="space-y-4">
+            <input id="manual-price-input" type="number" step="0.5" placeholder="請輸入基準股價 如 1050" class="w-full bg-black/60 border border-white/20 rounded-lg px-4 py-3 text-white focus:border-sky-500 outline-none font-mono text-sm text-center">
+            <button onclick="window.submitManualPrice()" class="w-full bg-sky-600 hover:bg-sky-500 py-3 rounded-xl font-bold text-sm text-white shadow-lg transition-colors cursor-pointer tracking-widest">設定基準並進入沙盤</button>
+            <button onclick="window.forceStartSim()" class="w-full bg-gray-700 hover:bg-gray-600 py-3 rounded-xl font-bold text-sm text-white mt-2 transition-colors cursor-pointer tracking-widest">使用內建歷史強制啟動</button>
+        </div>
+    </div>
+</div>
+
+<!-- ==========================================
+     核心腳本區 (Firebase 雲端 + 渲染引擎)
+     ========================================== -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+import { getFirestore, doc, setDoc, getDoc, increment, onSnapshot, updateDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+
+// ==========================================
+// 1. Firebase 雲端初始化與全域設定 (遵守 RULE 3)
+// ==========================================
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'abula-battlefield';
+
+let user = null;
+let globalStats = { totalUsers: 0, todayActive: 0 };
+
+window.safeNum = function(val, fallback = 0) {
+    const n = Number(val);
+    return (isNaN(n) || !isFinite(n)) ? fallback : n;
+};
+
+let msgTimeout;
+window.showMsg = function(t) { 
+    const el = document.getElementById('msg-box'); 
+    if(!el) return;
+    el.innerText = t; 
+    el.classList.remove('opacity-0', 'translate-y-4'); 
+    el.classList.add('opacity-100', 'translate-y-0');
+    if(msgTimeout) clearTimeout(msgTimeout);
+    msgTimeout = setTimeout(()=>{ 
+        el.classList.remove('opacity-100', 'translate-y-0'); 
+        el.classList.add('opacity-0', 'translate-y-4'); 
+    }, 3000); 
+};
+
+window.triggerThunder = function() { 
+    const o = document.getElementById('thunder-overlay'); if(!o) return;
+    o.classList.remove('thunder-flash','gold-thunder-flash','sim-thunder-flash'); 
+    void o.offsetWidth; o.classList.add('thunder-flash'); 
+    setTimeout(()=>o.classList.remove('thunder-flash'), 500); 
+};
+
+window.triggerGoldThunder = function() { 
+    const o = document.getElementById('thunder-overlay'); if(!o) return;
+    o.classList.remove('thunder-flash','gold-thunder-flash','sim-thunder-flash'); 
+    void o.offsetWidth; o.classList.add('gold-thunder-flash'); 
+    setTimeout(()=>o.classList.remove('gold-thunder-flash'), 800); 
+};
+
+window.triggerSimThunder = function() { 
+    const o = document.getElementById('thunder-overlay'); if(!o) return;
+    o.classList.remove('thunder-flash','gold-thunder-flash','sim-thunder-flash'); 
+    void o.offsetWidth; o.classList.add('sim-thunder-flash'); 
+    setTimeout(()=>o.classList.remove('sim-thunder-flash'), 800); 
+};
+
+window.triggerGoldRain = function() {
+    const container = document.getElementById('gold-rain-container');
+    if (!container) return;
+    for (let i = 0; i < 60; i++) {
+        const coin = document.createElement('div');
+        coin.innerText = '💰'; coin.className = 'gold-coin';
+        coin.style.left = Math.random() * 100 + 'vw'; coin.style.top = '-10vh';
+        coin.style.fontSize = (Math.random() * 20 + 15) + 'px';
+        const duration = Math.random() * 2 + 2;
+        coin.style.animationDuration = duration + 's'; coin.style.animationDelay = (Math.random() * 0.5) + 's';
+        container.appendChild(coin);
+        setTimeout(() => coin.remove(), (duration + 1) * 1000);
+    }
+};
+
+let apiPollingInterval = null;
+const MAX_PHALANX_SIZE = 50;  
+const TAX_RATE = 0.003;       
+const FEE_RATE = 0.001425;    
+
+let SECTORS = {};
+let CITIES = {};
+
+function initDefaultDatabase() {
+    SECTORS = {
+        "SEMICON": { name: "半導體 領域", cities: ["2330", "2454", "2303"] },
+        "COMPUTER": { name: "電腦週邊 領域", cities: ["2317", "2382", "3231"] },
+        "NETWORK": { name: "通信網路 領域", cities: ["2412", "3045", "4904"] },
+        "CUSTOM": { name: "統帥自選 領域", cities: [] }
+    };
+
+    CITIES = {
+        "2330": { name: "台積電", price: 1050, basePrice: 1050, realPrice: 1050, simBasePrice: 1050, vol: 15, chartData: {}, autoSimTriggered: false },
+        "2454": { name: "聯發科", price: 1150, basePrice: 1150, realPrice: 1150, simBasePrice: 1150, vol: 10, chartData: {}, autoSimTriggered: false },
+        "2303": { name: "聯電",   price: 50,   basePrice: 50,   realPrice: 50,   simBasePrice: 50,   vol: 1,  chartData: {}, autoSimTriggered: false },
+        "2317": { name: "鴻海",   price: 180,  basePrice: 180,  realPrice: 180,  simBasePrice: 180,  vol: 2,  chartData: {}, autoSimTriggered: false },
+        "2382": { name: "廣達",   price: 280,  basePrice: 280,  realPrice: 280,  simBasePrice: 280,  vol: 3,  chartData: {}, autoSimTriggered: false },
+        "3231": { name: "緯創",   price: 115,  basePrice: 115,  realPrice: 115,  simBasePrice: 115,  vol: 2,  chartData: {}, autoSimTriggered: false },
+        "2412": { name: "中華電", price: 125,  basePrice: 125,  realPrice: 125,  simBasePrice: 125,  vol: 1,  chartData: {}, autoSimTriggered: false },
+        "3045": { name: "台灣大", price: 100,  basePrice: 100,  realPrice: 100,  simBasePrice: 100,  vol: 1,  chartData: {}, autoSimTriggered: false },
+        "4904": { name: "遠傳",   price: 105,  basePrice: 105,  realPrice: 105,  simBasePrice: 105,  vol: 1,  chartData: {}, autoSimTriggered: false }
+    };
+}
+
+let gameState = {
+    balance: 5000000, frozen: 0, realizedPnl: 0, taxTotal: 0,
+    activeSector: "SEMICON", activeCity: "2330", timeframe: "1d",
+    units: [], history: [], pending: [], currentTab: 'units',
+    lastDividendDay: "", pendingSimReward: 0, activeIndicator: "MACD"
+};
+
+let isSimMode = false;
+let realStateSnapshot = null;
+let currentMarketState = "CLOSED"; 
+let currentPrice = 0; 
+let lastPriceForAnim = 0; 
+let pendingPriceCity = "";
+
+let scene, camera, renderer, battleLine;
+let baseRedArmy = [], baseGreenArmy = [];
+let playerRedArmy = [], playerGreenArmy = []; 
+let snowParticles = null, smokeParticles = null, fireParticles = null;
+let fireworks = [], lasers = [], explosions = [];
+let castleGroup, forestGroup, decorationsGroup;
+
+let mainChart = null, volChart = null, indChart = null;
+
+// ==========================================
+// 2. 雲端認證與資料存取 (Firebase)
+// ==========================================
+async function updateGlobalStats(uid) {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const statsRef = doc(db, 'artifacts', currentAppId, 'public', 'data', 'stats', 'global');
+        const userTrackRef = doc(db, 'artifacts', currentAppId, 'public', 'data', 'tracking', uid);
+        const trackSnap = await getDoc(userTrackRef);
+        
+        if (!trackSnap.exists()) {
+            await setDoc(userTrackRef, { lastLogin: today });
+            await setDoc(statsRef, { totalUsers: increment(1), todayActive: increment(1) }, { merge: true });
+        } else if (trackSnap.data().lastLogin !== today) {
+            await updateDoc(userTrackRef, { lastLogin: today });
+            await setDoc(statsRef, { todayActive: increment(1) }, { merge: true });
+        }
+    } catch (e) { }
+}
+
+async function saveDataToCloud() {
+    if (!user || isSimMode) return;
+    try {
+        const userRef = doc(db, 'artifacts', currentAppId, 'users', user.uid, 'gameData', 'save');
+        const citiesToSave = {};
+        for(let key in CITIES) {
+            citiesToSave[key] = {
+                name: CITIES[key].name, price: CITIES[key].price, basePrice: CITIES[key].basePrice,
+                realPrice: CITIES[key].realPrice, simBasePrice: CITIES[key].simBasePrice, vol: CITIES[key].vol
+            };
+        }
+        await setDoc(userRef, { state: gameState, sectors: SECTORS, cities: citiesToSave, updatedAt: serverTimestamp() });
+    } catch (e) {}
+}
+
+function loadStateFromCloud(uid) {
+    const userRef = doc(db, 'artifacts', currentAppId, 'users', uid, 'gameData', 'save');
+    onSnapshot(userRef, (docSnap) => {
+        if (docSnap.exists() && !isSimMode) {
+            const data = docSnap.data();
+            if(data.state) Object.assign(gameState, data.state);
+            if(data.sectors) SECTORS = data.sectors;
+            if(data.cities) {
+                for(let key in data.cities) {
+                    CITIES[key] = { ...data.cities[key], chartData: {}, autoSimTriggered: false };
+                }
+            }
+            // 防護：檢查當前活躍領域與城池是否仍然存在
+            if(!SECTORS[gameState.activeSector]) gameState.activeSector = Object.keys(SECTORS)[0] || "";
+            if(!SECTORS[gameState.activeSector]?.cities.includes(gameState.activeCity)) {
+                gameState.activeCity = SECTORS[gameState.activeSector]?.cities[0] || "";
+            }
+            updateUI();
+        } else if (!docSnap.exists() && !isSimMode) {
+            initDefaultDatabase();
+            saveDataToCloud();
+            updateUI();
+        }
+    });
+
+    const statsRef = doc(db, 'artifacts', currentAppId, 'public', 'data', 'stats', 'global');
+    onSnapshot(statsRef, (docSnap) => {
+        if (docSnap.exists()) {
+            const d = docSnap.data();
+            globalStats.totalUsers = d.totalUsers || 0;
+            globalStats.todayActive = d.todayActive || 0;
+            updateLoginUI();
+        }
+    });
+}
+
+function updateLoginUI() {
+    const totalEl = document.getElementById('stat-total-users');
+    const activeEl = document.getElementById('stat-today-active');
+    if(totalEl) totalEl.innerText = globalStats.totalUsers;
+    if(activeEl) activeEl.innerText = globalStats.todayActive;
+}
+
+window.anonLogin = async function() {
+    try {
+        document.getElementById('login-status-text').innerText = "軍令核發中...";
+        await signInAnonymously(auth);
+    } catch(e) {
+        window.showMsg("連線失敗，請重試");
+        document.getElementById('login-status-text').innerText = "連線失敗";
+    }
+}
+
+// ==========================================
+// 核心工具與 3D 渲染
+// ==========================================
+window.factoryResetData = function() {
+    if(confirm("確定要刪除所有自訂領域與城池，還原至出廠設定嗎？(您的國庫與戰報將保留)")) {
+        initDefaultDatabase();
+        gameState.activeSector = "SEMICON";
+        gameState.activeCity = "2330";
+        saveDataToCloud();
+        window.closeCustomManager();
+        window.showMsg("已還原原廠領域編制");
+        setTimeout(() => location.reload(), 1000); 
+    }
+};
+
+function calcProfit(side, entryPrice, currentMarketPrice, qty) {
+    const diff = side === 'LONG' ? (currentMarketPrice - entryPrice) : (entryPrice - currentMarketPrice);
+    const grossProfit = diff * qty * 1000;
+    const fees = (currentMarketPrice * qty * 1000) * (FEE_RATE + TAX_RATE);
+    return grossProfit - fees;
+}
+
+function getSeason() {
+    const m = new Date().getMonth() + 1;
+    if(m >= 3 && m <= 5) return 'SPRING';
+    if(m >= 6 && m <= 8) return 'SUMMER';
+    if(m >= 9 && m <= 11) return 'AUTUMN';
+    return 'WINTER';
+}
+
+function getPriceTier(price) {
+    if(price < 100) return 1;
+    if(price <= 200) return 2;
+    if(price <= 500) return 3;
+    if(price <= 999) return 4;
+    return 5;
+}
+
+function createCastle(tier, season) {
+    const group = new THREE.Group();
+    const isWinter = season === 'WINTER';
+    const baseColor = isWinter ? 0x2d3748 : 0x1e293b; 
+    const mat = new THREE.MeshStandardMaterial({color: baseColor, roughness: 0.6, metalness: 0.5});
+    
+    const wallHeight = 16 + tier * 2.5; 
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(10, wallHeight, 60), mat);
+    wall.position.set(-35, wallHeight/2, 0);
+    group.add(wall);
+    
+    const gate = new THREE.Mesh(new THREE.BoxGeometry(11, 8, 10), new THREE.MeshStandardMaterial({
+        color: 0x050505, metalness: 0.8, roughness: 0.2
+    }));
+    gate.position.set(-34, 4, 0); 
+    group.add(gate);
+
+    for(let z = -25; z <= 25; z+=10) {
+        const battlement = new THREE.Mesh(new THREE.BoxGeometry(10, 4, 5), mat);
+        battlement.position.set(-35, wallHeight + 2, z); 
+        group.add(battlement);
+    }
+    
+    if (tier >= 3) {
+        const towerMat = new THREE.MeshStandardMaterial({color: baseColor, roughness: 0.5, metalness: 0.7});
+        for(let z of [-30, 30]) {
+            const tower = new THREE.Mesh(new THREE.BoxGeometry(14, wallHeight+8, 14), towerMat);
+            tower.position.set(-35, (wallHeight+8)/2, z);
+            group.add(tower);
+        }
+    }
+    
+    if (tier >= 4) {
+        const glowColor = tier === 5 ? 0x00ffff : 0xffaa00; 
+        const glowMat = new THREE.MeshStandardMaterial({color: glowColor, emissive: glowColor, emissiveIntensity: tier === 5 ? 3 : 1.5});
+        const line = new THREE.Mesh(new THREE.BoxGeometry(11, 0.8, 61), glowMat);
+        line.position.set(-35, wallHeight * 0.8, 0);
+        group.add(line);
+        
+        const turretMat = new THREE.MeshPhysicalMaterial({ color: 0x2a303c, metalness: 0.8, roughness: 0.2, clearcoat: 0.5 });
+        for(let z of [-15, 0, 15]) {
+            const turretGroup = new THREE.Group();
+            turretGroup.position.set(-32, wallHeight + 2.5, z);
+            
+            const turretBase = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 3.0, 3, 16), mat);
+            turretBase.position.y = 1.5;
+            turretGroup.add(turretBase);
+
+            const turretDome = new THREE.Mesh(new THREE.SphereGeometry(2.0, 16, 16), turretMat);
+            turretDome.position.y = 3;
+            turretGroup.add(turretDome);
+            
+            const cannon = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.3, 8, 16), glowMat); 
+            cannon.rotation.x = Math.PI / 2; 
+            cannon.position.set(0, 3, 4); 
+            turretGroup.add(cannon); 
+            
+            turretGroup.rotation.y = Math.PI / 2; // 面向中心 (+X)
+            group.add(turretGroup);
+        }
+
+        if (tier === 5) {
+            const shield = new THREE.Mesh(new THREE.BoxGeometry(18, wallHeight + 15, 75), new THREE.MeshBasicMaterial({color: 0x00ffff, transparent: true, opacity: 0.08, wireframe: true}));
+            shield.position.set(-35, (wallHeight+15)/2, 0);
+            group.add(shield);
+        }
+    }
+    return group;
+}
+
+function createForest(season) {
+    const group = new THREE.Group();
+    const isWinter = season === 'WINTER';
+    let leafColor = 0x22c55e;
+    if(season === 'SUMMER') leafColor = 0x15803d;
+    if(season === 'AUTUMN') leafColor = 0xf97316;
+    if(isWinter) leafColor = 0x94a3b8;
+    
+    const mat = new THREE.MeshStandardMaterial({color: leafColor, roughness: 0.8, metalness: 0.2, flatShading: true});
+    
+    for(let i=0; i<45; i++) {
+        const tree = new THREE.Group();
+        const scale = 0.8 + Math.random()*0.8;
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.2, 4, 6), new THREE.MeshStandardMaterial({color: 0x1e293b, metalness: 0.6})); 
+        trunk.position.y = 2;
+        const leaves1 = new THREE.Mesh(new THREE.ConeGeometry(4.5, 10, 6), mat); leaves1.position.y = 7;
+        const leaves2 = new THREE.Mesh(new THREE.ConeGeometry(3.5, 8, 6), mat); leaves2.position.y = 12;
+        tree.add(trunk, leaves1, leaves2);
+        tree.scale.set(scale, scale, scale); 
+        tree.position.set(30 + Math.random()*25, 0, (Math.random()-0.5)*75);
+        group.add(tree);
+    }
+    return group;
+}
+
+function createSnowman() {
+    const group = new THREE.Group();
+    const snowMat = new THREE.MeshStandardMaterial({color: 0xffffff, roughness: 0.9});
+    const base = new THREE.Mesh(new THREE.DodecahedronGeometry(1.5, 1), snowMat); base.position.y = 1.5;
+    const mid = new THREE.Mesh(new THREE.DodecahedronGeometry(1.2, 1), snowMat); mid.position.y = 3.5;
+    const head = new THREE.Mesh(new THREE.DodecahedronGeometry(0.8, 1), snowMat); head.position.y = 5.2;
+    
+    const scarf = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.4, 8), new THREE.MeshStandardMaterial({color: 0xef4444}));
+    scarf.position.y = 4.6;
+    group.add(base, mid, head, scarf);
+    return group;
+}
+
+function createSoldier(colorHex, isPlayer, tier = 1, side = 'LONG') {
+    const group = new THREE.Group();
+    
+    if (tier >= 4) {
+        let sc = isPlayer ? 1.8 : 1.2;
+        const tankMat = new THREE.MeshPhysicalMaterial({ color: colorHex, metalness: 0.7, roughness: 0.3, clearcoat: 0.5 });
+        
+        const base = new THREE.Mesh(new THREE.BoxGeometry(4.0*sc, 1.2*sc, 2.8*sc), tankMat); 
+        base.position.y = 0.6*sc; 
+        group.add(base);
+        
+        const top = new THREE.Mesh(new THREE.SphereGeometry(1.4*sc, 16, 16), new THREE.MeshStandardMaterial({color: 0x222222, metalness: 0.9, roughness: 0.1})); 
+        top.position.y = 1.4*sc; 
+        group.add(top);
+        
+        const cannonColor = side === 'LONG' ? 0xff4444 : 0x44ff44;
+        const cannon = new THREE.Mesh(new THREE.CylinderGeometry(0.15*sc, 0.1*sc, 4.0*sc), new THREE.MeshStandardMaterial({color: cannonColor, emissive: cannonColor, emissiveIntensity: 3}));
+        cannon.rotation.x = Math.PI / 2;
+        cannon.position.set(0, 1.4*sc, 2.0*sc); 
+        group.add(cannon);
+        
+        // 【關鍵修復】轉向校正：紅軍(LONG) 面右 (90度)，綠軍(SHORT) 面左 (-90度)
+        group.rotation.y = side === 'LONG' ? Math.PI / 2 : -Math.PI / 2;
+        group.userData.cannonPos = new THREE.Vector3(0, 1.4*sc, 3.5*sc);
+
+    } else {
+        let sc = (isPlayer ? 2.4 : 1.5) * (1 + (tier - 1) * 0.12);
+        const mat = new THREE.MeshStandardMaterial({ color: colorHex, emissive: isPlayer ? colorHex : 0x000000, emissiveIntensity: 0.6, roughness: 0.2 });
+        
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.4*sc, 0.6*sc, 2.2*sc, 6), mat); 
+        body.position.y = sc; 
+        group.add(body);
+        
+        const head = new THREE.Mesh(new THREE.DodecahedronGeometry(0.5*sc), mat); 
+        head.position.y = 2.7 * sc; 
+        group.add(head);
+        
+        group.rotation.y = side === 'LONG' ? Math.PI / 2 : -Math.PI / 2;
+
+        const wColor = colorHex === 0xdd3333 ? 0xff4444 : 0x44ff44;
+        const wpn = new THREE.Mesh(new THREE.CylinderGeometry(0.06*sc, 0.06*sc, 5.5*sc, 4), new THREE.MeshStandardMaterial({color: wColor, emissive: wColor, emissiveIntensity: 2}));
+        wpn.position.set(0, 1.5 * sc, 1.5 * sc); wpn.rotation.x = Math.PI / 2; 
+        group.add(wpn);
+        group.userData.cannonPos = new THREE.Vector3(0, 1.5*sc, 4.0*sc);
+    }
+    
+    group.userData = Object.assign(group.userData, { isAttacking: false, baseX: 0, active: true, side: side, randomOffset: Math.random()*Math.PI*2 });
+    return group;
+}
+
+function triggerFireworks() {
+    for (let i = 0; i < 6; i++) {
+        setTimeout(() => {
+            const color = Math.random() > 0.5 ? 0xff3333 : 0xffaa00; 
+            const x = (Math.random() - 0.5) * 80;
+            const y = 40 + Math.random() * 20;
+            const z = (Math.random() - 0.5) * 40;
+            
+            const geom = new THREE.BufferGeometry();
+            const pos = new Float32Array(150 * 3);
+            const vels = [];
+            for(let j=0; j<150; j++) {
+                pos[j*3] = x; pos[j*3+1] = y; pos[j*3+2] = z;
+                vels.push({ x: (Math.random()-0.5)*2.5, y: (Math.random()-0.5)*2.5, z: (Math.random()-0.5)*2.5 });
+            }
+            geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            const fw = new THREE.Points(geom, new THREE.PointsMaterial({color: color, size: 1.2, transparent: true, opacity: 1, blending: THREE.AdditiveBlending}));
+            fw.userData = { vels, life: 1 }; scene.add(fw); fireworks.push(fw);
+        }, i * 300);
+    }
+}
+
+function triggerCastleSmoke() {
+    if (smokeParticles) return; 
+    
+    const geom = new THREE.BufferGeometry();
+    const pos = new Float32Array(250 * 3);
+    const vels = [];
+    for(let i=0; i<250; i++) {
+        pos[i*3] = -35 + (Math.random()-0.5)*15;
+        pos[i*3+1] = 10 + Math.random()*20;
+        pos[i*3+2] = (Math.random()-0.5)*50;
+        vels.push({ x: Math.random()*0.1, y: 0.1 + Math.random()*0.3, z: (Math.random()-0.5)*0.1 });
+    }
+    geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    smokeParticles = new THREE.Points(geom, new THREE.PointsMaterial({color: 0x333333, size: 4.0, transparent: true, opacity: 0.8}));
+    smokeParticles.userData = { vels };
+    scene.add(smokeParticles);
+
+    const fireGeom = new THREE.BufferGeometry();
+    const firePos = new Float32Array(100 * 3);
+    for(let i=0; i<100; i++) {
+        firePos[i*3] = -35 + (Math.random()-0.5)*20;
+        firePos[i*3+1] = Math.random()*15;
+        firePos[i*3+2] = (Math.random()-0.5)*60;
+    }
+    fireGeom.setAttribute('position', new THREE.BufferAttribute(firePos, 3));
+    fireParticles = new THREE.Points(fireGeom, new THREE.PointsMaterial({color: 0xff3300, size: 5.0, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending}));
+    scene.add(fireParticles);
+}
+
+function clearCastleSmoke() {
+    if(smokeParticles) { scene.remove(smokeParticles); smokeParticles = null; }
+    if(fireParticles) { scene.remove(fireParticles); fireParticles = null; }
+}
+
+function shootLaser(attacker) {
+    const side = attacker.userData.side;
+    const color = side === 'LONG' ? 0xff3333 : 0x33ff33;
+    
+    const laserMat = new THREE.MeshBasicMaterial({color: color, transparent: true, opacity: 0.9});
+    const laserGeo = new THREE.CylinderGeometry(0.2, 0.2, 8, 4);
+    const laser = new THREE.Mesh(laserGeo, laserMat);
+    
+    const startPos = attacker.position.clone();
+    startPos.y += 3; 
+    const dir = side === 'LONG' ? 1 : -1;
+    startPos.x += dir * 2;
+    
+    laser.position.copy(startPos);
+    laser.rotation.z = Math.PI / 2; 
+    
+    scene.add(laser);
+    lasers.push({ mesh: laser, life: 1.0, dir: dir, speed: 3.5 });
+}
+
+function shootLaserFromCastle() {
+    const laserMat = new THREE.MeshBasicMaterial({color: 0xffaa00, transparent: true, opacity: 0.9}); 
+    const laserGeo = new THREE.CylinderGeometry(0.4, 0.4, 15, 4);
+    const laser = new THREE.Mesh(laserGeo, laserMat);
+    
+    const startPos = new THREE.Vector3(-30, 20 + Math.random()*10, (Math.random() - 0.5) * 40);
+    laser.position.copy(startPos);
+    laser.rotation.z = Math.PI / 2; 
+    
+    scene.add(laser);
+    lasers.push({ mesh: laser, life: 1.0, dir: 1, speed: 4.5 });
+}
+
+function createExplosion(x, y, z, color) {
+    const geom = new THREE.BufferGeometry();
+    const pos = new Float32Array(30 * 3);
+    const vels = [];
+    
+    for(let j=0; j<30; j++) {
+        pos[j*3] = x; pos[j*3+1] = y; pos[j*3+2] = z;
+        vels.push({ x: (Math.random()-0.5)*1.5, y: (Math.random()-0.5)*1.5, z: (Math.random()-0.5)*1.5 });
+    }
+    
+    geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const explosionMat = new THREE.PointsMaterial({color: color, size: 0.8, transparent: true, opacity: 1, blending: THREE.AdditiveBlending});
+    const exp = new THREE.Points(geom, explosionMat);
+    exp.userData = { vels, life: 1 }; 
+    scene.add(exp); 
+    explosions.push(exp);
+}
+
+function rebuildEnvironment() {
+    const city = CITIES[gameState.activeCity];
+    const tier = getPriceTier(window.safeNum(city?.basePrice, 100));
+    const season = getSeason();
+    
+    if(castleGroup) scene.remove(castleGroup); 
+    if(forestGroup) scene.remove(forestGroup); 
+    if(decorationsGroup) scene.remove(decorationsGroup); 
+    if(snowParticles) { scene.remove(snowParticles); snowParticles = null; }
+    clearCastleSmoke();
+    
+    castleGroup = createCastle(tier, season); 
+    forestGroup = createForest(season); 
+    decorationsGroup = new THREE.Group();
+    scene.add(castleGroup);
+    scene.add(forestGroup);
+    
+    if(season === 'WINTER') {
+        const geom = new THREE.BufferGeometry(); 
+        const pos = new Float32Array(300 * 3);
+        for (let i=0; i<300; i++) { pos[i*3] = (Math.random()-0.5)*150; pos[i*3+1] = Math.random()*60; pos[i*3+2] = (Math.random()-0.5)*120; }
+        geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        snowParticles = new THREE.Points(geom, new THREE.PointsMaterial({color: 0xffffff, size: 0.6, transparent: true, opacity: 0.6}));
+        scene.add(snowParticles);
+        
+        const snm = createSnowman(); snm.position.set(22, 0, 15); decorationsGroup.add(snm);
+        for(let i=0; i<8; i++) {
+            const patch = new THREE.Mesh(new THREE.CylinderGeometry(4, 5, 0.1), new THREE.MeshBasicMaterial({color: 0xdddddd}));
+            patch.position.set((Math.random()-0.5)*100, 0.05, (Math.random()-0.5)*100); decorationsGroup.add(patch);
+        }
+    } else if(season === 'AUTUMN') {
+        for(let i=0; i<40; i++) {
+            const lf = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, 0.6), new THREE.MeshBasicMaterial({color: 0xc96b1e}));
+            lf.position.set(20 + Math.random()*45, 0.05, (Math.random()-0.5)*95); lf.rotation.y = Math.random() * Math.PI; decorationsGroup.add(lf);
+        }
+    }
+    
+    scene.add(decorationsGroup);
+    
+    [...baseRedArmy, ...baseGreenArmy].forEach(m => scene.remove(m)); baseRedArmy = []; baseGreenArmy = [];
+    
+    const cols = 10;
+    for(let i=0; i<MAX_PHALANX_SIZE; i++) {
+        const r = Math.floor(i / cols);
+        const c = i % cols;
+        const zPos = (c - cols/2 + 0.5) * 4.5;
+        
+        const rm = createSoldier(0xaa2222, false, tier, 'LONG'); 
+        rm.userData.baseX = -12 - r * 3; rm.position.set(rm.userData.baseX, 0, zPos); baseRedArmy.push(rm); scene.add(rm);
+        
+        const gm = createSoldier(0x228822, false, tier, 'SHORT'); 
+        gm.userData.baseX = 12 + r * 3; gm.position.set(gm.userData.baseX, 0, zPos); baseGreenArmy.push(gm); scene.add(gm);
+    }
+    syncPlayerTroopsFromState(tier);
+}
+
+function init3D() {
+    scene = new THREE.Scene(); 
+    scene.fog = new THREE.FogExp2(0x02050a, 0.012);
+    camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+    
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); 
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.domElement.className = 'three-canvas'; 
+    document.body.appendChild(renderer.domElement);
+    
+    scene.add(new THREE.AmbientLight(0xffffff, 4.0));
+    const dLight = new THREE.DirectionalLight(0xffffff, 5.0); dLight.position.set(20, 100, 40); scene.add(dLight);
+    
+    const grid = new THREE.GridHelper(200, 80, 0x1e293b, 0x0f172a); grid.position.y = 0.01; scene.add(grid);
+    
+    battleLine = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 70), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })); 
+    scene.add(battleLine);
+    
+    camera.position.set(0, 35, 65); camera.lookAt(0, 5, 0);
+    rebuildEnvironment();
+    
+    window.addEventListener('resize', () => { 
+        camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); 
+    });
+    animate();
+}
+
+function animate() {
+    requestAnimationFrame(animate); 
+    TWEEN.update();
+    const time = Date.now() * 0.003;
+    [...baseRedArmy, ...baseGreenArmy, ...playerRedArmy, ...playerGreenArmy].forEach(m => {
+        if (!m.userData.isAttacking && m.visible) {
+            m.position.y = Math.sin(time + m.userData.randomOffset) * 0.3;
+        }
+    });
+
+    if(snowParticles) {
+        const p = snowParticles.geometry.attributes.position.array;
+        for(let i=0; i<300; i++) { p[i*3+1] -= 0.15; if(p[i*3+1]<0) p[i*3+1]=60; }
+        snowParticles.geometry.attributes.position.needsUpdate = true;
+    }
+
+    if(smokeParticles) {
+        const p = smokeParticles.geometry.attributes.position.array; const v = smokeParticles.userData.vels;
+        for(let i=0; i<200; i++) {
+            p[i*3]+=v[i].x; p[i*3+1]+=v[i].y; p[i*3+2]+=v[i].z;
+            if(p[i*3+1]>40) { p[i*3]=-35+(Math.random()-0.5)*15; p[i*3+1]=10; p[i*3+2]=(Math.random()-0.5)*50; }
+        }
+        smokeParticles.geometry.attributes.position.needsUpdate = true;
+    }
+    
+    for(let i = fireworks.length - 1; i >= 0; i--) {
+        const fw = fireworks[i]; fw.userData.life -= 0.015; fw.material.opacity = fw.userData.life;
+        const p = fw.geometry.attributes.position.array;
+        for(let j=0; j<100; j++) { p[j*3] += fw.userData.vels[j].x; p[j*3+1] += fw.userData.vels[j].y; p[j*3+2] += fw.userData.vels[j].z; }
+        fw.geometry.attributes.position.needsUpdate = true;
+        if(fw.userData.life <= 0) { scene.remove(fw); fireworks.splice(i, 1); }
+    }
+
+    for(let i = lasers.length - 1; i >= 0; i--) {
+        let l = lasers[i];
+        l.mesh.position.x += l.dir * l.speed; l.life -= 0.05; l.mesh.material.opacity = l.life;
+        if (Math.abs(l.mesh.position.x) < 2.0 && l.life > 0.5) {
+            createExplosion(l.mesh.position.x, l.mesh.position.y, l.mesh.position.z, l.mesh.material.color.getHex()); l.life = 0; 
+        }
+        if (l.life <= 0) { scene.remove(l.mesh); lasers.splice(i, 1); }
+    }
+    
+    for(let i = explosions.length - 1; i >= 0; i--) {
+        const exp = explosions[i]; exp.userData.life -= 0.05; exp.material.opacity = exp.userData.life;
+        const p = exp.geometry.attributes.position.array;
+        for(let j=0; j<30; j++) { p[j*3] += exp.userData.vels[j].x; p[j*3+1] += exp.userData.vels[j].y; p[j*3+2] += exp.userData.vels[j].z; }
+        exp.geometry.attributes.position.needsUpdate = true;
+        if(exp.userData.life <= 0) { scene.remove(exp); explosions.splice(i, 1); }
+    }
+    
+    updateVisuals(); 
+    renderer.render(scene, camera);
+}
+
+function syncPlayerTroopsFromState(tier) {
+    [...playerRedArmy, ...playerGreenArmy].forEach(m => scene.remove(m)); playerRedArmy = []; playerGreenArmy = [];
+    if(!tier) { tier = getPriceTier(window.safeNum(CITIES[gameState.activeCity]?.basePrice, 100)); }
+    gameState.units.forEach(u => {
+        if(u.city === gameState.activeCity) {
+            const m = createSoldier(u.side === 'LONG' ? 0xff2222 : 0x22ff22, true, tier, u.side);
+            m.userData.baseX = u.side === 'LONG' ? -7 : 7; m.position.set(m.userData.baseX, 0, (Math.random() - 0.5) * 25); scene.add(m); 
+            if (u.side === 'LONG') playerRedArmy.push(m); else playerGreenArmy.push(m);
+        }
+    });
+}
+
+function updateVisuals() {
+    const city = CITIES[gameState.activeCity]; if(!city) return;
+    const base = isSimMode ? city.simBasePrice : city.basePrice;
+    const diff = base > 0 ? (currentPrice - base) / base : 0;
+    
+    if (diff >= 0.098) { clearCastleSmoke(); } else if (diff <= -0.098) { triggerCastleSmoke(); } else { clearCastleSmoke(); }
+
+    const redActiveCount = Math.floor(Math.min(MAX_PHALANX_SIZE, Math.max(5, (MAX_PHALANX_SIZE/2) + diff * 500)));
+    const greenActiveCount = Math.floor(Math.min(MAX_PHALANX_SIZE, Math.max(5, (MAX_PHALANX_SIZE/2) - diff * 500)));
+    baseRedArmy.forEach((m, i) => { m.userData.active = (i < redActiveCount); m.visible = m.userData.active; });
+    baseGreenArmy.forEach((m, i) => { m.userData.active = (i < greenActiveCount); m.visible = m.userData.active; });
+
+    const drift = window.safeNum(diff * 350, 0);
+    battleLine.position.x += (drift - battleLine.position.x) * 0.15;
+    if(!battleLine.material.color.equals(new THREE.Color(0xffffff))) {
+        battleLine.material.color.setHex(diff >= 0 ? 0xef4444 : 0x22c55e);
+    }
+
+    const shift = drift * 0.4;
+    [...baseRedArmy, ...playerRedArmy].forEach(m => { if(!m.userData.isAttacking) m.position.x += ((m.userData.baseX + shift) - m.position.x) * 0.1; });
+    [...baseGreenArmy, ...playerGreenArmy].forEach(m => { if(!m.userData.isAttacking) m.position.x += ((m.userData.baseX + shift) - m.position.x) * 0.1; });
+}
+
+function triggerAttackAnim(side, magnitude = 1) {
+    const attackCount = Math.max(3, Math.min(20, Math.floor(magnitude * 15)));
+    const baseArmy = side === 'LONG' ? baseRedArmy : baseGreenArmy;
+    const available = baseArmy.filter(m => m.userData.active && !m.userData.isAttacking);
+    available.sort((a,b) => side==='LONG' ? b.position.x - a.position.x : a.position.x - b.position.x);
+    const attackers = available.slice(0, attackCount);
+    const dir = side === 'LONG' ? 1 : -1;
+    
+    attackers.forEach((m, idx) => {
+        m.userData.isAttacking = true;
+        setTimeout(() => { shootLaser(m); }, idx * 50);
+
+        new TWEEN.Tween(m.position).to({ x: battleLine.position.x - (dir*1.5), y: 3 }, 150).easing(TWEEN.Easing.Quadratic.Out)
+            .onComplete(() => { new TWEEN.Tween(m.position).to({ x: m.userData.baseX, y: 0 }, 400).easing(TWEEN.Easing.Quadratic.In).onComplete(() => m.userData.isAttacking = false).start(); }).start();
+    });
+
+    const playerArmy = side === 'LONG' ? playerRedArmy : playerGreenArmy;
+    playerArmy.forEach(m => {
+        if (m.userData.isAttacking) return; 
+        m.userData.isAttacking = true; 
+        const origX = m.position.x;
+        new TWEEN.Tween(m.position).to({ x: origX + dir*5, y: 2.5 }, 150).easing(TWEEN.Easing.Quadratic.Out).yoyo(true).repeat(1)
+            .onComplete(() => m.userData.isAttacking = false).start();
+    });
+
+    if(attackers.length > 0) {
+        battleLine.material.color.setHex(0xffffff);
+        setTimeout(() => battleLine.material.color.setHex(side==='LONG'?0xef4444:0x22c55e), 200);
+    }
+}
+
+// ==========================================
+// 4. 連續圖表引擎 (MACD 雙軸自適應、1分K 降噪)
+// ==========================================
+function calcEMA(data, period) { if(data.length === 0) return []; let k = 2 / (period + 1); let ema = [data[0]]; for(let i = 1; i < data.length; i++) { ema.push(data[i] * k + ema[i - 1] * (1 - k)); } return ema; }
+function calcSMA(data, period) { let sma = []; for(let i = 0; i < data.length; i++) { if(i < period - 1) { sma.push(data[i]); continue; } let sum = 0; for(let j = 0; j < period; j++) { sum += data[i - j]; } sma.push(sum / period); } return sma; }
+function calcMACD(data) { if(data.length < 26) return {macd: [], signal: [], hist: []}; let ema12 = calcEMA(data, 12); let ema26 = calcEMA(data, 26); let macd = ema12.map((v, i) => v - ema26[i]); let signal = calcEMA(macd, 9); let hist = macd.map((v, i) => v - signal[i]); return {macd, signal, hist}; }
+function calcKD(data, period = 9) { if(data.length < period) return {k: [], d: []}; let k = [], dv = [], pk = 50, pd = 50; for(let i = 0; i < data.length; i++) { let st = Math.max(0, i - period + 1); let sl = data.slice(st, i + 1); let hi = Math.max(...sl); let lo = Math.min(...sl); let rsv = (hi === lo) ? 50 : ((data[i] - lo) / (hi - lo)) * 100; let ck = (2 / 3) * pk + (1 / 3) * rsv; let cd = (2 / 3) * pd + (1 / 3) * ck; k.push(ck); dv.push(cd); pk = ck; pd = cd; } return {k, dv}; }
+function calcRSI(data, period) { if(data.length < period) return new Array(data.length).fill(50); let rsi = [], g = 0, l = 0; for(let i = 1; i <= period; i++) { let df = data[i] - data[i - 1]; if(df >= 0) g += df; else l -= df; } let ag = g / period; let al = l / period; rsi.push(100 - (100 / (1 + (al === 0 ? 999 : ag / al)))); for(let i = period + 1; i < data.length; i++) { let df = data[i] - data[i - 1]; ag = (ag * (period - 1) + (df >= 0 ? df : 0)) / period; al = (al * (period - 1) + (df < 0 ? -df : 0)) / period; rsi.push(100 - (100 / (1 + (al === 0 ? 999 : ag / al)))); } return new Array(period).fill(50).concat(rsi); }
+function calcBIAS(data, period) { if(data.length < period) return new Array(data.length).fill(0); let s = calcSMA(data, period); return data.map((v, i) => s[i] > 0 ? ((v - s[i]) / s[i]) * 100 : 0); }
+
+window.fetchFullChartData = async function() {
+    const cityCode = gameState.activeCity; const city = CITIES[cityCode]; if(!city) return;
+    if(isSimMode) { if(!document.getElementById('chart-page').classList.contains('hidden')) { window.renderChartInstance(); } return; }
+    
+    const map = { "1m": {i: "1m", r: "1d"}, "5m": {i: "5m", r: "5d"}, "15m": {i: "15m", r: "5d"}, "30m": {i: "30m", r: "5d"}, "60m": {i: "60m", r: "1mo"}, "1d": {i: "1d", r: "6mo"}, "1wk": {i: "1wk", r: "2y"}, "1mo": {i: "1mo", r: "5y"} };
+    const prm = map[gameState.timeframe] || map["1d"];
+    const ySym = /^\d{4}$/.test(cityCode) ? cityCode + '.TW' : cityCode;
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ySym}?interval=${prm.i}&range=${prm.r}`;
+    
+    let fetched = false;
+    try {
+        const res = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(url)}`);
+        const data = await res.json();
+        if (data?.chart?.result?.[0]) {
+            const result = data.chart.result[0]; const quote = result.indicators.quote[0]; const ts = result.timestamp || []; let ohlc = [];
+            for(let i = 0; i < ts.length; i++) {
+                if(quote.close[i] !== null && quote.close[i] !== undefined) ohlc.push({ x: ts[i] * 1000, o: quote.open[i], h: quote.high[i], l: quote.low[i], c: quote.close[i], v: quote.volume[i] });
+            }
+            if(ohlc.length > 0) { city.chartData[gameState.timeframe] = ohlc; fetched = true; }
+        }
+    } catch(e) {}
+    
+    // 斷線強制防護，生長出帶有趨勢慣性的歷史 K 線
+    if (!fetched || !city.chartData[gameState.timeframe] || city.chartData[gameState.timeframe].length < 10) {
+        initKbars(city);
+    }
+    
+    if(!document.getElementById('chart-page').classList.contains('hidden')) window.renderChartInstance(); 
+};
+
+window.renderChartInstance = function() {
+    const city = CITIES[gameState.activeCity]; if(!city || !city.chartData[gameState.timeframe]) return;
+    const raw = city.chartData[gameState.timeframe];
+    if (raw.length < 10) return;
+
+    const labels = raw.map(d => {
+        const dt = new Date(d.x);
+        return gameState.timeframe.includes('m') ? dt.toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : dt.toLocaleDateString('zh-TW', {month: '2-digit', day: '2-digit'});
+    });
+    const candleData = raw.map((d, i) => ({ x: labels[i], o: d.o, h: d.h, l: d.l, c: d.c }));
+    const closePrices = raw.map(d => d.c);
+    const upCol = '#ef4444'; const dnCol = '#22c55e'; 
+
+    const ctxM = document.getElementById('mainChartCanvas').getContext('2d');
+    if(mainChart) mainChart.destroy();
+    
+    // 【圖 13 修復】針對 1 分 K 設定動態的 barThickness，避免 K 棒擁擠成一團雜訊
+    const barWidth = raw.length > 150 ? 2 : (raw.length > 50 ? 4 : 8);
+    
+    mainChart = new Chart(ctxM, {
+        type: 'candlestick',
+        data: { datasets: [{ data: candleData, color: { up: upCol, down: dnCol, unchanged: '#999' }, borderColor: { up: upCol, down: dnCol, unchanged: '#999' }, barThickness: barWidth }] },
+        options: { 
+            animation: false, responsive: true, maintainAspectRatio: false, 
+            scales: { x: { type: 'category', labels: labels, display: false }, y: { position: 'right', ticks: { color: '#ccc' } } }, 
+            plugins: { legend: { display: false } } 
+        }
+    });
+    
+    const ctxV = document.getElementById('volumeChartCanvas').getContext('2d');
+    if(volChart) volChart.destroy();
+    volChart = new Chart(ctxV, {
+        type: 'bar',
+        data: { labels, datasets: [{ data: raw.map(d => d.v), backgroundColor: raw.map(d => d.c >= d.o ? upCol : dnCol), barThickness: barWidth }] },
+        options: { animation: false, responsive: true, maintainAspectRatio: false, scales: { x: { type: 'category', labels: labels, display: false }, y: { display: false } }, plugins: { legend: { display: false } } }
+    });
+
+    const ctxI = document.getElementById('indicatorChartCanvas').getContext('2d');
+    if(indChart) indChart.destroy();
+    let datasets = []; const ind = gameState.activeIndicator;
+    let yScales = { y: { position: 'right', ticks: { color: '#888', font: { size: 8 } } } }; // 預設單一 Y 軸
+    
+    if(ind === "MACD") {
+        const {m, s, h} = calcMACD(closePrices);
+        
+        // 【圖 13 修復】MACD 專屬雙 Y 軸設定
+        // 解決柱狀圖數值極小，快慢線數值極大，導致在同一個 Y 軸上會「互相壓縮到看不見」的問題
+        yScales = {
+            y: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'MACD線', color: '#888', font: {size: 8} }, ticks: { color: '#fff', font: { size: 8 } } },
+            y1: { type: 'linear', display: true, position: 'left', title: { display: true, text: '柱狀圖', color: '#888', font: {size: 8} }, ticks: { color: '#aaa', font: { size: 8 } }, grid: { drawOnChartArea: false } }
+        };
+        
+        datasets = [
+            { type: 'bar', label: 'Hist', data: h, backgroundColor: h.map(v => v >= 0 ? '#ef4444' : '#22c55e'), yAxisID: 'y1', barThickness: barWidth },
+            { type: 'line', label: 'MACD 快線', data: m, borderColor: '#fff', borderWidth: 1.5, pointRadius: 0, tension: 0.1, yAxisID: 'y' },
+            { type: 'line', label: 'Signal 慢線', data: s, borderColor: '#facc15', borderWidth: 1.5, pointRadius: 0, tension: 0.1, yAxisID: 'y' }
+        ];
+    } else if(ind === "KD") {
+        const {k, d} = calcKD(closePrices);
+        datasets = [ { type: 'line', label: 'K', data: k, borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0 }, { type: 'line', label: 'D', data: d, borderColor: '#fb923c', borderWidth: 1.5, pointRadius: 0 } ];
+    } else if(ind === "RSI") {
+        const rsi5 = calcRSI(closePrices, 5); const rsi10 = calcRSI(closePrices, 10);
+        datasets = [ { type: 'line', label: 'RSI 5T', data: rsi5, borderColor: '#c084fc', borderWidth: 1.5, pointRadius: 0 }, { type: 'line', label: 'RSI 10T', data: rsi10, borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0 } ];
+    } else if(ind === "BIAS") {
+        const b5 = calcBIAS(closePrices, 5); const b10 = calcBIAS(closePrices, 10); const b20 = calcBIAS(closePrices, 20);
+        datasets = [ { type: 'line', label: 'BIAS 5T', data: b5, borderColor: '#fff', borderWidth: 1.5, pointRadius: 0 }, { type: 'line', label: 'BIAS 10T', data: b10, borderColor: '#facc15', borderWidth: 1.5, pointRadius: 0 }, { type: 'line', label: 'BIAS 20T', data: b20, borderColor: '#ec4899', borderWidth: 1.5, pointRadius: 0 } ];
+    }
+    
+    indChart = new Chart(ctxI, { 
+        data: { labels, datasets }, 
+        options: { 
+            animation: false, responsive: true, maintainAspectRatio: false, 
+            scales: Object.assign({ x: { display: false } }, yScales), // 套用雙軸或單軸
+            plugins: { legend: { display: true, position: 'top', labels: { color: '#888', font: { size: 8 } } } } 
+        } 
+    });
+};
+
+// ==========================================
+// 5. 引擎輪詢與沙盤推演心跳 (包含 API 備援防卡死)
+// ==========================================
+function startMarketPolling() {
+    setInterval(async () => {
+        if(isSimMode) return;
+        const cityCode = gameState.activeCity; const city = CITIES[cityCode]; if(!city) return;
+        try {
+            const url = `https://query1.finance.yahoo.com/v8/finance/chart/${gameState.activeCity}.TW?interval=1m&range=1d`;
+            const res = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(url)}`);
+            const data = await res.json();
+            if (data?.chart?.result?.[0]) {
+                const meta = data.chart.result[0].meta;
+                currentPrice = meta.regularMarketPrice;
+                city.price = currentPrice; city.basePrice = meta.previousClose;
+                if(Math.abs(currentPrice - lastPriceForAnim) > 0.01) { triggerAttackAnim(currentPrice > lastPriceForAnim ? 'LONG' : 'SHORT'); lastPriceForAnim = currentPrice; }
+                if((currentPrice - city.basePrice) / city.basePrice >= 0.098) triggerFireworks();
+                updateUI();
+            }
+        } catch(e) {}
+    }, 5000);
+}
+
+function localTick() {
+    const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Taipei"}));
+    const day = now.getDay(); const timeNum = now.getHours() * 100 + now.getMinutes();
+    let newStatus = "CLOSED";
+    
+    if (day >= 1 && day <= 5) {
+        if (timeNum >= 855 && timeNum < 900) newStatus = "PRE";
+        else if (timeNum >= 900 && timeNum < 1330) newStatus = "OPEN";
+    }
+
+    if (currentMarketState !== newStatus) {
+        if (newStatus === "OPEN" && isSimMode) window.forceCloseSimMode(false);
+        currentMarketState = newStatus; updateOrderButtonsUI();
+    }
+
+    // 防卡死：如果在真實環境抓不到報價，強制給予歷史位階解鎖 UI
+    if (!isSimMode && currentMarketState === "CLOSED" && currentPrice === 0) {
+        const c = CITIES[gameState.activeCity];
+        if (c && c.basePrice > 0) { currentPrice = c.basePrice; updateUI(); }
+    }
+    
+    // 真實世界環境雷射交火
+    if (!isSimMode && currentMarketState === "OPEN") {
+        if (baseRedArmy.length > 0 && Math.random() > 0.85) { const s = baseRedArmy[Math.floor(Math.random() * baseRedArmy.length)]; if (s.visible && !s.userData.isAttacking) shootLaser(s); }
+        if (baseGreenArmy.length > 0 && Math.random() > 0.85) { const s = baseGreenArmy[Math.floor(Math.random() * baseGreenArmy.length)]; if (s.visible && !s.userData.isAttacking) shootLaser(s); }
+        const city = CITIES[gameState.activeCity];
+        if (city && getPriceTier(window.safeNum(city.basePrice)) >= 4 && Math.random() > 0.9) shootLaserFromCastle();
+    }
+
+    if(!isSimMode) return;
+    
+    const city = CITIES[gameState.activeCity]; if(!city) return;
+    
+    if (baseRedArmy.length > 0 && Math.random() > 0.6) { const s = baseRedArmy[Math.floor(Math.random() * baseRedArmy.length)]; if (s.visible && !s.userData.isAttacking) shootLaser(s); }
+    if (baseGreenArmy.length > 0 && Math.random() > 0.6) { const s = baseGreenArmy[Math.floor(Math.random() * baseGreenArmy.length)]; if (s.visible && !s.userData.isAttacking) shootLaser(s); }
+    if (getPriceTier(window.safeNum(city.simBasePrice)) >= 4 && Math.random() > 0.7) shootLaserFromCastle();
+    
+    const bp = window.safeNum(city.simBasePrice, city.basePrice); const maxDev = bp * 0.05; 
+    let newPrice = window.safeNum(city.price, bp) + (Math.random() - 0.5) * window.safeNum(city.vol, 2.0) * 2;
+    if (newPrice > bp + maxDev) newPrice = bp + maxDev; if (newPrice < bp - maxDev) newPrice = bp - maxDev;
+    
+    city.price = newPrice; currentPrice = city.price;
+    if(Math.abs(currentPrice - lastPriceForAnim) > 0.01) { triggerAttackAnim(currentPrice > lastPriceForAnim ? 'LONG' : 'SHORT'); lastPriceForAnim = currentPrice; }
+    
+    if((currentPrice - bp) / bp >= 0.098) triggerFireworks();
+    
+    if(city.chartData && city.chartData[gameState.timeframe]) {
+        let chartArr = city.chartData[gameState.timeframe];
+        if(chartArr.length > 0) {
+            let lastBar = chartArr[chartArr.length - 1]; let timeNow = Date.now();
+            if (timeNow - lastBar.x > 30000) {
+                chartArr.push({ x: timeNow, o: newPrice, h: newPrice, l: newPrice, c: newPrice, v: Math.random() * 50 });
+                if (chartArr.length > 150) chartArr.shift(); 
+            } else {
+                lastBar.c = newPrice; lastBar.h = Math.max(lastBar.h, newPrice); lastBar.l = Math.min(lastBar.l, newPrice); lastBar.v += Math.random() * 10;
+            }
+        } else { initKbars(city); }
+    }
+    
+    if(!document.getElementById('chart-page').classList.contains('hidden')) window.renderChartInstance(); 
+    updateUI();
+}
+
+// 帶有趨勢動能的擬真虛擬 K 線產生器
+function initKbars(city) {
+    let tempC = isSimMode ? window.safeNum(city.simBasePrice, city.basePrice) : window.safeNum(city.basePrice, 100);
+    const volBase = tempC * 0.005; let time = Date.now() - 100 * 60000; 
+    const tfs = ["1m", "5m", "15m", "30m", "60m", "1d", "1wk", "1mo"];
+    
+    tfs.forEach(tf => { 
+        let fakeData = []; let curC = tempC; let trend = 0;
+        for(let i = 0; i < 100; i++) {
+            let o = curC; 
+            trend += (Math.random() - 0.5) * 0.002;
+            if (trend > 0.01) trend = 0.01; if (trend < -0.01) trend = -0.01;
+            curC += (curC * trend) + (Math.random() - 0.5) * volBase;
+            if(curC <= 0.1) curC = 0.1;
+            let h = Math.max(o, curC) + Math.abs(curC * (Math.random() * 0.002));
+            let l = Math.min(o, curC) - Math.abs(curC * (Math.random() * 0.002));
+            fakeData.push({ x: time + i * 60000, o: o, h: h, l: l, c: curC, v: 100 + Math.random() * 900 });
+        }
+        if (!city.chartData) city.chartData = {};
+        city.chartData[tf] = fakeData; 
+    });
+}
+
+function updateOrderButtonsUI() {
+    const btnL = document.getElementById('btn-long'); const btnS = document.getElementById('btn-short');
+    const txtL = document.getElementById('btn-long-text'); const txtS = document.getElementById('btn-short-text');
+    const simBtn = document.getElementById('sim-btn'); const label = document.getElementById('market-status-label');
+
+    if (!btnL || !btnS || !simBtn || !label) return;
+
+    if (currentMarketState === "CLOSED" && !isSimMode) {
+        btnL.classList.add('btn-disabled'); btnS.classList.add('btn-disabled');
+        txtL.innerText = "休市禁令"; txtS.innerText = "休市禁令";
+    } else {
+        btnL.classList.remove('btn-disabled'); btnS.classList.remove('btn-disabled');
+        txtL.innerText = "入城"; txtS.innerText = "攻掠";
+    }
+
+    simBtn.classList.remove('hidden'); 
+    
+    if (isSimMode) {
+        label.innerText = "沙盤推演 獨立時空";
+        label.className = "text-[10px] md:text-xs text-sky-300 font-bold uppercase tracking-widest bg-sky-500/20 px-2 py-1 rounded border border-sky-500/30 animate-pulse";
+        simBtn.innerText = "結束推演";
+        simBtn.className = "bg-red-600 hover:bg-red-500 px-3 py-1.5 rounded text-[11px] text-white font-bold transition-all shadow-md cursor-pointer";
+        simBtn.disabled = false;
+    } else {
+        if (currentMarketState === "OPEN" || currentMarketState === "PRE") {
+            label.innerText = currentMarketState === "OPEN" ? "真實天道 運轉中" : "盤前試撮 準備開戰";
+            label.className = "text-[10px] md:text-xs text-yellow-400 font-bold uppercase tracking-widest bg-yellow-500/20 px-2 py-1 rounded border border-yellow-500/30";
+            simBtn.innerText = "沙盤(開盤禁用)";
+            simBtn.className = "bg-gray-700 px-3 py-1.5 rounded text-[11px] text-gray-400 font-bold transition-all cursor-not-allowed opacity-50";
+            simBtn.disabled = true;
+        } else {
+            label.innerText = "天道休市 盤後時段";
+            label.className = "text-[10px] md:text-xs text-gray-400 font-bold uppercase tracking-widest bg-white/10 px-2 py-1 rounded border border-white/20";
+            simBtn.innerText = "啟動沙盤練兵";
+            simBtn.className = "bg-sky-600 hover:bg-sky-500 px-3 py-1.5 rounded text-[11px] text-white font-bold shadow-[0_0_10px_rgba(2,132,199,0.5)] transition-all animate-pulse cursor-pointer";
+            simBtn.disabled = false;
+        }
+    }
+}
+
+// ==========================================
+// 6. UI 更新與獨立戰報整編
+// ==========================================
+function updateUI() {
+    const city = CITIES[gameState.activeCity];
+    const activeBasePrice = isSimMode ? window.safeNum(city?.simBasePrice, city?.basePrice) : window.safeNum(city?.basePrice);
+    
+    let displayPrice = currentPrice > 0 ? currentPrice : activeBasePrice;
+    
+    if (displayPrice > 0) document.getElementById('market-price').innerText = window.safeNum(displayPrice).toFixed(2);
+    else document.getElementById('market-price').innerText = "連線中";
+    
+    document.getElementById('base-price-display').innerText = activeBasePrice.toFixed(2);
+    document.getElementById('user-balance').innerText = Math.floor(window.safeNum(gameState.balance)).toLocaleString();
+    document.getElementById('today-total-result').innerText = `加 ${Math.floor(window.safeNum(gameState.realizedPnl)).toLocaleString()}`;
+    
+    const pct = activeBasePrice > 0 ? ((window.safeNum(displayPrice, activeBasePrice) - activeBasePrice) / activeBasePrice * 100) : 0;
+    const elPct = document.getElementById('price-change');
+    elPct.innerText = `${Math.abs(window.safeNum(pct, 0)).toFixed(2)} %`;
+    elPct.className = `text-[10px] md:text-[11px] font-bold mt-0.5 ${pct >= 0 ? 'text-red-500' : 'text-green-500'}`;
+
+    renderUnits();
+}
+
+function renderUnits() {
+    const cont = document.getElementById('tab-content-units'); if(!cont) return; cont.innerHTML = '';
+    const realUnits = gameState.units.filter(u => !u.isSim); const simUnits = gameState.units.filter(u => u.isSim);
+    
+    if(realUnits.length === 0 && simUnits.length === 0) {
+        cont.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-8 font-bold tracking-widest">目前無駐紮部隊</div>'; return;
+    }
+
+    const renderGroup = (unitArray, title, titleColor, borderColor) => {
+        if(unitArray.length === 0) return;
+        cont.innerHTML += `<div class="text-xs ${titleColor} font-bold border-b border-white/10 pb-1 mb-2 mt-4 ml-1 tracking-widest">【${title}】</div>`;
+        const grouped = {};
+        unitArray.forEach(u => {
+            if(!grouped[u.city]) grouped[u.city] = { totalQty: 0, weightedCost: 0, items: [] };
+            grouped[u.city].totalQty += u.qty; grouped[u.city].weightedCost += u.cost * u.qty; grouped[u.city].items.push(u);
+        });
+
+        for(let cityCode in grouped) {
+            const g = grouped[cityCode]; const avgCost = g.weightedCost / g.totalQty;
+            const totalProfit = g.items.reduce((sum, u) => sum + calcProfit(u.side, u.cost, currentPrice > 0 ? currentPrice : u.cost, u.qty), 0);
+            
+            cont.innerHTML += `
+            <div class="bg-black/60 p-3 rounded-xl border-l-4 ${borderColor} mb-2 shadow-lg">
+                <div class="flex justify-between items-center mb-1"><strong class="${titleColor}">${CITIES[cityCode].name} 總戰力</strong><span class="text-[10px] bg-white/10 px-2 rounded">${g.totalQty.toFixed(1)} 營</span></div>
+                <div class="flex justify-between text-[11px] text-gray-400 mb-1"><span>權重均價</span><span class="text-white">${avgCost.toFixed(2)}</span></div>
+                <div class="flex justify-between text-sm font-black"><span>【未平倉】浮動淨利</span><span class="${totalProfit >= 0 ? 'text-red-400' : 'text-green-400'}">${Math.floor(totalProfit).toLocaleString()}</span></div>
+            </div>`;
+
+            g.items.forEach(u => {
+                const profit = calcProfit(u.side, u.cost, currentPrice > 0 ? currentPrice : u.cost, u.qty);
+                cont.innerHTML += `
+                <div class="bg-black/40 p-2 rounded-lg border-r-4 ${profit >= 0 ? 'border-red-500' : 'border-green-500'} mb-2 ml-4">
+                    <div class="flex justify-between text-xs"><span>派遣 ${u.side === 'LONG' ? '做多' : '做空'}</span><span class="${profit >= 0 ? 'text-red-400' : 'text-green-400'}">${Math.floor(profit).toLocaleString()}</span></div>
+                    <div class="flex justify-between items-center mt-1"><span class="text-[9px] text-gray-500">進場單價 ${u.cost.toFixed(2)}</span><button onclick="window.settle(${u.id})" class="text-[10px] bg-white/10 px-3 py-1 rounded hover:bg-white/20 transition-colors cursor-pointer">撤軍結算</button></div>
+                </div>`;
+            });
+        }
+    };
+    renderGroup(realUnits, "真實天道戰力", "text-yellow-400", "border-yellow-500"); renderGroup(simUnits, "沙盤推演戰力", "text-sky-400", "border-sky-500");
+}
+
+window.switchCity = function(code) { 
+    gameState.activeCity = code; currentPrice = window.safeNum(CITIES[code].price, CITIES[code].basePrice);
+    document.getElementById('chart-city-name').innerText = CITIES[code].name;
+    window.showMsg(`軍令轉移 至 ${CITIES[code].name}`);
+    rebuildEnvironment(); window.fetchFullChartData(); updateUI(); 
+};
+
+window.switchSector = function(code) {
+    gameState.activeSector = code; const sel = document.getElementById('city-selector'); sel.innerHTML = '';
+    SECTORS[code].cities.forEach(c => sel.appendChild(new Option(CITIES[c].name, c)));
+    window.switchCity(SECTORS[code].cities[0]);
+};
+
+window.issueOrder = function(side) {
+    if (currentMarketState === "CLOSED" && !isSimMode) { window.showMsg("天道休市期間 僅開放沙盤練兵下單"); window.triggerThunder(); return; }
+    const qty = parseInt(document.getElementById('order-qty').value) || 1; const vol = currentPrice * qty * 1000;
+    if(gameState.balance < vol) { window.showMsg("天道存銀不足"); window.triggerThunder(); return; }
+    gameState.balance -= vol;
+    gameState.units.push({ id: Date.now(), city: gameState.activeCity, side: side, qty: qty, cost: currentPrice, isSim: isSimMode });
+    syncPlayerTroopsFromState(); updateUI(); saveDataToCloud();
+};
+
+window.settle = function(id) {
+    const idx = gameState.units.findIndex(u => u.id === id); const u = gameState.units[idx];
+    const profit = calcProfit(u.side, u.cost, currentPrice, u.qty);
+    gameState.balance += (u.cost * u.qty * 1000) + profit;
+    if(!isSimMode) gameState.realizedPnl += profit;
+    gameState.units.splice(idx, 1); syncPlayerTroopsFromState(); updateUI(); saveDataToCloud();
+};
+
+window.toggleSimMode = function(isAuto = false) {
+    if(!isAuto && currentMarketState === "OPEN") { window.showMsg("開盤期間嚴禁手動沙盤"); return; }
+    if(isSimMode) {
+        window.forceCloseSimMode(false);
+    } else {
+        realStateSnapshot = JSON.parse(JSON.stringify(gameState)); isSimMode = true;
+        Object.keys(CITIES).forEach(c => { 
+            if(!isAuto) { CITIES[c].simBasePrice = window.safeNum(CITIES[c].price, CITIES[c].basePrice); } 
+            if(!CITIES[c].chartData || !CITIES[c].chartData["1m"] || CITIES[c].chartData["1m"].length < 10) initKbars(CITIES[c]); 
+        });
+        document.getElementById('real-pnl-container').classList.add('hidden'); document.getElementById('sim-pnl-container').classList.remove('hidden'); document.getElementById('base-price-label').innerText = '沙盤基準';
+        ['main-dashboard','tab-container','order-panel'].forEach(id => { document.getElementById(id).classList.replace('glass', 'glass-sim'); });
+        window.triggerSimThunder(); window.showMsg(isAuto ? "週末休市 自動進入沙盤" : "啟動沙盤練兵"); 
+        updateOrderButtonsUI(); updateUI();
+    }
+};
+
+window.forceCloseSimMode = async function(auto) {
+    if(!isSimMode) return;
+    const simProfit = gameState.balance - realStateSnapshot.balance;
+    gameState = JSON.parse(JSON.stringify(realStateSnapshot)); isSimMode = false;
+    
+    if (simProfit > 0) {
+        const reward = Math.floor(simProfit * 0.001); gameState.balance += reward;
+        gameState.history.unshift({ time: new Date().toLocaleTimeString('zh-TW', { hour12: false }), city: "沙盤練兵甘霖結算", side: "SYS", pnl: reward, isSim: false });
+        document.getElementById('sim-reward-profit').innerText = Math.floor(simProfit).toLocaleString();
+        document.getElementById('sim-reward-final').innerText = reward.toLocaleString();
+        document.getElementById('sim-reward-modal').classList.remove('opacity-0', 'pointer-events-none');
+    } else { 
+        window.triggerThunder(); window.showMsg(auto ? "試撮啟動 沙盤結束" : "結束沙盤"); 
+    }
+    
+    document.getElementById('sim-pnl-container').classList.add('hidden'); document.getElementById('real-pnl-container').classList.remove('hidden'); document.getElementById('base-price-label').innerText = '昨收';
+    ['main-dashboard','tab-container','order-panel'].forEach(id => { document.getElementById(id).classList.replace('glass-sim', 'glass'); });
+    updateOrderButtonsUI(); updateUI(); 
+    
+    Object.keys(CITIES).forEach(c => { CITIES[c].chartData = {}; });
+    await window.fetchFullChartData();
+};
+
+window.submitManualPrice = function() {
+    const val = parseFloat(document.getElementById('manual-price-input').value);
+    if(isNaN(val) || val <= 0) return;
+    const city = CITIES[pendingPriceCity]; city.basePrice = val; city.price = val; city.simBasePrice = val;
+    initKbars(city); rebuildEnvironment(); document.getElementById('price-prompt-modal').classList.add('opacity-0', 'pointer-events-none');
+    window.toggleSimMode(true);
+};
+
+window.forceStartSim = function() {
+    const city = CITIES[pendingPriceCity];
+    if(city && city.basePrice > 0) { city.simBasePrice = city.basePrice; city.price = city.basePrice; city.realPrice = city.basePrice; initKbars(city); rebuildEnvironment(); }
+    document.getElementById('price-prompt-modal').classList.add('opacity-0', 'pointer-events-none');
+    if(!isSimMode) { window.showMsg("使用內建歷史強制啟動沙盤"); window.toggleSimMode(true); }
+};
+
+window.openChartPage = function() { document.getElementById('chart-page').classList.remove('hidden'); setTimeout(() => { document.getElementById('chart-page').classList.remove('translate-y-full'); if (isSimMode) window.renderChartInstance(); else window.fetchFullChartData(); }, 10); };
+window.closeChartPage = function() { document.getElementById('chart-page').classList.add('translate-y-full'); setTimeout(() => document.getElementById('chart-page').classList.add('hidden'), 300); };
+window.setTimeframe = function(tf) { gameState.timeframe = tf; document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active')); document.getElementById(`tf-${tf}`).classList.add('active'); if (isSimMode) window.renderChartInstance(); else window.fetchFullChartData(); };
+window.setIndicator = function(ind) { gameState.activeIndicator = ind; document.querySelectorAll('.ind-btn').forEach(b => b.classList.toggle('active', b.id === 'btn-ind-' + ind)); renderChartInstance(); };
+window.switchTab = function(t) { ['units', 'history', 'pending'].forEach(x => document.getElementById('tab-content-' + x).classList.toggle('hidden', x !== t)); document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === 'tab-' + t)); };
+window.openCustomManager = function() { document.getElementById('custom-modal').classList.remove('opacity-0', 'pointer-events-none'); renderCustomList(); };
+window.closeCustomManager = function() { document.getElementById('custom-modal').classList.add('opacity-0', 'pointer-events-none'); if(gameState.activeSector === 'CUSTOM') window.switchSector('CUSTOM'); };
+
+window.addCustomStock = function() {
+    const sym = document.getElementById('custom-symbol').value.toUpperCase(); const name = document.getElementById('custom-name').value;
+    if(!sym || !name) return;
+    if(!CITIES[sym]) { CITIES[sym] = { name, price: 0, basePrice: 0, vol: 2, chartData: {} }; }
+    if(!SECTORS["CUSTOM"].cities.includes(sym)) { SECTORS["CUSTOM"].cities.push(sym); }
+    document.getElementById('custom-symbol').value = ''; document.getElementById('custom-name').value = ''; window.showMsg(`編列 ${name}`); renderCustomList();
+};
+
+function renderCustomList() {
+    const list = document.getElementById('custom-stock-list'); list.innerHTML = '';
+    SECTORS["CUSTOM"].cities.forEach(sym => { list.innerHTML += `<div class="flex justify-between items-center bg-black/40 p-2.5 rounded-lg border border-white/5"><div class="flex flex-col"><span class="text-xs font-bold text-yellow-500">${sym}</span><span class="text-[10px] text-gray-400 mt-0.5">${CITIES[sym].name}</span></div><button onclick="window.removeCustomStock('${sym}')" class="text-[10px] bg-red-900/50 hover:bg-red-800 border border-red-500/30 px-3 py-1.5 rounded-md text-red-200 transition-colors cursor-pointer">移除</button></div>`; });
+}
+
+window.removeCustomStock = function(sym) {
+    const idx = SECTORS["CUSTOM"].cities.indexOf(sym);
+    if (idx > -1) { SECTORS["CUSTOM"].cities.splice(idx, 1); window.showMsg(`已移出 ${sym}`); renderCustomList(); saveDataToCloud(); }
+};
+
+window.showDailySummary = function() {
+    const wins = gameState.history.filter(h => h.pnl > 0 && !h.isSim).length;
+    const reals = gameState.history.filter(h => !h.isSim).length;
+    const rate = reals === 0 ? 0 : (wins / reals * 100);
+    
+    let realUnrealized = 0;
+    gameState.units.forEach(u => { 
+        if(!u.isSim) {
+            const c = CITIES[u.city];
+            if(c) {
+                const cp = window.safeNum(c.price, c.basePrice);
+                realUnrealized += calcProfit(u.side, u.cost, cp, u.qty);
+            }
+        }
+    });
+
+    document.getElementById('modal-body').innerHTML = `
+        <h2 class="text-xl font-black text-center mb-4 tracking-widest text-purple-300 drop-shadow-[0_0_8px_rgba(216,180,254,0.5)]">實戰結算大表</h2>
+        <div class="space-y-4 bg-black/40 p-5 rounded-2xl border border-purple-500/20 text-sm shadow-inner">
+            <div class="flex justify-between border-b border-white/10 pb-2"><span class="text-gray-400 font-bold tracking-widest">實戰派遣</span><span class="font-mono text-gray-200">${reals} 次</span></div>
+            <div class="flex justify-between border-b border-white/10 pb-2"><span class="text-gray-400 font-bold tracking-widest">平均勝率</span><span class="text-yellow-500 font-mono drop-shadow-md">${rate.toFixed(1)} %</span></div>
+            <div class="flex justify-between border-b border-white/10 pb-2"><span class="text-gray-400 font-bold tracking-widest">【未平倉】浮動淨利</span><span class="font-mono font-bold ${realUnrealized>=0?'text-red-400':'text-green-400'}">${Math.floor(realUnrealized).toLocaleString()}</span></div>
+            <div class="flex justify-between border-b border-white/10 pb-2"><span class="text-gray-400 font-bold tracking-widest">【已入庫】實現淨利</span><span class="font-mono font-bold ${gameState.realizedPnl>=0?'text-red-500':'text-green-500'}">${Math.floor(window.safeNum(gameState.realizedPnl,0)).toLocaleString()}</span></div>
+        </div>`;
+    document.getElementById('report-modal').classList.remove('opacity-0','pointer-events-none');
+    document.getElementById('modal-window').classList.replace('scale-95', 'scale-100');
+};
+
+window.closeModal = function() { 
+    document.getElementById('report-modal').classList.add('opacity-0','pointer-events-none'); 
+    document.getElementById('modal-window').classList.replace('scale-100', 'scale-95'); 
+};
+
+// 雲端連線保護：確保網頁 DOM 與 Firebase 完全準備好再進入系統
+window.addEventListener('DOMContentLoaded', async () => {
+    try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
+        else await signInAnonymously(auth);
+    } catch(e) {}
+
+    onAuthStateChanged(auth, (currentUser) => {
+        if (currentUser) {
+            user = currentUser;
+            document.getElementById('login-overlay').classList.add('opacity-0');
+            setTimeout(() => {
+                document.getElementById('login-overlay').classList.add('hidden');
+                document.getElementById('main-ui').classList.remove('hidden');
+            }, 500);
+            updateGlobalStats(currentUser.uid);
+            loadStateFromCloud(currentUser.uid);
+            
+            init3D(); 
+            const sec = document.getElementById('sector-selector');
+            for(let k in SECTORS) { sec.appendChild(new Option(SECTORS[k].name, k)); }
+            window.switchSector("SEMICON"); 
+            
+            currentPrice = window.safeNum(CITIES[gameState.activeCity].basePrice);
+            localTick(); updateOrderButtonsUI(); 
+            
+            fetchRealMarketData();
+            startMarketPolling(); 
+            setInterval(localTick, 1000); 
+        } else {
+            document.getElementById('btn-anon-login').classList.remove('hidden');
+            document.getElementById('login-status-text').innerText = "請點擊按鈕，以匿名身分入伍。";
+        }
+    });
+});
+</script>
+</body>
+</html>
