@@ -133,7 +133,7 @@
                 <div class="mt-3 pt-3 border-t border-white/10 flex gap-2 items-center">
                     <select id="sector-selector" onchange="window.switchSector(this.value)" class="bg-black/50 border border-white/20 rounded-lg px-2 py-1.5 text-[10px] md:text-xs font-bold text-gray-200 focus:outline-none w-24 md:w-auto truncate cursor-pointer"></select>
                     <select id="city-selector" onchange="window.switchCity(this.value)" class="flex-1 bg-black/50 border border-white/20 rounded-lg px-2 py-1.5 text-[11px] md:text-sm font-bold text-white focus:outline-none truncate cursor-pointer"></select>
-                    <button onclick="window.openCustomManager()" class="bg-white/10 hover:bg-white/20 p-1.5 rounded-lg text-white font-bold text-[10px] cursor-pointer">⚙ 總機</button>
+                    <button onclick="window.openCustomManager()" class="bg-white/10 hover:bg-white/20 p-1.5 rounded-lg text-white font-bold text-[10px] cursor-pointer">⚙ 總機設定</button>
                 </div>
                 
                 <div class="flex justify-between items-center bg-black/40 p-2.5 rounded-lg mt-3 border border-white/10 shadow-inner">
@@ -379,6 +379,19 @@
         <div class="flex gap-3 mt-4 pt-3 border-t border-white/10">
             <button onclick="window.factoryResetData()" class="w-1/3 bg-red-900/50 hover:bg-red-800 border border-red-500/30 py-3 rounded-xl font-bold text-xs transition-all cursor-pointer text-red-200">還原預設</button>
             <button onclick="window.closeCustomManager()" class="w-2/3 bg-gray-700 hover:bg-gray-600 py-3 rounded-xl font-bold text-sm transition-all cursor-pointer tracking-widest text-white">完成配置</button>
+        </div>
+    </div>
+</div>
+
+<!-- 斷線應急 -->
+<div id="price-prompt-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+    <div class="glass rounded-2xl p-6 w-full max-w-sm border-sky-500/40 shadow-2xl">
+        <h2 class="text-xl font-black text-center mb-2 tracking-widest text-sky-400">天道連線中斷</h2>
+        <p class="text-[11px] text-gray-400 mb-5 text-center leading-relaxed">無法取得 <span id="prompt-city-name" class="text-white font-bold"></span> 的即時連線。<br>請輸入基準股價，或使用系統歷史預設啟動沙盤。</p>
+        <div class="space-y-4">
+            <input id="manual-price-input" type="number" step="0.5" placeholder="請輸入基準股價 如 1050" class="w-full bg-black/60 border border-white/20 rounded-lg px-4 py-3 text-white outline-none font-mono text-sm text-center">
+            <button onclick="window.submitManualPrice()" class="w-full bg-sky-600 hover:bg-sky-500 py-3 rounded-xl font-bold text-sm text-white shadow-lg transition-colors cursor-pointer tracking-widest">設定基準並進入沙盤</button>
+            <button onclick="window.forceStartSim()" class="w-full bg-gray-700 hover:bg-gray-600 py-3 rounded-xl font-bold text-sm text-white mt-2 transition-colors cursor-pointer tracking-widest">使用內建歷史強制啟動</button>
         </div>
     </div>
 </div>
@@ -655,6 +668,8 @@ function createForest(season) {
     return group;
 }
 
+function createSnowman() { const group = new THREE.Group(); const snowMat = new THREE.MeshStandardMaterial({color: 0xffffff, roughness: 0.9}); const body = new THREE.Mesh(new THREE.DodecahedronGeometry(1.5, 1), snowMat); body.position.y = 1.5; const head = new THREE.Mesh(new THREE.DodecahedronGeometry(1.0, 1), snowMat); head.position.y = 3.5; const scarf = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.4, 8), new THREE.MeshStandardMaterial({color: 0xef4444})); scarf.position.y = 2.8; group.add(body, head, scarf); return group; }
+
 function createSoldier(colorHex, isPlayer, tier = 1, side = 'LONG') {
     const group = new THREE.Group();
     if (tier >= 4) {
@@ -677,7 +692,7 @@ function createSoldier(colorHex, isPlayer, tier = 1, side = 'LONG') {
 }
 
 function rebuildEnvironment() {
-    if(!is3DInitialized) return;
+    if(!is3DInitialized) return; // 絕對鎖：防禦呼叫
     const city = CITIES[gameState.activeCity]; if(!city) return;
     const tier = getPriceTier(window.safeNum(city.basePrice, 100)); const season = getSeason();
     if(castleGroup) scene.remove(castleGroup); if(forestGroup) scene.remove(forestGroup); if(decorationsGroup) scene.remove(decorationsGroup); if(snowParticles) { scene.remove(snowParticles); snowParticles = null; }
@@ -691,6 +706,9 @@ function rebuildEnvironment() {
         geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
         snowParticles = new THREE.Points(geom, new THREE.PointsMaterial({color: 0xffffff, size: 0.6, transparent: true, opacity: 0.6}));
         scene.add(snowParticles);
+        const snm = createSnowman(); snm.position.set(22, 0, 15); decorationsGroup.add(snm);
+    } else if (season === 'AUTUMN') {
+        for(let i = 0; i < 40; i++) { const lf = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, 0.6), new THREE.MeshBasicMaterial({color: 0xc96b1e})); lf.position.set(20 + Math.random() * 45, 0.05, (Math.random() - 0.5) * 95); lf.rotation.y = Math.random() * Math.PI; decorationsGroup.add(lf); }
     }
     scene.add(decorationsGroup);
     
@@ -1035,7 +1053,7 @@ function localTick() {
             if (checkPrice <= 0) continue;
             
             if ((po.side === 'LONG' && checkPrice <= po.targetPrice) || (po.side === 'SHORT' && checkPrice >= po.targetPrice)) {
-                gameState.units.push({ id: Date.now(), city: po.city, side: po.side, qty: po.qty, cost: po.targetPrice, isSim: po.isSim, isFromGuest: po.isFromGuest, time: new Date().toLocaleTimeString('zh-TW', {hour12:false}) });
+                gameState.units.push({ id: Date.now(), city: po.city, side: po.side, qty: po.qty, cost: po.targetPrice, isSim: po.isSim, isFromGuest: po.isFromGuest, time: new Date().toLocaleTimeString('zh-TW', {hour12:false}), timestamp: Date.now() });
                 gameState.pendingOrders.splice(i, 1);
                 
                 const vol = po.targetPrice * po.qty * 1000;
@@ -1306,12 +1324,12 @@ window.issueOrder = function(side) {
     if (Math.abs(orderP - currentPrice) > 0.001) {
         gameState.balance -= totalCost; gameState.frozen += totalCost;
         if(!gameState.pendingOrders) gameState.pendingOrders = [];
-        gameState.pendingOrders.push({ id: Date.now(), city: gameState.activeCity, side: side, qty: qty, targetPrice: orderP, isSim: isSimMode, isFromGuest: isFromGuest, time: new Date().toLocaleTimeString('zh-TW', {hour12:false}) });
+        gameState.pendingOrders.push({ id: Date.now(), city: gameState.activeCity, side: side, qty: qty, targetPrice: orderP, isSim: isSimMode, isFromGuest: isFromGuest, time: new Date().toLocaleTimeString('zh-TW', {hour12:false}), timestamp: Date.now() });
         window.showMsg(`已掛單進入待命！${getCityName(gameState.activeCity)} 委託價 ${orderP.toFixed(2)}`);
         window.switchTab('pending');
     } else {
         gameState.balance -= totalCost;
-        gameState.units.push({ id: Date.now(), city: gameState.activeCity, side: side, qty: qty, cost: orderP, isSim: isSimMode, isFromGuest: isFromGuest, time: new Date().toLocaleTimeString('zh-TW', {hour12:false}) });
+        gameState.units.push({ id: Date.now(), city: gameState.activeCity, side: side, qty: qty, cost: orderP, isSim: isSimMode, isFromGuest: isFromGuest, time: new Date().toLocaleTimeString('zh-TW', {hour12:false}), timestamp: Date.now() });
         window.showMsg(isFromGuest ? "神秘客軍令已佈署！" : "軍令已佈署！");
         window.switchTab('units');
     }
@@ -1369,7 +1387,7 @@ window.settle = function(id) {
 
     gameState.balance += (u.cost * u.qty * 1000) + profit;
     if(!isSimMode) gameState.realizedPnl += profit;
-    gameState.history.unshift({...u, pnl: profit, exit: currentCityPrice, time: new Date().toLocaleTimeString('zh-TW', {hour12:false})});
+    gameState.history.unshift({...u, pnl: profit, exit: currentCityPrice, time: new Date().toLocaleTimeString('zh-TW', {hour12:false}), timestamp: Date.now()});
     gameState.units.splice(idx, 1); syncPlayerTroopsFromState(); updateUI(); syncToCloud();
     
     const modalWindow = document.getElementById('modal-window');
@@ -1379,8 +1397,9 @@ window.settle = function(id) {
     setTimeout(() => modalWindow.classList.replace('scale-95', 'scale-100'), 10);
 };
 
-window.toggleSimMode = function() {
-    if(currentMarketState === "OPEN" && !isSimMode) { window.showMsg("開盤期間嚴禁手動沙盤"); return; }
+// ★ 沙盤結束與防卡死修復
+window.toggleSimMode = function(isAuto = false) {
+    if(!isAuto && currentMarketState === "OPEN") { window.showMsg("開盤期間嚴禁手動沙盤"); return; }
     if(isSimMode) {
         window.forceCloseSimMode();
     } else {
@@ -1394,45 +1413,44 @@ window.toggleSimMode = function() {
     }
 };
 
-window.forceCloseSimMode = async function() {
+window.forceCloseSimMode = async function(auto = false) {
     if(!isSimMode) return;
     
     if(!realStateSnapshot) {
-        // 極端異常狀況防護，若 snapshot 遺失，以現狀當作基準
         realStateSnapshot = JSON.parse(JSON.stringify(gameState));
     }
 
-    // 強制結算所有剩餘的沙盤部隊
     let finalSimBalance = gameState.balance;
     gameState.units.filter(u => u.isSim).forEach(u => {
         const currentCityPrice = u.city === gameState.activeCity ? currentPrice : window.safeNum(CITIES[u.city]?.price, CITIES[u.city]?.simBasePrice);
         let profit = calcProfit(u.side, u.cost, currentCityPrice, u.qty);
         if (u.isFromGuest) profit *= 1.05; 
         finalSimBalance += (u.cost * u.qty * 1000) + profit;
-        gameState.history.unshift({...u, pnl: profit, exit: currentCityPrice, time: new Date().toLocaleTimeString('zh-TW', {hour12:false})});
+        gameState.history.unshift({...u, pnl: profit, exit: currentCityPrice, time: new Date().toLocaleTimeString('zh-TW', {hour12:false}), timestamp: Date.now()});
     });
     
-    // 退還沙盤中的未成交通知單
     gameState.pendingOrders.filter(po => po.isSim).forEach(po => {
         const vol = po.targetPrice * po.qty * 1000; const cost = vol * (1 + TAX_RATE + FEE_RATE);
         finalSimBalance += cost; 
     });
     
     const simProfit = finalSimBalance - realStateSnapshot.balance;
+    
+    // ★ 關鍵防死機：必須保留推演所產生的戰紀，再覆蓋回原始狀態
     const preservedHistory = gameState.history; 
     
-    Object.assign(gameState, realStateSnapshot); 
+    gameState = JSON.parse(JSON.stringify(realStateSnapshot)); 
     gameState.history = preservedHistory; 
     isSimMode = false;
     
     if (simProfit > 0) {
         const reward = Math.floor(simProfit * 0.001); gameState.balance += reward;
-        gameState.history.unshift({ time: new Date().toLocaleTimeString('zh-TW', { hour12: false }), city: "系統獎勵", side: "SYS", exit: 0, pnl: reward, isSim: false });
+        gameState.history.unshift({ time: new Date().toLocaleTimeString('zh-TW', { hour12: false }), timestamp: Date.now(), city: "系統獎勵", side: "SYS", exit: 0, pnl: reward, isSim: false });
         document.getElementById('sim-reward-profit').innerText = Math.floor(simProfit).toLocaleString();
         document.getElementById('sim-reward-final').innerText = reward.toLocaleString();
         document.getElementById('sim-reward-modal').classList.remove('opacity-0', 'pointer-events-none');
     } else { 
-        window.triggerThunder(); window.showMsg("結束沙盤"); 
+        window.triggerThunder(); window.showMsg(auto ? "試撮啟動 沙盤結束" : "結束沙盤"); 
     }
     
     document.getElementById('sim-pnl-container').classList.add('hidden'); document.getElementById('real-pnl-container').classList.remove('hidden'); document.getElementById('base-price-label').innerText = '前一交易日收盤價';
@@ -1480,18 +1498,26 @@ window.removeCustomStock = function(sym) {
     if (idx > -1) { SECTORS["CUSTOM"].cities.splice(idx, 1); window.showMsg(`已移出 ${sym}`); renderCustomList(); syncToCloud(); }
 };
 
-// ★ 戰績區段報表 (加入日期篩選功能)
+// ★ 戰績區段報表 (加入真實日期篩選功能)
 window.showDailySummary = function() {
     const filterStart = document.getElementById('report-start-date') ? document.getElementById('report-start-date').value : '';
     const filterEnd = document.getElementById('report-end-date') ? document.getElementById('report-end-date').value : '';
     
     let targetHistory = gameState.history.filter(h => !h.isSim);
     
-    // 實踐基礎的時間過濾 (配合簡易的時間字串比較)
     if(filterStart || filterEnd) {
         targetHistory = targetHistory.filter(h => {
-            // 在此版本中，由於時間多為 TimeString，我們僅能做基礎日期的過濾 (此處為未來升級預留)
-            return true;
+            let match = true;
+            const hDate = new Date(h.timestamp || Date.now());
+            if (filterStart) {
+                const sDate = new Date(filterStart); sDate.setHours(0,0,0,0);
+                if (hDate < sDate) match = false;
+            }
+            if (filterEnd) {
+                const eDate = new Date(filterEnd); eDate.setHours(23,59,59,999);
+                if (hDate > eDate) match = false;
+            }
+            return match;
         });
     }
     
@@ -1514,10 +1540,11 @@ window.showDailySummary = function() {
         <h2 class="text-xl font-black text-center mb-4 tracking-widest text-purple-300 drop-shadow-[0_0_8px_rgba(216,180,254,0.5)]">戰術覆盤可視化</h2>
         
         <div class="flex gap-2 mb-4 bg-black/40 p-2 rounded-lg border border-white/10">
-            <input type="date" id="report-start-date" class="w-full text-[10px] text-gray-300 bg-transparent px-1 cursor-pointer">
-            <span class="text-gray-500">~</span>
-            <input type="date" id="report-end-date" class="w-full text-[10px] text-gray-300 bg-transparent px-1 cursor-pointer">
-            <button onclick="window.showDailySummary()" class="bg-purple-600 hover:bg-purple-500 text-xs px-2 py-1 rounded text-white font-bold ml-1">查詢</button>
+            <input type="date" id="report-start-date" value="${filterStart}" class="w-full text-[10px] text-gray-300 bg-transparent px-1 cursor-pointer">
+            <span class="text-gray-500 flex items-center">~</span>
+            <input type="date" id="report-end-date" value="${filterEnd}" class="w-full text-[10px] text-gray-300 bg-transparent px-1 cursor-pointer">
+            <button onclick="document.getElementById('report-start-date').value = new Date().toISOString().split('T')[0]; document.getElementById('report-end-date').value = new Date().toISOString().split('T')[0]; window.showDailySummary();" class="bg-gray-700 hover:bg-gray-600 text-xs px-2 py-1 rounded text-white font-bold ml-1 transition-colors">今日</button>
+            <button onclick="window.showDailySummary()" class="bg-purple-600 hover:bg-purple-500 text-xs px-2 py-1 rounded text-white font-bold ml-1 transition-colors">查詢</button>
         </div>
 
         <div class="space-y-4 bg-black/40 p-5 rounded-2xl border border-purple-500/20 text-sm shadow-inner text-left mb-4">
@@ -1546,6 +1573,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('login-status-text').innerText = "未設定雲端金鑰，啟用單機模式";
         document.getElementById('btn-anon-login').innerText = "進入單機戰場";
         document.getElementById('btn-anon-login').classList.remove('hidden');
+        loadLocal();
         return;
     }
     try { if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token); } catch(e) {}
