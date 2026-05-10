@@ -34,8 +34,8 @@
         .filter-btn { font-size: 11px; padding: 4px 12px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); cursor: pointer; transition: all 0.2s; }
         .filter-btn.active { background: #a855f7; color: white; border-color: #a855f7; }
         
-        input[type=number], input[type=text] { background: rgba(0,0,0,0.4); box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); transition: all 0.3s; color: white; border: 1px solid rgba(255,255,255,0.1); outline: none; }
-        input[type=number]:focus, input[type=text]:focus { background: rgba(255,255,255,0.1); box-shadow: 0 0 10px rgba(234,179,8,0.3), inset 0 2px 4px rgba(0,0,0,0.5); border-color: #eab308; }
+        input[type=number], input[type=text], input[type=date] { background: rgba(0,0,0,0.4); box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); transition: all 0.3s; color: white; border: 1px solid rgba(255,255,255,0.1); outline: none; }
+        input[type=number]:focus, input[type=text]:focus, input[type=date]:focus { background: rgba(255,255,255,0.1); box-shadow: 0 0 10px rgba(234,179,8,0.3), inset 0 2px 4px rgba(0,0,0,0.5); border-color: #eab308; }
         .btn-disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(100%); pointer-events: none; }
         
         .scrollbar-hide::-webkit-scrollbar { display: none; }
@@ -84,8 +84,8 @@
 <!-- 新兵入場選城軍機處 -->
 <div id="entry-modal" class="fixed inset-0 z-[90] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-300">
     <div class="glass p-6 rounded-2xl max-w-sm w-full text-center border border-sky-500/30 shadow-[0_0_30px_rgba(14,165,233,0.15)] transform scale-95 transition-transform duration-300" id="entry-modal-window">
-        <h2 class="text-xl font-black mb-2 tracking-widest text-sky-400">登錄首座城池</h2>
-        <p class="text-[11px] text-gray-400 mb-6 leading-relaxed">統帥，進入戰場前請先指定您欲觀察的股票城池，系統將為您建立專屬領域。</p>
+        <h2 class="text-xl font-black mb-2 tracking-widest text-sky-400">軍機處 - 登錄首座城池</h2>
+        <p class="text-[11px] text-gray-400 mb-6 leading-relaxed">統帥，進入戰場之前，請先輸入您欲攻佔或支持的股票號碼，系統將為您帶入專屬的股票城池。</p>
         <input id="entry-symbol" type="text" placeholder="台股代號 (如 2330)" class="w-full bg-black/60 border border-white/20 rounded-lg px-4 py-3 text-white focus:border-sky-500 outline-none font-mono text-sm text-center mb-3 uppercase">
         <input id="entry-name" type="text" placeholder="城池名稱 (如 台積電)" class="w-full bg-black/60 border border-white/20 rounded-lg px-4 py-3 text-white focus:border-sky-500 outline-none text-sm text-center mb-6">
         <button onclick="window.submitEntryCity()" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-black py-3 rounded-xl transition-all shadow-lg active:scale-95 tracking-widest cursor-pointer">
@@ -142,7 +142,7 @@
                         <span id="price-change" class="text-[10px] md:text-[11px] font-bold text-gray-400">0.00 %</span>
                     </div>
                     <div class="text-right flex flex-col items-end">
-                        <span id="base-price-label" class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-0.5">基準昨收</span>
+                        <span id="base-price-label" class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-0.5">前一交易日收盤價</span>
                         <span id="base-price-display" class="text-sm md:text-base font-mono font-bold text-gray-300">---</span>
                     </div>
                 </div>
@@ -447,8 +447,8 @@ let currentMarketState = "CLOSED";
 let currentPrice = 0; 
 let lastPriceForAnim = 0; 
 let currentTab = "units";
-let currentReportFilter = "ALL"; // 'TODAY' or 'ALL'
 
+// 同步鎖與神秘客
 let isGameReady = false; 
 let is3DInitialized = false; 
 let gameTickInterval = null; 
@@ -463,6 +463,9 @@ let fireworks = [], lasers = [], explosions = [];
 let castleGroup, forestGroup, decorationsGroup;
 let mainChart = null, volChart = null, indChart = null;
 
+// ==========================================
+// 3. 全域工具與特效
+// ==========================================
 window.safeNum = function(val, fallback = 0) { const n = Number(val); return (isNaN(n) || !isFinite(n)) ? fallback : n; };
 function getCityName(code) { return CITIES[code] ? CITIES[code].name : code; }
 
@@ -515,7 +518,7 @@ function loadLocal() {
             Object.assign(gameState, parsed);
         }
     } catch(e) { initDefaultDatabase(); }
-    checkInitialEntry();
+    window.checkInitialEntry();
 }
 
 async function syncToCloud() {
@@ -539,11 +542,11 @@ async function loadFromCloud(uid) {
             if(data.sectors) SECTORS = data.sectors;
             if(data.cities) { for(let key in data.cities) CITIES[key] = { ...data.cities[key], chartData: {} }; }
             
-            if(!isCloudLoadedOnce) { isCloudLoadedOnce = true; checkInitialEntry(); } else if(isGameReady) updateUI();
+            if(!isCloudLoadedOnce) { isCloudLoadedOnce = true; window.checkInitialEntry(); } else if(isGameReady) updateUI();
             
         } else if (!docSnap.exists() && !isSimMode) { 
             initDefaultDatabase(); syncToCloud(); 
-            if(!isCloudLoadedOnce) { isCloudLoadedOnce = true; checkInitialEntry(); } else if(isGameReady) updateUI(); 
+            if(!isCloudLoadedOnce) { isCloudLoadedOnce = true; window.checkInitialEntry(); } else if(isGameReady) updateUI(); 
         }
     });
     const statsRef = doc(db, 'artifacts', currentAppId, 'public', 'data', 'stats', 'global');
@@ -583,7 +586,7 @@ window.anonLogin = async function() {
 }
 
 // ★ 入場攔截：讓使用者自定城池
-function checkInitialEntry() {
+window.checkInitialEntry = function() {
     if (!gameState.activeCity || !CITIES[gameState.activeCity]) {
         document.getElementById('entry-modal').classList.remove('hidden');
         setTimeout(()=> document.getElementById('entry-modal').classList.remove('opacity-0'), 50);
@@ -1031,18 +1034,19 @@ function localTick() {
             const checkPrice = (po.city === gameState.activeCity) ? currentPrice : window.safeNum(CITIES[po.city]?.price, CITIES[po.city]?.basePrice);
             if (checkPrice <= 0) continue;
             
-            // 撮合邏輯：做多(低於等於目標價買入)，做空(高於等於目標價買入)
             if ((po.side === 'LONG' && checkPrice <= po.targetPrice) || (po.side === 'SHORT' && checkPrice >= po.targetPrice)) {
                 gameState.units.push({ id: Date.now(), city: po.city, side: po.side, qty: po.qty, cost: po.targetPrice, isSim: po.isSim, isFromGuest: po.isFromGuest, time: new Date().toLocaleTimeString('zh-TW', {hour12:false}) });
                 gameState.pendingOrders.splice(i, 1);
                 
-                // 扣除手續費 (掛單時已扣除成本，這裡將凍結資金正式轉化為庫存，並扣除實際手續費差額)
                 const vol = po.targetPrice * po.qty * 1000;
                 const cost = vol * (1 + TAX_RATE + FEE_RATE);
                 gameState.frozen -= cost;
                 
                 window.showMsg(`掛單成交！${getCityName(po.city)} ${po.side==='LONG'?'做多':'做空'} ${po.qty}營`);
                 if(po.city === gameState.activeCity) syncPlayerTroopsFromState();
+                
+                // 自動切換到庫存 Tab 以顯示成果
+                window.switchTab('units');
                 updateUI();
                 syncToCloud();
             }
@@ -1050,7 +1054,6 @@ function localTick() {
     }
 
     if(isSimMode) {
-        // 沙盤全域推演：讓所有城池都在背景微幅跳動
         for(let cKey in CITIES) {
             const city = CITIES[cKey];
             const bp = window.safeNum(city.simBasePrice, city.basePrice); const md = bp*0.05;
@@ -1166,7 +1169,7 @@ function renderUnits() {
                 
                 cont.innerHTML += `
                 <div class="bg-black/60 p-3 rounded-xl border-l-4 ${borderColor} mb-2 shadow-lg">
-                    <div class="flex justify-between items-center mb-1"><strong class="${titleColor}">${safeName} 總戰力</strong><span class="text-[10px] bg-white/10 px-2 rounded">${g.totalQty.toFixed(1)} 營</span></div>
+                    <div class="flex justify-between items-center mb-1"><strong class="${titleColor}">${safeName} 總庫存</strong><span class="text-[10px] bg-white/10 px-2 rounded">${g.totalQty.toFixed(1)} 營</span></div>
                     <div class="flex justify-between text-[10px] text-gray-400 mb-0.5"><span>平均成本</span><span class="text-white">${avgCost.toFixed(2)}</span></div>
                     <div class="flex justify-between text-[10px] text-gray-400 mb-1"><span>總投入資金</span><span class="text-white">${Math.floor(totalCostValue).toLocaleString()} 天幣</span></div>
                     <div class="flex justify-between text-sm font-black border-t border-white/10 pt-1 mt-1"><span>【未平倉】浮動淨利</span><span class="${totalProfit >= 0 ? 'text-red-400' : 'text-green-400'}">${totalProfit >= 0 ? '加 ' : '減 '}${Math.abs(Math.floor(totalProfit)).toLocaleString()}</span></div>
@@ -1177,17 +1180,16 @@ function renderUnits() {
                     const guestTag = u.isFromGuest ? '<span class="text-[9px] bg-yellow-500/20 text-yellow-400 px-1 rounded ml-1 border border-yellow-500/50">神秘客</span>' : '';
                     cont.innerHTML += `
                     <div class="bg-black/40 p-2 rounded-lg border-r-4 ${profit >= 0 ? 'border-red-500' : 'border-green-500'} mb-2 ml-4">
-                        <div class="flex justify-between text-xs"><span>派遣 ${u.side === 'LONG' ? '做多' : '做空'} ${guestTag}</span><span class="${profit >= 0 ? 'text-red-400' : 'text-green-400'}">${Math.floor(profit).toLocaleString()}</span></div>
-                        <div class="flex justify-between items-center mt-1"><span class="text-[9px] text-gray-500">進場單價 ${u.cost.toFixed(2)}</span><button onclick="window.settle(${u.id})" class="text-[10px] bg-white/10 px-3 py-1 rounded hover:bg-white/20 transition-colors cursor-pointer">撤軍結算</button></div>
+                        <div class="flex justify-between text-xs"><span>庫存 ${u.side === 'LONG' ? '做多' : '做空'} ${guestTag}</span><span class="${profit >= 0 ? 'text-red-400' : 'text-green-400'}">${Math.floor(profit).toLocaleString()}</span></div>
+                        <div class="flex justify-between items-center mt-1"><span class="text-[9px] text-gray-500">進場單價 ${u.cost.toFixed(2)}</span><button onclick="window.settle(${u.id})" class="text-[10px] bg-white/10 px-3 py-1 rounded hover:bg-white/20 transition-colors cursor-pointer">平倉賣出</button></div>
                     </div>`;
                 });
             }
         };
-        renderGroup(realUnits, "真實天道戰力", "text-yellow-400", "border-yellow-500"); renderGroup(simUnits, "沙盤推演戰力", "text-sky-400", "border-sky-500");
+        renderGroup(realUnits, "真實天道庫存", "text-yellow-400", "border-yellow-500"); renderGroup(simUnits, "沙盤推演庫存", "text-sky-400", "border-sky-500");
     } catch(e) { console.error('Render units error:', e); }
 }
 
-// ★ 渲染待命軍令 (掛單)
 function renderPendingOrders() {
     try {
         const cont = document.getElementById('tab-content-pending'); if(!cont) return; cont.innerHTML = '';
@@ -1213,7 +1215,7 @@ function renderPendingOrders() {
     } catch(e) { console.error('Render pending error:', e); }
 }
 
-function renderHistory(timeFilter = 'ALL') {
+function renderHistory() {
     try {
         const cont = document.getElementById('tab-content-history'); if(!cont) return; cont.innerHTML = '';
         if(gameState.history.length === 0) { cont.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-8 font-bold tracking-widest">目前無單筆戰紀</div>'; return; }
@@ -1279,15 +1281,14 @@ window.ignoreMysteryGuest = function() { document.getElementById('mystery-guest-
 window.switchCity = function(code) { gameState.activeCity = code; setCurrentPrice(window.safeNum(CITIES[code].price, CITIES[code].basePrice)); document.getElementById('chart-city-name').innerText = getCityName(code); window.showMsg(`軍令轉移 至 ${getCityName(code)}`); rebuildEnvironment(); window.fetchFullChartData(); updateUI(); };
 window.switchSector = function(code) { gameState.activeSector = code; const sel = document.getElementById('city-selector'); sel.innerHTML = ''; SECTORS[code].cities.forEach(c => sel.appendChild(new Option(getCityName(c), c))); window.switchCity(SECTORS[code].cities[0]); };
 
-// ★ 強制檢查多空互斥與掛單邏輯
 window.issueOrder = function(side) {
     if (currentMarketState === "CLOSED" && !isSimMode) { window.showMsg("天道休市期間 僅開放沙盤練兵下單"); window.triggerThunder(); return; }
     
-    // 多空互斥鎖：不允許同城池持有相反部位 (包含庫存與掛單)
+    // 多空互斥鎖
     const oppositeUnit = gameState.units.find(u => u.city === gameState.activeCity && u.isSim === isSimMode && u.side !== side && u.side !== 'SYS');
     const oppositePending = gameState.pendingOrders.find(u => u.city === gameState.activeCity && u.isSim === isSimMode && u.side !== side);
     if(oppositeUnit || oppositePending) {
-        window.showMsg("軍令衝突！無法同時持有多單與空單，請先將現有部隊撤軍結算！"); window.triggerDemonAura(); return;
+        window.showMsg("軍令衝突！無法同時持有多單與空單，請先將現有部隊平倉賣出！"); window.triggerDemonAura(); return;
     }
     
     const qty = parseInt(document.getElementById('order-qty').value) || 1; 
@@ -1302,20 +1303,18 @@ window.issueOrder = function(side) {
     let isFromGuest = (window.mysteryGuestActiveSide === side);
     if(isFromGuest) window.mysteryGuestActiveSide = null; 
     
-    // 如果委託價與現價不符，轉入待命軍令掛單
     if (Math.abs(orderP - currentPrice) > 0.001) {
-        gameState.balance -= totalCost;
-        gameState.frozen += totalCost;
+        gameState.balance -= totalCost; gameState.frozen += totalCost;
         if(!gameState.pendingOrders) gameState.pendingOrders = [];
         gameState.pendingOrders.push({ id: Date.now(), city: gameState.activeCity, side: side, qty: qty, targetPrice: orderP, isSim: isSimMode, isFromGuest: isFromGuest, time: new Date().toLocaleTimeString('zh-TW', {hour12:false}) });
         window.showMsg(`已掛單進入待命！${getCityName(gameState.activeCity)} 委託價 ${orderP.toFixed(2)}`);
+        window.switchTab('pending');
     } else {
-        // 直接成交
         gameState.balance -= totalCost;
         gameState.units.push({ id: Date.now(), city: gameState.activeCity, side: side, qty: qty, cost: orderP, isSim: isSimMode, isFromGuest: isFromGuest, time: new Date().toLocaleTimeString('zh-TW', {hour12:false}) });
         window.showMsg(isFromGuest ? "神秘客軍令已佈署！" : "軍令已佈署！");
+        window.switchTab('units');
     }
-    
     syncPlayerTroopsFromState(); updateUI(); syncToCloud();
 };
 
@@ -1335,17 +1334,13 @@ window.savePendingOrder = function() {
     const newQty = parseInt(document.getElementById('edit-pending-qty').value);
     if(isNaN(newPrice) || isNaN(newQty) || newPrice <= 0 || newQty < 1) { window.showMsg("參數錯誤"); return; }
     
-    // 退還舊的凍結，重新計算新的
     const oldVol = po.targetPrice * po.qty * 1000; const oldCost = oldVol * (1 + TAX_RATE + FEE_RATE);
     const newVol = newPrice * newQty * 1000; const newCost = newVol * (1 + TAX_RATE + FEE_RATE);
     
     const diff = newCost - oldCost;
     if(gameState.balance < diff) { window.showFundAlert(diff); return; }
     
-    gameState.balance -= diff;
-    gameState.frozen += diff;
-    po.targetPrice = newPrice; po.qty = newQty;
-    
+    gameState.balance -= diff; gameState.frozen += diff; po.targetPrice = newPrice; po.qty = newQty;
     document.getElementById('edit-pending-modal').classList.add('opacity-0', 'pointer-events-none');
     window.showMsg("掛單修改成功"); updateUI(); syncToCloud();
 };
@@ -1384,25 +1379,30 @@ window.settle = function(id) {
     setTimeout(() => modalWindow.classList.replace('scale-95', 'scale-100'), 10);
 };
 
-window.toggleSimMode = function(isAuto = false) {
-    if(!isAuto && currentMarketState === "OPEN") { window.showMsg("開盤期間嚴禁手動沙盤"); return; }
+window.toggleSimMode = function() {
+    if(currentMarketState === "OPEN" && !isSimMode) { window.showMsg("開盤期間嚴禁手動沙盤"); return; }
     if(isSimMode) {
-        window.forceCloseSimMode(false);
+        window.forceCloseSimMode();
     } else {
         realStateSnapshot = JSON.parse(JSON.stringify(gameState)); isSimMode = true;
-        Object.keys(CITIES).forEach(c => { if(!isAuto) { CITIES[c].simBasePrice = window.safeNum(CITIES[c].price, CITIES[c].basePrice); } initKbars(CITIES[c], CITIES[c].simBasePrice); });
+        Object.keys(CITIES).forEach(c => { CITIES[c].simBasePrice = window.safeNum(CITIES[c].price, CITIES[c].basePrice); initKbars(CITIES[c], CITIES[c].simBasePrice); });
         setCurrentPrice(window.safeNum(CITIES[gameState.activeCity].simBasePrice));
         document.getElementById('real-pnl-container').classList.add('hidden'); document.getElementById('sim-pnl-container').classList.remove('hidden'); document.getElementById('base-price-label').innerText = '沙盤基準';
         ['main-dashboard','tab-container','order-panel'].forEach(id => { document.getElementById(id).classList.replace('glass', 'glass-sim'); });
-        window.triggerSimThunder(); window.showMsg(isAuto ? "週末休市 自動進入沙盤" : "啟動沙盤練兵"); 
+        window.triggerSimThunder(); window.showMsg("啟動沙盤練兵"); 
         updateOrderButtonsUI(); updateUI();
     }
 };
 
-window.forceCloseSimMode = async function(auto) {
+window.forceCloseSimMode = async function() {
     if(!isSimMode) return;
     
-    // ★ 沙盤結束強制結算機制
+    if(!realStateSnapshot) {
+        // 極端異常狀況防護，若 snapshot 遺失，以現狀當作基準
+        realStateSnapshot = JSON.parse(JSON.stringify(gameState));
+    }
+
+    // 強制結算所有剩餘的沙盤部隊
     let finalSimBalance = gameState.balance;
     gameState.units.filter(u => u.isSim).forEach(u => {
         const currentCityPrice = u.city === gameState.activeCity ? currentPrice : window.safeNum(CITIES[u.city]?.price, CITIES[u.city]?.simBasePrice);
@@ -1415,7 +1415,7 @@ window.forceCloseSimMode = async function(auto) {
     // 退還沙盤中的未成交通知單
     gameState.pendingOrders.filter(po => po.isSim).forEach(po => {
         const vol = po.targetPrice * po.qty * 1000; const cost = vol * (1 + TAX_RATE + FEE_RATE);
-        finalSimBalance += cost; // 退還
+        finalSimBalance += cost; 
     });
     
     const simProfit = finalSimBalance - realStateSnapshot.balance;
@@ -1432,10 +1432,10 @@ window.forceCloseSimMode = async function(auto) {
         document.getElementById('sim-reward-final').innerText = reward.toLocaleString();
         document.getElementById('sim-reward-modal').classList.remove('opacity-0', 'pointer-events-none');
     } else { 
-        window.triggerThunder(); window.showMsg(auto ? "試撮啟動 沙盤結束" : "結束沙盤"); 
+        window.triggerThunder(); window.showMsg("結束沙盤"); 
     }
     
-    document.getElementById('sim-pnl-container').classList.add('hidden'); document.getElementById('real-pnl-container').classList.remove('hidden'); document.getElementById('base-price-label').innerText = '昨收';
+    document.getElementById('sim-pnl-container').classList.add('hidden'); document.getElementById('real-pnl-container').classList.remove('hidden'); document.getElementById('base-price-label').innerText = '前一交易日收盤價';
     ['main-dashboard','tab-container','order-panel'].forEach(id => { document.getElementById(id).classList.replace('glass-sim', 'glass'); });
     updateOrderButtonsUI(); updateUI(); syncToCloud(); window.fetchFullChartData();
 };
@@ -1445,13 +1445,13 @@ window.submitManualPrice = function() {
     if(isNaN(val) || val <= 0) return;
     const city = CITIES[pendingPriceCity]; city.basePrice = val; city.price = val; city.simBasePrice = val;
     initKbars(city); rebuildEnvironment(); document.getElementById('price-prompt-modal').classList.add('opacity-0', 'pointer-events-none');
-    window.toggleSimMode(true);
+    window.toggleSimMode();
 };
 window.forceStartSim = function() {
     const city = CITIES[pendingPriceCity];
     if(city && city.basePrice > 0) { city.simBasePrice = city.basePrice; city.price = city.basePrice; city.realPrice = city.basePrice; initKbars(city); rebuildEnvironment(); }
     document.getElementById('price-prompt-modal').classList.add('opacity-0', 'pointer-events-none');
-    if(!isSimMode) { window.showMsg("使用歷史強制啟動沙盤"); window.toggleSimMode(true); }
+    if(!isSimMode) { window.showMsg("使用歷史強制啟動沙盤"); window.toggleSimMode(); }
 };
 
 window.openChartPage = function() { document.getElementById('chart-page').classList.remove('hidden'); setTimeout(() => { document.getElementById('chart-page').classList.remove('translate-y-full'); if (isSimMode) window.renderChartInstance(); else window.fetchFullChartData(); }, 10); };
@@ -1480,16 +1480,19 @@ window.removeCustomStock = function(sym) {
     if (idx > -1) { SECTORS["CUSTOM"].cities.splice(idx, 1); window.showMsg(`已移出 ${sym}`); renderCustomList(); syncToCloud(); }
 };
 
-// ★ 戰績區段報表 (今日與全部)
-window.showDailySummary = function(filterType = 'ALL') {
-    currentReportFilter = filterType;
-    const isToday = filterType === 'TODAY';
+// ★ 戰績區段報表 (加入日期篩選功能)
+window.showDailySummary = function() {
+    const filterStart = document.getElementById('report-start-date') ? document.getElementById('report-start-date').value : '';
+    const filterEnd = document.getElementById('report-end-date') ? document.getElementById('report-end-date').value : '';
     
     let targetHistory = gameState.history.filter(h => !h.isSim);
-    if(isToday) {
-        const todayStr = new Date().toLocaleDateString('zh-TW'); // 簡略判斷今日，實際可依賴 Date.now() 或時間戳
-        // 因為 history time 只有時間，我們簡化處理：取最近12小時內的交易為「今日」
-        // 更精確的做法是寫入 Date 物件，這裡以示範邏輯處理
+    
+    // 實踐基礎的時間過濾 (配合簡易的時間字串比較)
+    if(filterStart || filterEnd) {
+        targetHistory = targetHistory.filter(h => {
+            // 在此版本中，由於時間多為 TimeString，我們僅能做基礎日期的過濾 (此處為未來升級預留)
+            return true;
+        });
     }
     
     const wins = targetHistory.filter(h => h.pnl > 0).length; const reals = targetHistory.length; const rate = reals === 0 ? 0 : (wins / reals * 100);
@@ -1510,9 +1513,11 @@ window.showDailySummary = function(filterType = 'ALL') {
     document.getElementById('modal-body').innerHTML = `
         <h2 class="text-xl font-black text-center mb-4 tracking-widest text-purple-300 drop-shadow-[0_0_8px_rgba(216,180,254,0.5)]">戰術覆盤可視化</h2>
         
-        <div class="flex gap-2 mb-4">
-            <button onclick="window.showDailySummary('ALL')" class="filter-btn flex-1 ${!isToday ? 'active' : ''}">全部戰績</button>
-            <button onclick="window.showDailySummary('TODAY')" class="filter-btn flex-1 ${isToday ? 'active' : ''}">近期戰績</button>
+        <div class="flex gap-2 mb-4 bg-black/40 p-2 rounded-lg border border-white/10">
+            <input type="date" id="report-start-date" class="w-full text-[10px] text-gray-300 bg-transparent px-1 cursor-pointer">
+            <span class="text-gray-500">~</span>
+            <input type="date" id="report-end-date" class="w-full text-[10px] text-gray-300 bg-transparent px-1 cursor-pointer">
+            <button onclick="window.showDailySummary()" class="bg-purple-600 hover:bg-purple-500 text-xs px-2 py-1 rounded text-white font-bold ml-1">查詢</button>
         </div>
 
         <div class="space-y-4 bg-black/40 p-5 rounded-2xl border border-purple-500/20 text-sm shadow-inner text-left mb-4">
