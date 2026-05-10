@@ -611,7 +611,7 @@ function createForest(season) {
     const mat = new THREE.MeshStandardMaterial({color: leafColor, flatShading: true, roughness: 0.9});
     for(let i=0; i<45; i++) {
         const tree = new THREE.Group(); const tk = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.2, 4, 6), new THREE.MeshStandardMaterial({color: 0x1e293b, metalness: 0.6})); tk.position.y = 2;
-        const l1 = new THREE.Mesh(new THREE.ConeGeometry(4.5, 10, 6), mat); l1.position.y = 7; const l2 = new THREE.Mesh(new THREE.ConeGeometry(3.5, 8, 6), mat); l2.position.y = 12;
+        const l1 = new THREE.Mesh(new THREE.ConeGeometry(4.5, 8, 7), mat); l1.position.y = 6; const l2 = new THREE.Mesh(new THREE.ConeGeometry(3.5, 6, 7), mat); l2.position.y = 11;
         tree.add(tk, l1, l2); tree.scale.setScalar(0.8 + Math.random() * 0.8); tree.position.set(30 + Math.random()*25, 0, (Math.random()-0.5)*75); group.add(tree);
     }
     return group;
@@ -1075,7 +1075,23 @@ function updateUI() {
     
     document.getElementById('base-price-display').innerText = activeBasePrice.toFixed(2);
     document.getElementById('user-balance').innerText = Math.floor(window.safeNum(gameState.balance)).toLocaleString();
-    document.getElementById('today-total-result').innerText = `加 ${Math.floor(window.safeNum(gameState.realizedPnl)).toLocaleString()}`;
+    
+    // ★ 即時計算沙盤與實戰未實現損益
+    let simUnrealized = 0;
+    gameState.units.forEach(u => {
+        if(u.isSim) {
+            const cp = u.city === gameState.activeCity ? currentPrice : window.safeNum(CITIES[u.city]?.price, CITIES[u.city]?.simBasePrice);
+            simUnrealized += calcProfit(u.side, u.cost, cp > 0 ? cp : u.cost, u.qty);
+        }
+    });
+    
+    const simTotalEl = document.getElementById('sim-total-result');
+    if(simTotalEl) {
+        simTotalEl.innerText = `${simUnrealized >= 0 ? '加 ' : '減 '}${Math.abs(Math.floor(simUnrealized)).toLocaleString()}`;
+        simTotalEl.className = `text-xl md:text-2xl font-black font-mono drop-shadow-[0_0_5px_rgba(56,189,248,0.5)] ${simUnrealized >= 0 ? 'text-sky-400' : 'text-red-400'}`;
+    }
+    
+    document.getElementById('today-total-result').innerText = `${gameState.realizedPnl >= 0 ? '加 ' : '減 '}${Math.abs(Math.floor(window.safeNum(gameState.realizedPnl))).toLocaleString()}`;
     
     const pct = activeBasePrice > 0 ? ((window.safeNum(displayPrice, activeBasePrice) - activeBasePrice) / activeBasePrice * 100) : 0;
     const elPct = document.getElementById('price-change');
@@ -1164,6 +1180,21 @@ function renderHistory() {
         }
         
         gameState.history.forEach(h => {
+            if (h.side === 'SYS') {
+                cont.innerHTML += `
+                <div class="bg-black/30 rounded-lg p-2.5 border-r-2 border-yellow-500 text-right text-[10px] mb-2 opacity-80">
+                    <div class="flex justify-between items-center mb-1">
+                        <div class="text-left"><span class="text-yellow-500 border border-yellow-500/50 px-1 rounded mr-1">[系統]</span><span class="text-gray-500 font-mono">${h.time}</span></div>
+                        <span class="text-yellow-400">${h.city}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-500">結算獎勵</span>
+                        <span class="font-mono font-bold text-red-400">加 ${Math.abs(Math.floor(h.pnl)).toLocaleString()}</span>
+                    </div>
+                </div>`;
+                return;
+            }
+            
             const isSimTag = h.isSim ? '<span class="text-sky-400 border border-sky-400/50 px-1 rounded mr-1">[沙盤]</span>' : '<span class="text-yellow-400 border border-yellow-400/50 px-1 rounded mr-1">[實戰]</span>';
             const guestTag = h.isFromGuest ? '<span class="text-purple-400 border border-purple-400/50 px-1 rounded mr-1">[神秘客]</span>' : '';
             
@@ -1248,9 +1279,18 @@ window.ignoreMysteryGuest = function() {
 window.switchCity = function(code) { gameState.activeCity = code; setCurrentPrice(window.safeNum(CITIES[code].price, CITIES[code].basePrice)); document.getElementById('chart-city-name').innerText = getCityName(code); window.showMsg(`軍令轉移 至 ${getCityName(code)}`); rebuildEnvironment(); window.fetchFullChartData(); updateUI(); };
 window.switchSector = function(code) { gameState.activeSector = code; const sel = document.getElementById('city-selector'); sel.innerHTML = ''; SECTORS[code].cities.forEach(c => sel.appendChild(new Option(getCityName(c), c))); window.switchCity(SECTORS[code].cities[0]); };
 
-// 確保軍令與資金嚴格控管
+// 確保軍令與資金嚴格控管，加入多空互斥絕對鎖
 window.issueOrder = function(side) {
     if (currentMarketState === "CLOSED" && !isSimMode) { window.showMsg("天道休市期間 僅開放沙盤練兵下單"); window.triggerThunder(); return; }
+    
+    // ★ 多空互斥絕對鎖
+    const existingOpposite = gameState.units.find(u => u.city === gameState.activeCity && u.isSim === isSimMode && u.side !== side && u.side !== 'SYS');
+    if(existingOpposite) {
+        window.showMsg("軍令衝突！無法同時持有多單與空單，請先將現有部隊撤軍結算！");
+        window.triggerDemonAura();
+        return;
+    }
+    
     const qty = parseInt(document.getElementById('order-qty').value) || 1; 
     const orderP = parseFloat(document.getElementById('order-price').value) || currentPrice;
     
@@ -1321,19 +1361,7 @@ window.settle = function(id) {
 window.toggleSimMode = function(isAuto = false) {
     if(!isAuto && currentMarketState === "OPEN") { window.showMsg("開盤期間嚴禁手動沙盤"); return; }
     if(isSimMode) {
-        const simProfit = gameState.balance - realStateSnapshot.balance;
-        Object.assign(gameState, realStateSnapshot); isSimMode = false;
-        
-        if (simProfit > 0) {
-            const reward = Math.floor(simProfit * 0.001); gameState.balance += reward;
-            gameState.history.unshift({ time: new Date().toLocaleTimeString('zh-TW', { hour12: false }), city: "系統獎勵", side: "SYS", exit: 0, pnl: reward, isSim: false });
-            document.getElementById('sim-reward-profit').innerText = Math.floor(simProfit).toLocaleString(); document.getElementById('sim-reward-final').innerText = reward.toLocaleString();
-            document.getElementById('sim-reward-modal').classList.remove('opacity-0', 'pointer-events-none');
-        } else { window.triggerThunder(); window.showMsg(isAuto ? "試撮啟動 沙盤結束" : "結束沙盤"); }
-        
-        document.getElementById('sim-pnl-container').classList.add('hidden'); document.getElementById('real-pnl-container').classList.remove('hidden'); document.getElementById('base-price-label').innerText = '昨收';
-        ['main-dashboard','tab-container','order-panel'].forEach(id => { document.getElementById(id).classList.replace('glass-sim', 'glass'); });
-        updateOrderButtonsUI(); updateUI(); syncToCloud(); window.fetchFullChartData();
+        window.forceCloseSimMode(false);
     } else {
         realStateSnapshot = JSON.parse(JSON.stringify(gameState)); isSimMode = true;
         Object.keys(CITIES).forEach(c => { 
@@ -1355,8 +1383,24 @@ window.toggleSimMode = function(isAuto = false) {
 
 window.forceCloseSimMode = async function(auto) {
     if(!isSimMode) return;
-    const simProfit = gameState.balance - realStateSnapshot.balance;
-    gameState = JSON.parse(JSON.stringify(realStateSnapshot)); isSimMode = false;
+    
+    // 1. 強制結算所有剩餘的沙盤部隊
+    let finalSimBalance = gameState.balance;
+    gameState.units.filter(u => u.isSim).forEach(u => {
+        const currentCityPrice = u.city === gameState.activeCity ? currentPrice : window.safeNum(CITIES[u.city]?.price, CITIES[u.city]?.simBasePrice);
+        let profit = calcProfit(u.side, u.cost, currentCityPrice, u.qty);
+        if (u.isFromGuest) profit *= 1.05; // 天使妖怪槓桿
+        finalSimBalance += (u.cost * u.qty * 1000) + profit;
+        // 寫入歷史戰紀
+        gameState.history.unshift({...u, pnl: profit, exit: currentCityPrice, time: new Date().toLocaleTimeString('zh-TW', {hour12:false})});
+    });
+    
+    const simProfit = finalSimBalance - realStateSnapshot.balance;
+    const preservedHistory = gameState.history; // 保留所有更新後的戰紀
+    
+    Object.assign(gameState, realStateSnapshot); 
+    gameState.history = preservedHistory; // 覆蓋回沙盤產生的歷史
+    isSimMode = false;
     
     if (simProfit > 0) {
         const reward = Math.floor(simProfit * 0.001); gameState.balance += reward;
@@ -1370,10 +1414,7 @@ window.forceCloseSimMode = async function(auto) {
     
     document.getElementById('sim-pnl-container').classList.add('hidden'); document.getElementById('real-pnl-container').classList.remove('hidden'); document.getElementById('base-price-label').innerText = '昨收';
     ['main-dashboard','tab-container','order-panel'].forEach(id => { document.getElementById(id).classList.replace('glass-sim', 'glass'); });
-    updateOrderButtonsUI(); updateUI(); 
-    
-    Object.keys(CITIES).forEach(c => { CITIES[c].chartData = {}; });
-    await window.fetchFullChartData();
+    updateOrderButtonsUI(); updateUI(); syncToCloud(); window.fetchFullChartData();
 };
 
 window.submitManualPrice = function() {
