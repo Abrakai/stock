@@ -417,18 +417,16 @@ const GUEST_COOLDOWN = 10 * 60 * 1000;
 let SECTORS = {};
 let CITIES = {};
 
-// 更新防呆歷史預設值至最新現況
 function initDefaultDatabase() {
     SECTORS = {
         "SEMICON": { name: "半導體", cities: ["2330", "2454", "2303"] },
         "EMS": { name: "電子代工", cities: ["2317", "2382", "3231"] },
-        "NETWORK": { name: "通信網路", cities: ["2412", "3045", "4904"] },
-        "CUSTOM": { name: "統帥自選", cities: [] }
+        "NETWORK": { name: "通信網路", cities: ["2412", "3045", "4904"] }
     };
     CITIES = {
-        "2330": { name: "台積電", price: 2290, basePrice: 2290, realPrice: 2290, simBasePrice: 2290, vol: 15, chartData: {} },
-        "2454": { name: "聯發科", price: 3880, basePrice: 3880, realPrice: 3880, simBasePrice: 3880, vol: 10, chartData: {} },
-        "2303": { name: "聯電",   price: 95,   basePrice: 95,   realPrice: 95,   simBasePrice: 95,   vol: 1,  chartData: {} },
+        "2330": { name: "台積電", price: 1050, basePrice: 1050, realPrice: 1050, simBasePrice: 1050, vol: 15, chartData: {} },
+        "2454": { name: "聯發科", price: 1150, basePrice: 1150, realPrice: 1150, simBasePrice: 1150, vol: 10, chartData: {} },
+        "2303": { name: "聯電",   price: 50,   basePrice: 50,   realPrice: 50,   simBasePrice: 50,   vol: 1,  chartData: {} },
         "2317": { name: "鴻海",   price: 180,  basePrice: 180,  realPrice: 180,  simBasePrice: 180,  vol: 2,  chartData: {} },
         "2382": { name: "廣達",   price: 280,  basePrice: 280,  realPrice: 280,  simBasePrice: 280,  vol: 3,  chartData: {} },
         "3231": { name: "緯創",   price: 115,  basePrice: 115,  realPrice: 115,  simBasePrice: 115,  vol: 2,  chartData: {} },
@@ -860,6 +858,7 @@ window.fetchFullChartData = async function() {
         let success = false;
         if(gameState.apiKey) success = await fetchAPI(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}&key=${gameState.apiKey}`, true);
         if(!success) success = await fetchAPI(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, true);
+        if(!success) success = await fetchAPI(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`);
         if(!success) success = await fetchAPI(`https://corsproxy.io/?url=${encodeURIComponent(url)}`);
     } catch(e) {}
     
@@ -974,6 +973,7 @@ async function fetchRealMarketData(isInitial = false) {
     let success = false;
     if (gameState.apiKey) success = await fetchAPI(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}&key=${gameState.apiKey}`, true);
     if (!success) success = await fetchAPI(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, true);
+    if (!success) success = await fetchAPI(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`);
     if (!success) success = await fetchAPI(`https://corsproxy.io/?url=${encodeURIComponent(url)}`);
 
     const p = parseFloat(fetchedPrice);
@@ -1131,15 +1131,8 @@ function initKbars(city, startPrice = null) {
     });
 }
 
-function calcProfit(side, entryPrice, currentMarketPrice, qty) {
-    const diff = side === 'LONG' ? (currentMarketPrice - entryPrice) : (entryPrice - currentMarketPrice);
-    const grossProfit = diff * qty * 1000;
-    const fees = (currentMarketPrice * qty * 1000) * (FEE_RATE + TAX_RATE);
-    return grossProfit - fees;
-}
-
 // ==========================================
-// 8. 介面互動與事件綁定 
+// 8. 介面互動與事件綁定
 // ==========================================
 function updateUI() {
     if(!isGameReady) return;
@@ -1313,12 +1306,22 @@ window.acceptMysteryGuest = function() {
 
 window.ignoreMysteryGuest = function() { document.getElementById('mystery-guest-panel').classList.add('hidden'); mysteryGuestActive = null; window.mysteryGuestActiveSide = null; };
 
-window.switchCity = function(code) { 
+window.switchCity = async function(code) { 
     gameState.activeCity = code; 
-    setCurrentPrice(window.safeNum(CITIES[code].price, CITIES[code].basePrice)); 
-    document.getElementById('chart-city-name').innerText = getCityName(code); 
-    window.showMsg(`軍令轉移 至 ${getCityName(code)}`); 
-    rebuildEnvironment(); window.fetchFullChartData(); updateUI(); 
+    document.getElementById('chart-city-name').innerText = getCityName(code);
+    document.getElementById('market-price').innerText = "連線中...";
+    rebuildEnvironment(); 
+    
+    // ★ 瞬間連線更新最新股價
+    const success = await fetchRealMarketData(true);
+    if (!success && !isSimMode) {
+        window.showMsg("天界連線受阻，載入歷史資料");
+    } else {
+        window.showMsg(`軍令轉移 至 ${getCityName(code)}`); 
+    }
+    
+    window.fetchFullChartData(); 
+    updateUI(); 
 };
 
 window.switchSector = function(code) { 
@@ -1337,7 +1340,6 @@ window.switchSector = function(code) {
 window.issueOrder = function(side) {
     if (currentMarketState === "CLOSED" && !isSimMode) { window.showMsg("天道休市期間 僅開放沙盤練兵下單"); window.triggerThunder(); return; }
     
-    // 多空互斥鎖
     const oppositeUnit = gameState.units.find(u => u.city === gameState.activeCity && u.isSim === isSimMode && u.side !== side && u.side !== 'SYS');
     const oppositePending = gameState.pendingOrders.find(u => u.city === gameState.activeCity && u.isSim === isSimMode && u.side !== side);
     if(oppositeUnit || oppositePending) {
@@ -1472,9 +1474,9 @@ window.forceCloseSimMode = async function(auto = false) {
     gameState.history = preservedHistory; 
     isSimMode = false;
     
-    // 強制價格與UI歸位
+    // ★ 瞬間鎖定最新現價並重繪畫面 (修復圖 10 退場價格不歸位 Bug)
     const realC = CITIES[gameState.activeCity];
-    if (realC) { currentPrice = window.safeNum(realC.realPrice, realC.basePrice); }
+    if (realC) { setCurrentPrice(window.safeNum(realC.realPrice, realC.basePrice)); }
     
     if (simProfit > 0) {
         const reward = Math.floor(simProfit * 0.001); gameState.balance += reward;
@@ -1510,6 +1512,7 @@ window.closeChartPage = function() { document.getElementById('chart-page').class
 window.setTimeframe = function(tf) { gameState.timeframe = tf; document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active')); document.getElementById(`tf-${tf}`).classList.add('active'); if (isSimMode) window.renderChartInstance(); else window.fetchFullChartData(); };
 window.setIndicator = function(ind) { gameState.activeIndicator = ind; document.querySelectorAll('.ind-btn').forEach(b => b.classList.toggle('active', b.id === 'btn-ind-' + ind)); renderChartInstance(); };
 window.switchTab = function(t) { currentTab = t; ['units', 'pending', 'history'].forEach(x => document.getElementById('tab-content-' + x).classList.toggle('hidden', x !== t)); document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === 'tab-' + t)); updateUI(); };
+
 window.openCustomManager = function() { 
     document.getElementById('custom-modal').classList.remove('opacity-0', 'pointer-events-none'); 
     document.getElementById('api-key-input').value = gameState.apiKey; 
@@ -1549,13 +1552,42 @@ window.addCustomStock = function() {
     document.getElementById('custom-symbol').value = ''; document.getElementById('custom-name').value = ''; window.showMsg(`編列 ${name} 至 ${SECTORS[sectorId].name}`); renderCustomList(); syncToCloud();
 };
 
-function renderCustomList() {
-    const list = document.getElementById('full-sector-list'); list.innerHTML = '';
-    if(SECTORS["CUSTOM"]) SECTORS["CUSTOM"].cities.forEach(sym => { list.innerHTML += `<div class="flex justify-between items-center bg-black/40 p-2.5 rounded-lg border border-white/5 mb-2"><div class="flex flex-col"><span class="text-xs font-bold text-yellow-500">${sym}</span><span class="text-[10px] text-gray-400 mt-0.5">${getCityName(sym)}</span></div><button onclick="window.removeCustomStock('${sym}')" class="text-[10px] bg-red-900/50 hover:bg-red-800 border border-red-500/30 px-3 py-1.5 rounded-md text-red-200 transition-colors cursor-pointer">移除</button></div>`; });
-}
+// ★ 修復圖 13: 確保所有領域都被渲染，且皆可刪除 (防呆：無法刪除使用中)
+window.renderCustomList = function() {
+    const list = document.getElementById('full-sector-list');
+    list.innerHTML = '';
+    for(let sKey in SECTORS) {
+        const sector = SECTORS[sKey];
+        let html = `<div class="bg-black/40 p-2 rounded-lg border border-white/10 mb-2">`;
+        html += `<div class="flex justify-between items-center border-b border-white/10 pb-1 mb-1"><span class="text-xs font-bold text-sky-400">${sector.name} (${sKey})</span><button onclick="window.removeSector('${sKey}')" class="text-[9px] bg-red-900/50 hover:bg-red-800 px-2 py-1 rounded text-red-200 cursor-pointer">刪除領域</button></div>`;
+        if(sector.cities.length === 0) {
+            html += `<div class="text-[10px] text-gray-500 italic py-1 pl-2">尚無城池</div>`;
+        } else {
+            sector.cities.forEach(sym => {
+                const cName = CITIES[sym] ? CITIES[sym].name : sym;
+                html += `<div class="flex justify-between items-center py-1 pl-2"><div class="flex flex-col"><span class="text-[11px] font-bold text-yellow-500">${sym}</span><span class="text-[9px] text-gray-400">${cName}</span></div><button onclick="window.removeCustomStock('${sKey}', '${sym}')" class="text-[9px] border border-red-500/30 text-red-400 hover:bg-red-900/50 px-2 py-1 rounded cursor-pointer">移除</button></div>`;
+            });
+        }
+        html += `</div>`;
+        list.innerHTML += html;
+    }
+};
 
-window.removeCustomStock = function(sym) {
-    const idx = SECTORS["CUSTOM"].cities.indexOf(sym);
+window.removeSector = function(sKey) {
+    if(Object.keys(SECTORS).length <= 1) { window.showMsg("至少需保留一個領域！"); return; }
+    if(gameState.activeSector === sKey) { window.showMsg("無法刪除正在觀察中的領域，請先切換！"); return; }
+    delete SECTORS[sKey];
+    window.showMsg(`已刪除領域`);
+    renderCustomList();
+    const sel = document.getElementById('assign-sector-select');
+    sel.innerHTML = '';
+    for(let k in SECTORS) { sel.appendChild(new Option(`${k} ${SECTORS[k].name}`, k)); }
+    syncToCloud();
+};
+
+window.removeCustomStock = function(sKey, sym) {
+    if (!SECTORS[sKey]) return;
+    const idx = SECTORS[sKey].cities.indexOf(sym);
     if (idx > -1) { 
         if(gameState.activeCity === sym) { window.showMsg("無法移除正在觀察中的城池，請先切換！"); return; }
         SECTORS[sKey].cities.splice(idx, 1); window.showMsg(`已移出 ${sym}`); renderCustomList(); syncToCloud(); 
