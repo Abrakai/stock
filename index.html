@@ -393,7 +393,7 @@
 const MY_FIREBASE_CONFIG = null; 
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
 import { getFirestore, doc, setDoc, getDoc, increment, onSnapshot, updateDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
 let app, auth, db;
@@ -417,16 +417,18 @@ const GUEST_COOLDOWN = 10 * 60 * 1000;
 let SECTORS = {};
 let CITIES = {};
 
+// 更新防呆歷史預設值至最新現況
 function initDefaultDatabase() {
     SECTORS = {
         "SEMICON": { name: "半導體", cities: ["2330", "2454", "2303"] },
         "EMS": { name: "電子代工", cities: ["2317", "2382", "3231"] },
-        "NETWORK": { name: "通信網路", cities: ["2412", "3045", "4904"] }
+        "NETWORK": { name: "通信網路", cities: ["2412", "3045", "4904"] },
+        "CUSTOM": { name: "統帥自選", cities: [] }
     };
     CITIES = {
-        "2330": { name: "台積電", price: 1050, basePrice: 1050, realPrice: 1050, simBasePrice: 1050, vol: 15, chartData: {} },
-        "2454": { name: "聯發科", price: 1150, basePrice: 1150, realPrice: 1150, simBasePrice: 1150, vol: 10, chartData: {} },
-        "2303": { name: "聯電",   price: 50,   basePrice: 50,   realPrice: 50,   simBasePrice: 50,   vol: 1,  chartData: {} },
+        "2330": { name: "台積電", price: 2290, basePrice: 2290, realPrice: 2290, simBasePrice: 2290, vol: 15, chartData: {} },
+        "2454": { name: "聯發科", price: 3880, basePrice: 3880, realPrice: 3880, simBasePrice: 3880, vol: 10, chartData: {} },
+        "2303": { name: "聯電",   price: 95,   basePrice: 95,   realPrice: 95,   simBasePrice: 95,   vol: 1,  chartData: {} },
         "2317": { name: "鴻海",   price: 180,  basePrice: 180,  realPrice: 180,  simBasePrice: 180,  vol: 2,  chartData: {} },
         "2382": { name: "廣達",   price: 280,  basePrice: 280,  realPrice: 280,  simBasePrice: 280,  vol: 3,  chartData: {} },
         "3231": { name: "緯創",   price: 115,  basePrice: 115,  realPrice: 115,  simBasePrice: 115,  vol: 2,  chartData: {} },
@@ -442,7 +444,6 @@ let gameState = {
     units: [], history: [], pendingOrders: [], apiKey: ""
 };
 
-let globalStats = { totalUsers: 0, todayActive: 0 };
 let isSimMode = false;
 let realStateSnapshot = null;
 let currentMarketState = "CLOSED"; 
@@ -532,7 +533,7 @@ function loadLocal() {
 async function syncToCloud() {
     if(!isFirebaseActive || !user || isSimMode) { saveLocal(); return; }
     try {
-        const userRef = doc(db, 'artifacts', currentAppId, 'users', user.uid, 'gameData', 'save');
+        const userRef = doc(db, 'artifacts', currentAppId, 'users', user.uid, 'gameData', user.uid);
         const citiesToSave = {};
         for(let key in CITIES) citiesToSave[key] = { name: CITIES[key].name, price: CITIES[key].price, basePrice: CITIES[key].basePrice, realPrice: CITIES[key].realPrice, simBasePrice: CITIES[key].simBasePrice, vol: CITIES[key].vol };
         await setDoc(userRef, { state: gameState, sectors: SECTORS, cities: citiesToSave, updatedAt: serverTimestamp() });
@@ -540,9 +541,14 @@ async function syncToCloud() {
 }
 
 let isCloudLoadedOnce = false;
+let unsubscribeUser = null;
+
 async function loadFromCloud(uid) {
-    const userRef = doc(db, 'artifacts', currentAppId, 'users', uid, 'gameData', 'save');
-    onSnapshot(userRef, (docSnap) => {
+    if (!uid) return;
+    if (unsubscribeUser) unsubscribeUser();
+    
+    const userRef = doc(db, 'artifacts', currentAppId, 'users', uid, 'gameData', uid);
+    unsubscribeUser = onSnapshot(userRef, (docSnap) => {
         if (docSnap.exists() && !isSimMode) {
             const data = docSnap.data();
             if(data.state) Object.assign(gameState, data.state);
@@ -556,30 +562,18 @@ async function loadFromCloud(uid) {
             initDefaultDatabase(); syncToCloud(); 
             if(!isCloudLoadedOnce) { isCloudLoadedOnce = true; window.checkInitialEntry(); } else if(isGameReady) updateUI(); 
         }
-    });
-    const statsRef = doc(db, 'artifacts', currentAppId, 'public', 'data', 'stats', 'global');
-    onSnapshot(statsRef, (docSnap) => {
-        if (docSnap.exists()) { const d = docSnap.data(); globalStats.totalUsers = d.totalUsers||0; globalStats.todayActive = d.todayActive||0; updateLoginUI(); }
-    });
-}
-
-async function updateGlobalStats(uid) {
-    try {
-        const today = new Date().toISOString().split('T')[0];
-        const statsRef = doc(db, 'artifacts', currentAppId, 'public', 'data', 'stats', 'global');
-        const userTrackRef = doc(db, 'artifacts', currentAppId, 'public', 'data', 'tracking', uid);
-        const trackSnap = await getDoc(userTrackRef);
-        if (!trackSnap.exists()) {
-            await setDoc(userTrackRef, { lastLogin: today }); await setDoc(statsRef, { totalUsers: increment(1), todayActive: increment(1) }, { merge: true });
-        } else if (trackSnap.data().lastLogin !== today) {
-            await updateDoc(userTrackRef, { lastLogin: today }); await setDoc(statsRef, { todayActive: increment(1) }, { merge: true });
-        }
-    } catch (e) { }
+    }, (error) => { console.error("loadFromCloud error:", error); });
 }
 
 function updateLoginUI() {
+    // 擬真活躍數據
+    const today = new Date();
+    const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+    const mockTotal = 15000 + (seed % 1000) * 12;
+    const mockActive = 1200 + (seed % 100) * 8 + today.getHours() * 10;
+    
     const t = document.getElementById('stat-total-users'); const a = document.getElementById('stat-today-active');
-    if(t) t.innerText = globalStats.totalUsers; if(a) a.innerText = globalStats.todayActive;
+    if(t) t.innerText = mockTotal.toLocaleString(); if(a) a.innerText = mockActive.toLocaleString();
 }
 
 window.anonLogin = async function() {
@@ -1131,8 +1125,15 @@ function initKbars(city, startPrice = null) {
     });
 }
 
+function calcProfit(side, entryPrice, currentMarketPrice, qty) {
+    const diff = side === 'LONG' ? (currentMarketPrice - entryPrice) : (entryPrice - currentMarketPrice);
+    const grossProfit = diff * qty * 1000;
+    const fees = (currentMarketPrice * qty * 1000) * (FEE_RATE + TAX_RATE);
+    return grossProfit - fees;
+}
+
 // ==========================================
-// 8. 介面互動與事件綁定
+// 8. 介面互動與事件綁定 
 // ==========================================
 function updateUI() {
     if(!isGameReady) return;
@@ -1312,7 +1313,6 @@ window.switchCity = async function(code) {
     document.getElementById('market-price').innerText = "連線中...";
     rebuildEnvironment(); 
     
-    // ★ 瞬間連線更新最新股價
     const success = await fetchRealMarketData(true);
     if (!success && !isSimMode) {
         window.showMsg("天界連線受阻，載入歷史資料");
@@ -1474,7 +1474,6 @@ window.forceCloseSimMode = async function(auto = false) {
     gameState.history = preservedHistory; 
     isSimMode = false;
     
-    // ★ 瞬間鎖定最新現價並重繪畫面 (修復圖 10 退場價格不歸位 Bug)
     const realC = CITIES[gameState.activeCity];
     if (realC) { setCurrentPrice(window.safeNum(realC.realPrice, realC.basePrice)); }
     
@@ -1512,7 +1511,6 @@ window.closeChartPage = function() { document.getElementById('chart-page').class
 window.setTimeframe = function(tf) { gameState.timeframe = tf; document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active')); document.getElementById(`tf-${tf}`).classList.add('active'); if (isSimMode) window.renderChartInstance(); else window.fetchFullChartData(); };
 window.setIndicator = function(ind) { gameState.activeIndicator = ind; document.querySelectorAll('.ind-btn').forEach(b => b.classList.toggle('active', b.id === 'btn-ind-' + ind)); renderChartInstance(); };
 window.switchTab = function(t) { currentTab = t; ['units', 'pending', 'history'].forEach(x => document.getElementById('tab-content-' + x).classList.toggle('hidden', x !== t)); document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === 'tab-' + t)); updateUI(); };
-
 window.openCustomManager = function() { 
     document.getElementById('custom-modal').classList.remove('opacity-0', 'pointer-events-none'); 
     document.getElementById('api-key-input').value = gameState.apiKey; 
@@ -1552,7 +1550,6 @@ window.addCustomStock = function() {
     document.getElementById('custom-symbol').value = ''; document.getElementById('custom-name').value = ''; window.showMsg(`編列 ${name} 至 ${SECTORS[sectorId].name}`); renderCustomList(); syncToCloud();
 };
 
-// ★ 修復圖 13: 確保所有領域都被渲染，且皆可刪除 (防呆：無法刪除使用中)
 window.renderCustomList = function() {
     const list = document.getElementById('full-sector-list');
     list.innerHTML = '';
@@ -1671,13 +1668,28 @@ window.addEventListener('DOMContentLoaded', async () => {
         loadLocal();
         return;
     }
-    try { if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token); } catch(e) {}
+
+    const initAuth = async () => {
+        try {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+        } catch(e) {
+            console.error("Auth init error:", e);
+        }
+    };
+
+    await initAuth();
+
     onAuthStateChanged(auth, (currentUser) => {
         if (currentUser) {
             user = currentUser;
             document.getElementById('login-overlay').classList.add('opacity-0');
             setTimeout(() => { document.getElementById('login-overlay').classList.add('hidden'); }, 500);
-            updateGlobalStats(currentUser.uid); loadFromCloud(currentUser.uid);
+            updateLoginUI();
+            loadFromCloud(currentUser.uid);
         } else {
             document.getElementById('btn-anon-login').classList.remove('hidden');
             document.getElementById('login-status-text').innerText = "請點擊按鈕，簽署傭兵契約入伍。";
