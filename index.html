@@ -402,7 +402,7 @@ let user = null;
 
 const envConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
 const finalConfig = envConfig || MY_FIREBASE_CONFIG;
-const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'abula-battlefield';
+const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
 if (finalConfig && Object.keys(finalConfig).length > 0) {
     try { app = initializeApp(finalConfig); auth = getAuth(app); db = getFirestore(app); isFirebaseActive = true; } 
@@ -563,6 +563,25 @@ async function loadFromCloud(uid) {
             if(!isCloudLoadedOnce) { isCloudLoadedOnce = true; window.checkInitialEntry(); } else if(isGameReady) updateUI(); 
         }
     }, (error) => { console.error("loadFromCloud error:", error); });
+
+    const statsRef = doc(db, 'artifacts', currentAppId, 'public', 'data', 'stats', 'global');
+    onSnapshot(statsRef, (docSnap) => {
+        if (docSnap.exists()) { const d = docSnap.data(); globalStats.totalUsers = d.totalUsers||0; globalStats.todayActive = d.todayActive||0; updateLoginUI(); }
+    }, (error) => { console.warn("Global stats listener permission denied. Running gracefully.", error); });
+}
+
+async function updateGlobalStats(uid) {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const statsRef = doc(db, 'artifacts', currentAppId, 'public', 'data', 'stats', 'global');
+        const userTrackRef = doc(db, 'artifacts', currentAppId, 'public', 'data', 'tracking', uid);
+        const trackSnap = await getDoc(userTrackRef);
+        if (!trackSnap.exists()) {
+            await setDoc(userTrackRef, { lastLogin: today }); await setDoc(statsRef, { totalUsers: increment(1), todayActive: increment(1) }, { merge: true });
+        } else if (trackSnap.data().lastLogin !== today) {
+            await updateDoc(userTrackRef, { lastLogin: today }); await setDoc(statsRef, { todayActive: increment(1) }, { merge: true });
+        }
+    } catch (e) { console.warn("updateGlobalStats handled gracefully:", e); }
 }
 
 function updateLoginUI() {
