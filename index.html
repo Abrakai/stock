@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>天道戰紀：傭兵與貪婪之城</title>
     
-    <!-- 引入外部核心套件 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
@@ -31,8 +30,6 @@
         .ind-btn.active { background: #3b82f6; color: white; border-color: #3b82f6; font-weight: bold; box-shadow: 0 0 10px rgba(59,130,246,0.5); }
         .timeframe-btn { font-size: 11px; padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; cursor: pointer; }
         .timeframe-btn.active { background: #eab308; color: black; border-color: #eab308; font-weight: 900; }
-        .filter-btn { font-size: 11px; padding: 4px 12px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); cursor: pointer; transition: all 0.2s; }
-        .filter-btn.active { background: #a855f7; color: white; border-color: #a855f7; }
         
         input[type=number], input[type=text], input[type=date] { background: rgba(0,0,0,0.4); box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); transition: all 0.3s; color: white; border: 1px solid rgba(255,255,255,0.1); outline: none; }
         input[type=number]:focus, input[type=text]:focus, input[type=date]:focus { background: rgba(255,255,255,0.1); box-shadow: 0 0 10px rgba(234,179,8,0.3), inset 0 2px 4px rgba(0,0,0,0.5); border-color: #eab308; }
@@ -63,7 +60,7 @@
 <div id="gold-rain-container" class="fixed inset-0 pointer-events-none z-[60] overflow-hidden"></div>
 <div id="msg-box" class="fixed top-16 md:bottom-24 md:top-auto left-1/2 -translate-x-1/2 bg-gray-900/95 backdrop-blur-md px-5 py-2.5 rounded-full text-xs md:text-sm font-bold opacity-0 transition-all duration-300 z-[60] pointer-events-none text-center w-max max-w-[85vw] border border-white/20 text-white tracking-widest shadow-2xl whitespace-nowrap"></div>
 
-<!-- 會員登入大廳 -->
+<!-- 登入大廳 -->
 <div id="login-overlay" class="fixed inset-0 z-[100] bg-[#02050a] flex items-center justify-center p-4 transition-opacity duration-500">
     <div class="glass p-8 rounded-2xl max-w-sm w-full text-center border border-yellow-500/30 shadow-[0_0_30px_rgba(234,179,8,0.15)]">
         <h1 class="text-3xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600 tracking-widest">天道戰紀</h1>
@@ -81,7 +78,7 @@
     </div>
 </div>
 
-<!-- 新兵入場選城軍機處 -->
+<!-- 軍機處 -->
 <div id="entry-modal" class="fixed inset-0 z-[90] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-300">
     <div class="glass p-6 rounded-2xl max-w-sm w-full text-center border border-sky-500/30 shadow-[0_0_30px_rgba(14,165,233,0.15)] transform scale-95 transition-transform duration-300" id="entry-modal-window">
         <h2 class="text-xl font-black mb-2 tracking-widest text-sky-400">軍機處 - 登錄首座城池</h2>
@@ -95,7 +92,7 @@
 </div>
 
 <!-- ==========================================
-     主 UI 佈局
+     主 UI 佈局 (清創重複結構)
      ========================================== -->
 <div id="main-ui" class="ui-scroll-container scrollbar-hide transition-all duration-500 hidden">
     <div class="ui-content-wrapper">
@@ -133,7 +130,7 @@
                 <div class="mt-3 pt-3 border-t border-white/10 flex gap-2 items-center">
                     <select id="sector-selector" onchange="window.switchSector(this.value)" class="bg-black/50 border border-white/20 rounded-lg px-2 py-1.5 text-[10px] md:text-xs font-bold text-gray-200 focus:outline-none w-24 md:w-auto truncate cursor-pointer"></select>
                     <select id="city-selector" onchange="window.switchCity(this.value)" class="flex-1 bg-black/50 border border-white/20 rounded-lg px-2 py-1.5 text-[11px] md:text-sm font-bold text-white focus:outline-none truncate cursor-pointer"></select>
-                    <button onclick="window.openCustomManager()" class="bg-white/10 hover:bg-white/20 p-1.5 rounded-lg text-white font-bold text-[10px] cursor-pointer">⚙ 總機設定</button>
+                    <button onclick="window.openCustomManager()" class="bg-white/10 hover:bg-white/20 p-1.5 rounded-lg text-white font-bold text-[10px] cursor-pointer">⚙ 總機</button>
                 </div>
                 
                 <div class="flex justify-between items-center bg-black/40 p-2.5 rounded-lg mt-3 border border-white/10 shadow-inner">
@@ -210,9 +207,7 @@
     </div>
 </div>
 
-<!-- ==========================================
-     軍師分析圖頁
-     ========================================== -->
+<!-- 軍師分析圖頁 -->
 <div id="chart-page" class="fixed inset-0 z-40 bg-[#02050a] flex flex-col hidden transition-all duration-300 transform translate-y-full">
     <div class="flex justify-between items-center p-3 border-b border-white/10 bg-gray-900/80 backdrop-blur-md">
         <div class="flex items-center gap-2">
@@ -269,10 +264,8 @@
 </div>
 
 <!-- ==========================================
-     各類 Modal 彈窗系統
+     彈窗系統
      ========================================== -->
-
-<!-- 資金不足警告 -->
 <div id="fund-alert-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-[70] opacity-0 pointer-events-none transition-opacity duration-300 p-4">
     <div class="glass rounded-2xl p-6 w-full max-w-sm border-red-500/50 shadow-[0_0_40px_rgba(220,38,38,0.4)] text-center transform scale-95 transition-transform duration-300" id="fund-alert-window">
         <div class="text-6xl mb-4 animate-bounce">💸</div>
@@ -286,7 +279,6 @@
     </div>
 </div>
 
-<!-- 編輯掛單 -->
 <div id="edit-pending-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-[70] opacity-0 pointer-events-none transition-opacity duration-300 p-4">
     <div class="glass rounded-2xl p-6 w-full max-w-sm border-sky-500/50 shadow-2xl text-center transform scale-95 transition-transform duration-300" id="edit-pending-window">
         <h2 class="text-xl font-black mb-4 tracking-widest text-sky-400">修改待命軍令</h2>
@@ -308,7 +300,6 @@
     </div>
 </div>
 
-<!-- 戰況報表 (包含天使與妖怪動態面板) -->
 <div id="report-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300 p-4">
     <div id="modal-window" class="glass rounded-2xl p-6 w-full max-w-md border-gray-500/40 transform scale-95 transition-transform duration-300 shadow-[0_0_30px_rgba(0,0,0,0.5)] text-center">
         <div id="modal-body"></div>
@@ -316,32 +307,21 @@
     </div>
 </div>
 
-<!-- 沙盤結算甘霖 -->
 <div id="sim-reward-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300 p-4">
     <div class="glass rounded-2xl p-6 w-full max-w-md border-yellow-500/40 transform scale-95 transition-transform duration-300 shadow-[0_0_40px_rgba(234,179,8,0.3)] text-center">
         <div class="text-6xl mb-4">🌧️💰</div>
         <h2 class="text-2xl font-black mb-2 tracking-widest text-yellow-400">天降甘霖 戰報結算</h2>
         <p class="text-xs text-gray-300 mb-6 leading-relaxed">統帥卓越的沙盤推演，已轉化為真實世界的獎勵</p>
         <div class="space-y-3 bg-black/50 p-4 rounded-xl border border-yellow-500/20 mb-6 text-left">
-            <div class="flex justify-between items-center">
-                <span class="text-gray-400 text-sm tracking-widest">沙盤推演總淨利</span>
-                <span class="text-white font-mono text-lg" id="sim-reward-profit">0</span>
-            </div>
-            <div class="flex justify-between items-center">
-                <span class="text-gray-400 text-sm tracking-widest">時空轉換率</span>
-                <span class="text-yellow-500 font-mono text-sm">0.1 % (千分之一)</span>
-            </div>
+            <div class="flex justify-between items-center"><span class="text-gray-400 text-sm tracking-widest">沙盤推演總淨利</span><span class="text-white font-mono text-lg" id="sim-reward-profit">0</span></div>
+            <div class="flex justify-between items-center"><span class="text-gray-400 text-sm tracking-widest">時空轉換率</span><span class="text-yellow-500 font-mono text-sm">0.1 % (千分之一)</span></div>
             <div class="border-t border-white/10 my-2"></div>
-            <div class="flex justify-between items-center">
-                <span class="text-yellow-400 font-bold tracking-widest">獲得天幣甘霖</span>
-                <span class="text-4xl text-yellow-400 font-black font-mono drop-shadow-md" id="sim-reward-final">0</span>
-            </div>
+            <div class="flex justify-between items-center"><span class="text-yellow-400 font-bold tracking-widest">獲得天幣甘霖</span><span class="text-4xl text-yellow-400 font-black font-mono drop-shadow-md" id="sim-reward-final">0</span></div>
         </div>
         <button onclick="document.getElementById('sim-reward-modal').classList.add('opacity-0', 'pointer-events-none'); window.triggerGoldRain();" class="w-full bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 py-3 rounded-xl font-black text-sm text-black shadow-lg cursor-pointer tracking-widest transition-all">收下天幣</button>
     </div>
 </div>
 
-<!-- 設定總機 -->
 <div id="custom-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300 p-4">
     <div class="glass rounded-2xl p-4 md:p-5 w-full max-w-md shadow-2xl border-white/20 flex flex-col max-h-[90vh]">
         <h2 class="text-xl font-black tracking-widest text-center mb-1 text-white">⚙ 統帥設定總機</h2>
@@ -383,7 +363,6 @@
     </div>
 </div>
 
-<!-- 斷線應急 -->
 <div id="price-prompt-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300 p-4">
     <div class="glass rounded-2xl p-6 w-full max-w-sm border-sky-500/40 shadow-2xl">
         <h2 class="text-xl font-black text-center mb-2 tracking-widest text-sky-400">天道連線中斷</h2>
@@ -396,9 +375,6 @@
     </div>
 </div>
 
-<!-- ==========================================
-     核心腳本區
-     ========================================== -->
 <script type="module">
 const MY_FIREBASE_CONFIG = null; 
 
@@ -416,7 +392,7 @@ const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'abula-battlef
 
 if (finalConfig && Object.keys(finalConfig).length > 0) {
     try { app = initializeApp(finalConfig); auth = getAuth(app); db = getFirestore(app); isFirebaseActive = true; } 
-    catch(e) { console.error("Firebase 初始化失敗", e); }
+    catch(e) { console.error("Firebase 失敗", e); }
 }
 
 const MAX_PHALANX_SIZE = 50;  
@@ -461,7 +437,6 @@ let currentPrice = 0;
 let lastPriceForAnim = 0; 
 let currentTab = "units";
 
-// 同步鎖與神秘客
 let isGameReady = false; 
 let is3DInitialized = false; 
 let gameTickInterval = null; 
@@ -476,9 +451,6 @@ let fireworks = [], lasers = [], explosions = [];
 let castleGroup, forestGroup, decorationsGroup;
 let mainChart = null, volChart = null, indChart = null;
 
-// ==========================================
-// 3. 全域工具與特效
-// ==========================================
 window.safeNum = function(val, fallback = 0) { const n = Number(val); return (isNaN(n) || !isFinite(n)) ? fallback : n; };
 function getCityName(code) { return CITIES[code] ? CITIES[code].name : code; }
 
@@ -598,7 +570,6 @@ window.anonLogin = async function() {
     } catch(e) { window.showMsg("連線失敗，請重試"); document.getElementById('login-status-text').innerText = "連線失敗"; }
 }
 
-// ★ 入場攔截：讓使用者自定城池
 window.checkInitialEntry = function() {
     if (!gameState.activeCity || !CITIES[gameState.activeCity]) {
         document.getElementById('entry-modal').classList.remove('hidden');
@@ -629,9 +600,6 @@ window.submitEntryCity = function() {
     }, 300);
 }
 
-// ==========================================
-// 5. 3D 渲染引擎核心
-// ==========================================
 function getSeason() { const m = new Date().getMonth() + 1; if(m >= 3 && m <= 5) return 'SPRING'; if(m >= 6 && m <= 8) return 'SUMMER'; if(m >= 9 && m <= 11) return 'AUTUMN'; return 'WINTER'; }
 function getPriceTier(price) { if(price < 100) return 1; if(price <= 200) return 2; if(price <= 500) return 3; if(price <= 999) return 4; return 5; }
 
@@ -692,7 +660,7 @@ function createSoldier(colorHex, isPlayer, tier = 1, side = 'LONG') {
 }
 
 function rebuildEnvironment() {
-    if(!is3DInitialized) return; // 絕對鎖：防禦呼叫
+    if(!is3DInitialized) return; 
     const city = CITIES[gameState.activeCity]; if(!city) return;
     const tier = getPriceTier(window.safeNum(city.basePrice, 100)); const season = getSeason();
     if(castleGroup) scene.remove(castleGroup); if(forestGroup) scene.remove(forestGroup); if(decorationsGroup) scene.remove(decorationsGroup); if(snowParticles) { scene.remove(snowParticles); snowParticles = null; }
@@ -706,9 +674,6 @@ function rebuildEnvironment() {
         geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
         snowParticles = new THREE.Points(geom, new THREE.PointsMaterial({color: 0xffffff, size: 0.6, transparent: true, opacity: 0.6}));
         scene.add(snowParticles);
-        const snm = createSnowman(); snm.position.set(22, 0, 15); decorationsGroup.add(snm);
-    } else if (season === 'AUTUMN') {
-        for(let i = 0; i < 40; i++) { const lf = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, 0.6), new THREE.MeshBasicMaterial({color: 0xc96b1e})); lf.position.set(20 + Math.random() * 45, 0.05, (Math.random() - 0.5) * 95); lf.rotation.y = Math.random() * Math.PI; decorationsGroup.add(lf); }
     }
     scene.add(decorationsGroup);
     
@@ -1063,7 +1028,6 @@ function localTick() {
                 window.showMsg(`掛單成交！${getCityName(po.city)} ${po.side==='LONG'?'做多':'做空'} ${po.qty}營`);
                 if(po.city === gameState.activeCity) syncPlayerTroopsFromState();
                 
-                // 自動切換到庫存 Tab 以顯示成果
                 window.switchTab('units');
                 updateUI();
                 syncToCloud();
@@ -1122,8 +1086,15 @@ function initKbars(city, startPrice = null) {
     });
 }
 
+function calcProfit(side, entryPrice, currentMarketPrice, qty) {
+    const diff = side === 'LONG' ? (currentMarketPrice - entryPrice) : (entryPrice - currentMarketPrice);
+    const grossProfit = diff * qty * 1000;
+    const fees = (currentMarketPrice * qty * 1000) * (FEE_RATE + TAX_RATE);
+    return grossProfit - fees;
+}
+
 // ==========================================
-// 8. 介面互動與事件綁定
+// 8. 介面互動與事件綁定 (徹底清創 DOM)
 // ==========================================
 function updateUI() {
     if(!isGameReady) return;
@@ -1299,6 +1270,7 @@ window.ignoreMysteryGuest = function() { document.getElementById('mystery-guest-
 window.switchCity = function(code) { gameState.activeCity = code; setCurrentPrice(window.safeNum(CITIES[code].price, CITIES[code].basePrice)); document.getElementById('chart-city-name').innerText = getCityName(code); window.showMsg(`軍令轉移 至 ${getCityName(code)}`); rebuildEnvironment(); window.fetchFullChartData(); updateUI(); };
 window.switchSector = function(code) { gameState.activeSector = code; const sel = document.getElementById('city-selector'); sel.innerHTML = ''; SECTORS[code].cities.forEach(c => sel.appendChild(new Option(getCityName(c), c))); window.switchCity(SECTORS[code].cities[0]); };
 
+// ★ 強制檢查多空互斥與掛單邏輯，且確保點擊後立刻更新 UI
 window.issueOrder = function(side) {
     if (currentMarketState === "CLOSED" && !isSimMode) { window.showMsg("天道休市期間 僅開放沙盤練兵下單"); window.triggerThunder(); return; }
     
@@ -1372,8 +1344,12 @@ window.cancelPending = function(id) {
     window.showMsg("軍令已撤銷，天幣歸還國庫"); updateUI(); syncToCloud();
 };
 
+// ★ 徹底解決定綁定的結算按鈕失效問題
 window.settle = function(id) {
-    const idx = gameState.units.findIndex(u => u.id === id); const u = gameState.units[idx];
+    const idx = gameState.units.findIndex(u => u.id === id); 
+    if(idx === -1) return; // 絕對防禦
+    const u = gameState.units[idx];
+    
     const currentCityPrice = u.city === gameState.activeCity ? currentPrice : (isSimMode ? window.safeNum(CITIES[u.city]?.price, CITIES[u.city]?.simBasePrice) : window.safeNum(CITIES[u.city]?.realPrice, CITIES[u.city]?.basePrice));
     
     let profit = calcProfit(u.side, u.cost, currentCityPrice > 0 ? currentCityPrice : u.cost, u.qty);
@@ -1397,7 +1373,6 @@ window.settle = function(id) {
     setTimeout(() => modalWindow.classList.replace('scale-95', 'scale-100'), 10);
 };
 
-// ★ 沙盤結束與防卡死修復
 window.toggleSimMode = function(isAuto = false) {
     if(!isAuto && currentMarketState === "OPEN") { window.showMsg("開盤期間嚴禁手動沙盤"); return; }
     if(isSimMode) {
@@ -1435,8 +1410,6 @@ window.forceCloseSimMode = async function(auto = false) {
     });
     
     const simProfit = finalSimBalance - realStateSnapshot.balance;
-    
-    // ★ 關鍵防死機：必須保留推演所產生的戰紀，再覆蓋回原始狀態
     const preservedHistory = gameState.history; 
     
     gameState = JSON.parse(JSON.stringify(realStateSnapshot)); 
@@ -1498,7 +1471,6 @@ window.removeCustomStock = function(sym) {
     if (idx > -1) { SECTORS["CUSTOM"].cities.splice(idx, 1); window.showMsg(`已移出 ${sym}`); renderCustomList(); syncToCloud(); }
 };
 
-// ★ 戰績區段報表 (加入真實日期篩選功能)
 window.showDailySummary = function() {
     const filterStart = document.getElementById('report-start-date') ? document.getElementById('report-start-date').value : '';
     const filterEnd = document.getElementById('report-end-date') ? document.getElementById('report-end-date').value : '';
