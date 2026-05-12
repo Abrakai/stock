@@ -358,9 +358,9 @@
             </div>
             
             <div class="bg-black/40 p-4 rounded-xl border border-white/10">
-                <h3 class="text-xs text-yellow-400 font-bold uppercase tracking-widest mb-3 border-b border-white/10 pb-1">🔑 天道連線金鑰 (突破延遲)</h3>
+                <h3 class="text-xs text-yellow-400 font-bold uppercase tracking-widest mb-1 border-b border-white/10 pb-1">🔑 天道連線金鑰 (突破延遲)</h3>
+                <p class="text-[9px] text-gray-500 leading-relaxed mb-2">沒有金鑰？<a href="https://allorigins.win/" target="_blank" class="text-sky-400 underline">點擊此處前往 AllOrigins 免費申請</a>，大幅提升連線穩定度！</p>
                 <input id="api-key-input" type="text" placeholder="請輸入您的金鑰..." class="w-full bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white outline-none font-mono text-xs mb-2">
-                <p class="text-[9px] text-gray-500 leading-relaxed">提供專屬 API Key 可避開免費節點限制。留空則使用系統免費備援。</p>
             </div>
         </div>
         <div class="flex gap-3 mt-4 pt-3 border-t border-white/10">
@@ -595,6 +595,7 @@ window.checkInitialEntry = function() {
     }
 }
 
+// ★ 修復：新增城池邏輯
 window.submitEntryCity = function() {
     const sym = document.getElementById('entry-symbol').value.toUpperCase().trim();
     let name = document.getElementById('entry-name').value.trim();
@@ -1141,6 +1142,7 @@ function setCurrentPrice(p) {
     }
 }
 
+// 絕對點火鎖定機制
 window.initialFetchAndStart = async function() {
     document.getElementById('market-status-label').innerText = "連線天界獲取最新報價中...";
     document.getElementById('market-status-label').className = "text-[10px] md:text-xs text-sky-400 font-bold uppercase tracking-widest bg-sky-500/20 px-2 py-1 rounded border border-sky-500/30 animate-pulse";
@@ -1176,6 +1178,7 @@ function localTick() {
 
     if (!isSimMode && currentMarketState === "CLOSED" && currentPrice === 0) { const c = CITIES[gameState.activeCity]; if (c && c.basePrice > 0) setCurrentPrice(c.basePrice); }
 
+    // 神秘客觸發機制
     if (isGameReady && ((!isSimMode && currentMarketState === "OPEN") || isSimMode)) {
         const timeNow = Date.now();
         if (timeNow - lastGuestTime > GUEST_COOLDOWN && Math.random() < 0.2) {
@@ -1194,6 +1197,7 @@ function localTick() {
         }
     }
 
+    // ★ 待命軍令撮合引擎
     if (gameState.pendingOrders && gameState.pendingOrders.length > 0) {
         for(let i = gameState.pendingOrders.length - 1; i >= 0; i--) {
             const po = gameState.pendingOrders[i];
@@ -1277,20 +1281,11 @@ function initKbars(city, startPrice = null) {
     });
 }
 
-// ★ 精準台股會計核算 (手續費 0.1425%, 證交稅 0.3%)
 function calcProfit(side, entryPrice, currentMarketPrice, qty) {
-    const entryValue = Math.floor(entryPrice * qty * 1000);
-    const exitValue = Math.floor(currentMarketPrice * qty * 1000);
-    const feeIn = Math.floor(entryValue * FEE_RATE);
-    const feeOut = Math.floor(exitValue * FEE_RATE);
-
-    if (side === 'LONG') {
-        const tax = Math.floor(exitValue * TAX_RATE); // 賣出時收證交稅
-        return (exitValue - entryValue) - feeIn - feeOut - tax;
-    } else {
-        const tax = Math.floor(entryValue * TAX_RATE); // 融券賣出時收證交稅
-        return (entryValue - exitValue) - feeIn - feeOut - tax;
-    }
+    const diff = side === 'LONG' ? (currentMarketPrice - entryPrice) : (entryPrice - currentMarketPrice);
+    const grossProfit = diff * qty * 1000;
+    const fees = (currentMarketPrice * qty * 1000) * (FEE_RATE + TAX_RATE);
+    return grossProfit - fees;
 }
 
 // ==========================================
@@ -1478,6 +1473,7 @@ window.switchCity = async function(code) {
     document.getElementById('market-price').innerText = "連線中...";
     rebuildEnvironment(); 
     
+    // 強制更新真實基價，即使在沙盤推演也能抓到最新真實狀態
     const success = await fetchRealMarketData(false, true); 
     if (!success && !isSimMode) {
         window.showMsg("天界連線受阻，載入歷史資料");
@@ -1502,6 +1498,7 @@ window.switchSector = function(code) {
     }
 };
 
+// ★ 強制檢查多空互斥與「市價單」直接入庫存邏輯
 window.issueOrder = function(side) {
     if (currentMarketState === "CLOSED" && !isSimMode) { window.showMsg("天道休市期間 僅開放沙盤練兵下單"); window.triggerThunder(); return; }
     
@@ -1525,11 +1522,8 @@ window.issueOrder = function(side) {
         orderP = parseFloat(orderPStr);
     }
     
-    // ★ 精準買進會計：做多需付手續費，做空需付手續費加稅
-    const vol = Math.floor(orderP * qty * 1000);
-    let entryFee = Math.floor(vol * FEE_RATE);
-    if(side === 'SHORT') entryFee += Math.floor(vol * TAX_RATE);
-    const totalCost = vol + entryFee; 
+    const vol = orderP * qty * 1000;
+    const totalCost = vol + (vol * TAX_RATE) + (vol * FEE_RATE);
     
     if(gameState.balance < totalCost) { window.showFundAlert(totalCost); return; }
     
@@ -1544,7 +1538,7 @@ window.issueOrder = function(side) {
         window.switchTab('pending');
     } else {
         gameState.balance -= totalCost;
-        gameState.units.push({ id: Date.now(), city: gameState.activeCity, side: side, qty: qty, cost: orderP, isSim: isSimMode, isFromGuest: isFromGuest, time: new Date().toLocaleTimeString('zh-TW', {hour12:false}), timestamp: Date.now(), entryFee: entryFee });
+        gameState.units.push({ id: Date.now(), city: gameState.activeCity, side: side, qty: qty, cost: orderP, isSim: isSimMode, isFromGuest: isFromGuest, time: new Date().toLocaleTimeString('zh-TW', {hour12:false}), timestamp: Date.now() });
         window.showMsg(isFromGuest ? "神秘客軍令已佈署，進入庫存！" : "軍令已佈署，進入庫存！");
         window.switchTab('units');
     }
@@ -1596,14 +1590,6 @@ window.settle = function(id) {
     const currentCityPrice = u.city === gameState.activeCity ? currentPrice : (isSimMode ? window.safeNum(CITIES[u.city]?.price, CITIES[u.city]?.simBasePrice) : window.safeNum(CITIES[u.city]?.realPrice, CITIES[u.city]?.basePrice));
     
     let profit = calcProfit(u.side, u.cost, currentCityPrice > 0 ? currentCityPrice : u.cost, u.qty);
-    
-    // ★ 繳納總稅賦記錄 (精準核算)
-    const exitVol = Math.floor(currentCityPrice * u.qty * 1000);
-    let exitFee = Math.floor(exitVol * FEE_RATE);
-    let exitTax = 0;
-    if(u.side === 'LONG') exitTax = Math.floor(exitVol * TAX_RATE); // 做多賣出才收證交稅
-    const totalTax = (u.entryFee || 0) + exitFee + exitTax;
-    
     let modalStyle = 'border-gray-500/40 shadow-2xl'; let titleStr = '結算紀實'; let iconStr = '';
     
     if (u.isFromGuest) {
@@ -1613,17 +1599,13 @@ window.settle = function(id) {
     }
 
     gameState.balance += Math.floor(u.cost * u.qty * 1000) + profit;
-    if(!isSimMode) {
-        gameState.realizedPnl += profit;
-        gameState.taxTotal = (gameState.taxTotal || 0) + totalTax;
-    }
-    
-    gameState.history.unshift({...u, pnl: profit, exit: currentCityPrice, time: new Date().toLocaleTimeString('zh-TW', {hour12:false}), timestamp: Date.now(), tax: totalTax });
+    if(!isSimMode) gameState.realizedPnl += profit;
+    gameState.history.unshift({...u, pnl: profit, exit: currentCityPrice, time: new Date().toLocaleTimeString('zh-TW', {hour12:false}), timestamp: Date.now()});
     gameState.units.splice(idx, 1); syncPlayerTroopsFromState(); updateUI(); syncToCloud();
     
     const modalWindow = document.getElementById('modal-window');
     modalWindow.className = `p-6 w-full max-w-md transform scale-95 transition-all duration-500 rounded-2xl ${modalStyle} flex flex-col max-h-[90vh]`;
-    document.getElementById('modal-body').innerHTML = `${iconStr}<h2 class="text-xl font-black mb-4 tracking-widest text-center">${titleStr}</h2><div class="text-center"><span class="text-xs opacity-70">平倉淨利</span><div class="text-4xl font-black mt-2 drop-shadow-md ${profit>=0?'text-red-500':'text-green-500'}">${profit>=0?'加 ':'減 '}${Math.abs(Math.floor(profit)).toLocaleString()}</div><div class="mt-4 pt-2 border-t border-white/10 text-gray-400 text-xs tracking-widest">已為天界繳納稅費: ${Math.floor(totalTax).toLocaleString()}</div></div>`;
+    document.getElementById('modal-body').innerHTML = `${iconStr}<h2 class="text-xl font-black mb-4 tracking-widest text-center">${titleStr}</h2><div class="text-center"><span class="text-xs opacity-70">平倉淨利</span><div class="text-4xl font-black mt-2 drop-shadow-md ${profit>=0?'text-red-500':'text-green-500'}">${profit>=0?'加 ':'減 '}${Math.abs(Math.floor(profit)).toLocaleString()}</div></div>`;
     document.getElementById('report-modal').classList.remove('opacity-0', 'pointer-events-none');
     setTimeout(() => modalWindow.classList.replace('scale-95', 'scale-100'), 10);
 };
@@ -1653,11 +1635,7 @@ window.forceCloseSimMode = async function(auto = false) {
         let profit = calcProfit(u.side, u.cost, currentCityPrice, u.qty);
         if (u.isFromGuest) profit *= 1.05; 
         finalSimBalance += (u.cost * u.qty * 1000) + profit;
-        
-        const exitFee = (currentCityPrice * u.qty * 1000) * (TAX_RATE + FEE_RATE);
-        const totalTax = (u.entryFee || 0) + exitFee;
-        
-        gameState.history.unshift({...u, pnl: profit, exit: currentCityPrice, time: new Date().toLocaleTimeString('zh-TW', {hour12:false}), timestamp: Date.now(), tax: totalTax});
+        gameState.history.unshift({...u, pnl: profit, exit: currentCityPrice, time: new Date().toLocaleTimeString('zh-TW', {hour12:false}), timestamp: Date.now()});
     });
     
     gameState.pendingOrders.filter(po => po.isSim).forEach(po => {
@@ -1848,7 +1826,6 @@ window.showDailySummary = function() {
             <div class="flex justify-between border-b border-white/10 pb-2"><span class="text-yellow-500 font-bold tracking-widest">總體戰略勝率</span><span class="text-yellow-500 font-mono drop-shadow-md">${rate.toFixed(1)} %</span></div>
             <div class="flex justify-between border-b border-white/10 pb-2"><span class="text-gray-400 font-bold tracking-widest">【未平倉】浮動淨利</span><span class="font-mono font-bold ${realUnrealized>=0?'text-red-400':'text-green-400'}">${Math.floor(realUnrealized).toLocaleString()}</span></div>
             <div class="flex justify-between"><span class="text-gray-400 font-bold tracking-widest">【已入庫】實現淨利</span><span class="font-mono font-bold ${gameState.realizedPnl>=0?'text-red-500':'text-green-500'}">${Math.floor(window.safeNum(gameState.realizedPnl,0)).toLocaleString()}</span></div>
-            <div class="flex justify-between border-t border-white/10 pt-2"><span class="text-gray-400 font-bold tracking-widest">💸【已繳納】總稅費</span><span class="font-mono font-bold text-yellow-600/80">${Math.floor(gameState.taxTotal || 0).toLocaleString()}</span></div>
         </div>
         <div class="bg-black/60 border border-yellow-500/30 p-3 rounded-lg text-left">
             <span class="text-[10px] text-yellow-500 font-bold uppercase tracking-widest block mb-1">AI 戰機檢討</span>
