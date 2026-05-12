@@ -208,7 +208,7 @@
                                 <button onclick="document.getElementById('order-price').value=currentPrice.toFixed(2)" class="text-[9px] bg-yellow-900/50 hover:bg-yellow-800 border border-yellow-500/30 px-1.5 py-0.5 rounded text-yellow-200 cursor-pointer">現價</button>
                             </div>
                         </div>
-                        <input id="order-price" type="text" placeholder="留空(市價) 或如 -0.5, +1" class="border border-white/20 rounded-lg px-2 py-2 text-base md:text-lg font-bold outline-none text-center text-white font-mono w-full">
+                        <input id="order-price" type="text" placeholder="留空或輸入如 -0.5, +1" class="border border-white/20 rounded-lg px-2 py-2 text-base md:text-lg font-bold outline-none text-center text-white font-mono w-full">
                     </div>
                 </div>
                 <div class="flex gap-3 mt-1 relative z-10">
@@ -333,7 +333,6 @@
     </div>
 </div>
 
-<!-- 沙盤結算甘霖 -->
 <div id="sim-reward-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300 p-4">
     <div class="glass rounded-2xl p-6 w-full max-w-md border-yellow-500/40 transform scale-95 transition-transform duration-300 shadow-[0_0_40px_rgba(234,179,8,0.3)] text-center">
         <div class="text-6xl mb-4">🌧️💰</div>
@@ -349,7 +348,7 @@
     </div>
 </div>
 
-<!-- 設定總機 (直覺化 UX 重構) -->
+<!-- 設定總機 -->
 <div id="custom-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-[80] opacity-0 pointer-events-none transition-opacity duration-300 p-4">
     <div class="glass rounded-2xl p-4 md:p-5 w-full max-w-md shadow-2xl border-white/20 flex flex-col max-h-[90vh]">
         <h2 class="text-xl font-black tracking-widest text-center mb-1 text-white">⚙ 統帥設定總機</h2>
@@ -363,11 +362,7 @@
                         <input id="custom-symbol" type="text" placeholder="台股代號 (必填)" class="w-1/2 bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white outline-none font-mono text-xs uppercase">
                         <input id="custom-name" type="text" placeholder="城池名稱 (選填)" class="w-1/2 bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white outline-none text-xs">
                     </div>
-                    <div class="flex gap-2 items-center">
-                        <select id="assign-sector-select" class="w-1/2 bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white outline-none text-xs cursor-pointer"></select>
-                        <span class="text-xs text-gray-500 font-bold">或</span>
-                        <input id="new-sector-input" type="text" placeholder="建立新領域..." class="w-1/2 bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white outline-none text-xs">
-                    </div>
+                    <input id="custom-sector-name" type="text" placeholder="自訂領域名稱 (選填，如 AI軟體，無則自動歸類)" class="w-full bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white outline-none text-xs">
                 </div>
                 <button onclick="window.addCustomStock()" class="w-full bg-green-600 hover:bg-green-500 py-2.5 rounded-lg font-bold text-xs mt-3 transition-all shadow-lg cursor-pointer tracking-widest text-white">駐紮入軍</button>
             </div>
@@ -379,7 +374,8 @@
             
             <div class="bg-black/40 p-4 rounded-xl border border-white/10">
                 <h3 class="text-xs text-yellow-400 font-bold uppercase tracking-widest mb-1 border-b border-white/10 pb-1">🔑 系統設定與連線金鑰</h3>
-                <p class="text-[9px] text-gray-500 leading-relaxed mb-2">遇到轉圈卡頓？系統免費通道可能雍塞。<br><a href="https://allorigins.win/" target="_blank" class="text-sky-400 underline font-bold">👉 點擊前往 AllOrigins 官網</a>，複製其網址作為金鑰貼入下方，即可突破限制！</p>
+                <p class="text-[10px] text-yellow-400 font-bold mb-1">❓ 為何要安裝金鑰？</p>
+                <p class="text-[9px] text-gray-500 leading-relaxed mb-2">系統預設的免費報價通道容易因為多人使用而壅塞或被阻擋。您可以<a href="https://allorigins.win/" target="_blank" class="text-sky-400 underline font-bold">點擊此處前往 AllOrigins 官網</a>，完全免費！複製其網址作為專屬金鑰貼入下方，即可實現毫秒級無延遲連線！</p>
                 <input id="api-key-input" type="text" placeholder="請輸入您的金鑰..." class="w-full bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white outline-none font-mono text-xs mb-2">
             </div>
         </div>
@@ -404,14 +400,14 @@
 </div>
 
 <!-- ==========================================
-     核心腳本區 (純淨單例架構，無重複區塊)
+     核心腳本區
      ========================================== -->
 <script type="module">
 const MY_FIREBASE_CONFIG = null; 
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
 import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
-import { getFirestore, doc, setDoc, getDoc, increment, onSnapshot, updateDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+import { getFirestore, doc, setDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
 let app, auth, db;
 let isFirebaseActive = false;
@@ -534,15 +530,6 @@ window.triggerGoldRain = function() {
     }
 };
 
-function patchSectors() {
-    if(SECTORS["COMPUTER"] && SECTORS["COMPUTER"].name === "電腦週邊") {
-        SECTORS["EMS"] = SECTORS["COMPUTER"];
-        SECTORS["EMS"].name = "電子代工";
-        delete SECTORS["COMPUTER"];
-        if(gameState.activeSector === "COMPUTER") gameState.activeSector = "EMS";
-    }
-}
-
 function saveLocal() {
     if (isSimMode) return;
     localStorage.setItem('abula_gamestate', JSON.stringify(gameState));
@@ -555,7 +542,7 @@ function saveLocal() {
 function loadLocal() {
     try {
         const ss = localStorage.getItem('abula_sectors'); const sc = localStorage.getItem('abula_cities');
-        if (ss && sc) { SECTORS = JSON.parse(ss); patchSectors(); const pc = JSON.parse(sc); for(let key in pc) CITIES[key] = { ...pc[key], chartData: {} }; } else initDefaultDatabase();
+        if (ss && sc) { SECTORS = JSON.parse(ss); const pc = JSON.parse(sc); for(let key in pc) CITIES[key] = { ...pc[key], chartData: {} }; } else initDefaultDatabase();
         const saved = localStorage.getItem('abula_gamestate');
         if (saved) {
             const parsed = JSON.parse(saved);
@@ -585,7 +572,7 @@ async function loadFromCloud(uid) {
             const data = docSnap.data();
             if(data.state) Object.assign(gameState, data.state);
             if(!gameState.pendingOrders) gameState.pendingOrders = [];
-            if(data.sectors) { SECTORS = data.sectors; patchSectors(); }
+            if(data.sectors) { SECTORS = data.sectors; }
             if(data.cities) { for(let key in data.cities) CITIES[key] = { ...data.cities[key], chartData: {} }; }
             
             if(!isCloudLoadedOnce) { isCloudLoadedOnce = true; window.checkInitialEntry(); } else if(isGameReady) updateUI();
@@ -595,20 +582,6 @@ async function loadFromCloud(uid) {
             if(!isCloudLoadedOnce) { isCloudLoadedOnce = true; window.checkInitialEntry(); } else if(isGameReady) updateUI(); 
         }
     }, (error) => { console.error("loadFromCloud error:", error); });
-}
-
-async function updateGlobalStats(uid) {
-    console.log("統帥身分已確認，戰場統計數據就緒。");
-}
-
-function updateLoginUI() {
-    const today = new Date();
-    const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
-    const mockTotal = 15000 + (seed % 1000) * 12;
-    const mockActive = 1200 + (seed % 100) * 8 + today.getHours() * 10;
-    
-    const t = document.getElementById('stat-total-users'); const a = document.getElementById('stat-today-active');
-    if(t) t.innerText = mockTotal.toLocaleString(); if(a) a.innerText = mockActive.toLocaleString();
 }
 
 window.anonLogin = async function() {
@@ -638,7 +611,7 @@ window.submitEntryCity = function() {
     let sectorInput = document.getElementById('entry-sector').value.trim();
     if(!sym) { window.showMsg("請輸入股票代號"); return; }
     if(!name) name = sym; 
-    if(!sectorInput) sectorInput = "自選觀察";
+    if(!sectorInput) sectorInput = getSmartSector(sym);
     
     let sectorId = Object.keys(SECTORS).find(k => SECTORS[k].name === sectorInput);
     if (!sectorId) {
@@ -700,8 +673,6 @@ function createForest(season) {
     }
     return group;
 }
-
-function createSnowman() { const group = new THREE.Group(); const snowMat = new THREE.MeshStandardMaterial({color: 0xffffff, roughness: 0.9}); const body = new THREE.Mesh(new THREE.DodecahedronGeometry(1.5, 1), snowMat); body.position.y = 1.5; const head = new THREE.Mesh(new THREE.DodecahedronGeometry(1.0, 1), snowMat); head.position.y = 3.5; const scarf = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.4, 8), new THREE.MeshStandardMaterial({color: 0xef4444})); scarf.position.y = 2.8; group.add(body, head, scarf); return group; }
 
 function createSoldier(colorHex, isPlayer, tier = 1, side = 'LONG') {
     const group = new THREE.Group();
@@ -1017,6 +988,10 @@ window.updateChartDataOnly = function() {
     indChart.update('none');
 };
 
+// ★ X 軸絕對對齊設定
+const yAxisAlignConfig = { position: 'right', afterFit: (scale) => { scale.width = 45; }, ticks: { color: '#ccc', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.05)' } };
+const yAxisAlignIndConfig = { position: 'right', afterFit: (scale) => { scale.width = 45; }, ticks: { color: '#888', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.05)' } };
+
 window.renderChartInstance = function() {
     const city = CITIES[gameState.activeCity]; if(!city || !city.chartData[gameState.timeframe]) return;
     const raw = city.chartData[gameState.timeframe];
@@ -1043,8 +1018,8 @@ window.renderChartInstance = function() {
         options: { 
             animation: false, responsive: true, maintainAspectRatio: false, 
             scales: { 
-                x: { type: 'time', time: { unit: gameState.timeframe.includes('m') ? 'minute' : 'day' }, ticks: { color: '#888', maxTicksLimit: 8 } }, 
-                y: { position: 'right', ticks: { color: '#ccc' }, grid: { color: 'rgba(255,255,255,0.05)' } } 
+                x: { type: 'time', time: { unit: gameState.timeframe.includes('m') ? 'minute' : 'day' }, ticks: { display: false }, grid: { color: 'rgba(255,255,255,0.05)' } }, 
+                y: yAxisAlignConfig 
             }, 
             plugins: { legend: { display: false } } 
         }
@@ -1055,31 +1030,35 @@ window.renderChartInstance = function() {
     volChart = new Chart(ctxV, {
         type: 'bar',
         data: { datasets: [{ data: raw.map(d => ({x: d.x, y: d.v || 0})), backgroundColor: raw.map(d => d.c >= d.o ? upCol : dnCol), barThickness: barWidth }] },
-        options: { animation: false, responsive: true, maintainAspectRatio: false, scales: { x: { type: 'time', display: false }, y: { display: false } }, plugins: { legend: { display: false } } }
+        options: { animation: false, responsive: true, maintainAspectRatio: false, scales: { x: { type: 'time', display: false, grid: { display: false } }, y: { ...yAxisAlignIndConfig, ticks: { display: false } } }, plugins: { legend: { display: false } } }
     });
 
     const ctxI = document.getElementById('indicatorChartCanvas').getContext('2d');
     if(indChart) indChart.destroy();
     let datasets = []; const ind = gameState.activeIndicator;
-    let yScales = { y: { position: 'right', ticks: { color: '#888', font: { size: 8 } } } }; 
+    let yScales = { y: yAxisAlignIndConfig }; 
     
     if(ind === "MACD") {
         const {macd, signal, hist} = calcMACD(closePrices);
+        yScales = {
+            y: yAxisAlignIndConfig,
+            y1: { type: 'linear', display: true, position: 'left', ticks: { color: '#aaa', font: { size: 8 } }, grid: { drawOnChartArea: false } }
+        };
         datasets = [
-            { type: 'bar', label: 'Hist', data: hist.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v)})), backgroundColor: hist.map(v => v >= 0 ? '#ef4444' : '#22c55e'), barThickness: barWidth, order: 2 },
-            { type: 'line', label: 'MACD', data: macd.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v)})), borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0, tension: 0.1, order: 1 },
-            { type: 'line', label: 'Signal', data: signal.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v)})), borderColor: '#facc15', borderWidth: 1.5, pointRadius: 0, tension: 0.1, order: 1 }
+            { type: 'bar', label: 'Hist', data: hist.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v)})), backgroundColor: hist.map(v => v >= 0 ? '#ef4444' : '#22c55e'), yAxisID: 'y1', barThickness: barWidth, order: 2 },
+            { type: 'line', label: 'MACD', data: macd.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v)})), borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0, tension: 0.1, yAxisID: 'y', order: 1 },
+            { type: 'line', label: 'Signal', data: signal.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v)})), borderColor: '#facc15', borderWidth: 1.5, pointRadius: 0, tension: 0.1, yAxisID: 'y', order: 1 }
         ];
     } else if(ind === "KD") {
         const {k, d} = calcKD(closePrices);
-        yScales = { y: { min: 0, max: 100, position: 'right', ticks: { color: '#fff', font: { size: 8 } } } }; 
+        yScales = { y: { ...yAxisAlignIndConfig, min: 0, max: 100 } }; 
         datasets = [ 
             { type: 'line', label: 'K (快)', data: k.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v, 50)})), borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0 }, 
             { type: 'line', label: 'D (慢)', data: d.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v, 50)})), borderColor: '#fb923c', borderWidth: 1.5, pointRadius: 0 } 
         ];
     } else if(ind === "RSI") {
         const rsi5 = calcRSI(closePrices, 5); const rsi10 = calcRSI(closePrices, 10);
-        yScales = { y: { min: 0, max: 100, position: 'right', ticks: { color: '#fff', font: { size: 8 } } } }; 
+        yScales = { y: { ...yAxisAlignIndConfig, min: 0, max: 100 } }; 
         datasets = [ 
             { type: 'line', label: 'RSI 5', data: rsi5.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v, 50)})), borderColor: '#c084fc', borderWidth: 1.5, pointRadius: 0 }, 
             { type: 'line', label: 'RSI 10', data: rsi10.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v, 50)})), borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0 } 
@@ -1097,7 +1076,7 @@ window.renderChartInstance = function() {
         data: { datasets }, 
         options: { 
             animation: false, responsive: true, maintainAspectRatio: false, 
-            scales: Object.assign({ x: { type: 'time', display: true, ticks: { color: '#888', maxTicksLimit: 6 } } }, yScales),
+            scales: Object.assign({ x: { type: 'time', time: { unit: gameState.timeframe.includes('m') ? 'minute' : 'day' }, display: true, ticks: { color: '#888', maxTicksLimit: 6 } } }, yScales),
             plugins: { legend: { display: true, position: 'top', labels: { color: '#888', font: { size: 8 } } } } 
         } 
     });
@@ -1789,7 +1768,7 @@ window.triggerRebirth = function() {
 window.factoryResetData = function() {
     if(confirm("確定要刪除所有自訂領域與城池，還原至出廠設定嗎？(您的國庫與戰報將保留)")) {
         initDefaultDatabase();
-        gameState.activeSector = "SEMICON";
+        gameState.activeSector = "SEC_SEMI";
         gameState.activeCity = "2330";
         saveLocal();
         window.closeCustomManager();
@@ -1801,15 +1780,21 @@ window.factoryResetData = function() {
 window.addCustomStock = function() {
     const sym = document.getElementById('custom-symbol').value.toUpperCase().trim();
     const name = document.getElementById('custom-name').value.trim();
-    if(!sym) { window.showMsg("請輸入台股代號"); return; }
+    let sectorInput = document.getElementById('custom-sector-name').value.trim();
     
-    let sectorName = getSmartSector(sym);
-    let targetSectorId = Object.keys(SECTORS).find(k => SECTORS[k].name === sectorName);
+    let targetSectorId = "CUSTOM";
     
-    if (!targetSectorId) {
-        targetSectorId = "SEC_" + Date.now().toString().slice(-4);
-        SECTORS[targetSectorId] = { name: sectorName, cities: [] };
+    if(sectorInput) {
+        let existingId = Object.keys(SECTORS).find(k => SECTORS[k].name === sectorInput);
+        if (existingId) {
+            targetSectorId = existingId;
+        } else {
+            targetSectorId = "SEC_" + Date.now().toString().slice(-4);
+            SECTORS[targetSectorId] = { name: sectorInput, cities: [] };
+        }
     }
+    
+    if(!sym) { window.showMsg("請輸入台股代號"); return; }
     
     if(!CITIES[sym]) { CITIES[sym] = { name: name || sym, price: 100, basePrice: 100, vol: 2, chartData: {} }; } 
     else if (name) { CITIES[sym].name = name; }
@@ -1818,8 +1803,8 @@ window.addCustomStock = function() {
     
     document.getElementById('custom-symbol').value = ''; 
     document.getElementById('custom-name').value = ''; 
-    
-    window.showMsg(`編列成功：已自動歸入【${SECTORS[targetSectorId].name}】`); 
+    document.getElementById('custom-sector-name').value = '';
+    window.showMsg(`編列成功 至 ${SECTORS[targetSectorId].name}`); 
     renderCustomList(); 
     syncToCloud();
 };
@@ -1949,6 +1934,9 @@ window.showAccountManager = function(tab = currentReportTab) {
         let realUnrealized = 0; gameState.units.forEach(u => { if(!u.isSim) { const c = CITIES[u.city]; if(c) realUnrealized += calcProfit(u.side, u.cost, window.safeNum(c.price, c.basePrice), u.qty); } });
         
         contentHtml = `
+            <div class="bg-purple-900/30 text-purple-200 text-[10px] p-2 rounded mb-4 border border-purple-500/30 text-center tracking-widest">
+                ⚠️ 本面板僅統計【真實天道】之交易紀錄，不包含沙盤推演
+            </div>
             <div class="space-y-4 bg-black/40 p-4 rounded-xl border border-purple-500/20 text-sm shadow-inner text-left mb-4">
                 <div class="flex justify-between border-b border-white/10 pb-2"><span class="text-gray-400 font-bold tracking-widest">實戰總派遣</span><span class="font-mono text-gray-200">${reals} 次</span></div>
                 <div class="flex justify-between border-b border-white/10 pb-2"><span class="text-gray-400 font-bold tracking-widest">入城做多勝率</span><span class="text-red-400 font-mono">${reals===0?0:Math.round(longWins/reals*100)} %</span></div>
