@@ -5,14 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>天道戰紀：傭兵與貪婪之城</title>
     
-    <!-- 引入外部核心套件 (新增金融 K 棒與時間套件) -->
+    <!-- 引入外部核心套件 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+    
+    <!-- Chart.js 相關套件 (確保 K棒 與 時間軸 正常運作) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0/build/global/luxon.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.1.1/dist/chartjs-chart-financial.min.js"></script>
+    
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
     
     <style>
@@ -89,8 +92,8 @@
     <div class="glass p-6 rounded-2xl max-w-sm w-full text-center border border-sky-500/30 shadow-[0_0_30px_rgba(14,165,233,0.15)] transform scale-95 transition-transform duration-300" id="entry-modal-window">
         <h2 class="text-xl font-black mb-2 tracking-widest text-sky-400">軍機處 - 登錄首座城池</h2>
         <p class="text-[11px] text-gray-400 mb-6 leading-relaxed">統帥，進入戰場之前，請先輸入您欲攻佔或支持的股票號碼，系統將為您帶入專屬的股票城池。</p>
-        <input id="entry-symbol" type="text" placeholder="台股代號 (如 2330)" class="w-full bg-black/60 border border-white/20 rounded-lg px-4 py-3 text-white focus:border-sky-500 outline-none font-mono text-sm text-center mb-3 uppercase">
-        <input id="entry-name" type="text" placeholder="城池名稱 (如 台積電)" class="w-full bg-black/60 border border-white/20 rounded-lg px-4 py-3 text-white focus:border-sky-500 outline-none text-sm text-center mb-6">
+        <input id="entry-symbol" type="text" placeholder="台股代號 (上市/上櫃皆可, 如 2330 或 8932)" class="w-full bg-black/60 border border-white/20 rounded-lg px-4 py-3 text-white focus:border-sky-500 outline-none font-mono text-sm text-center mb-3 uppercase">
+        <input id="entry-name" type="text" placeholder="城池名稱 (選填)" class="w-full bg-black/60 border border-white/20 rounded-lg px-4 py-3 text-white focus:border-sky-500 outline-none text-sm text-center mb-6">
         <button onclick="window.submitEntryCity()" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-black py-3 rounded-xl transition-all shadow-lg active:scale-95 tracking-widest cursor-pointer">
             確立領域並進入戰場
         </button>
@@ -136,7 +139,7 @@
                 <div class="mt-3 pt-3 border-t border-white/10 flex gap-2 items-center">
                     <select id="sector-selector" onchange="window.switchSector(this.value)" class="bg-black/50 border border-white/20 rounded-lg px-2 py-1.5 text-[10px] md:text-xs font-bold text-gray-200 focus:outline-none w-24 md:w-auto truncate cursor-pointer"></select>
                     <select id="city-selector" onchange="window.switchCity(this.value)" class="flex-1 bg-black/50 border border-white/20 rounded-lg px-2 py-1.5 text-[11px] md:text-sm font-bold text-white focus:outline-none truncate cursor-pointer"></select>
-                    <button onclick="window.openCustomManager()" class="bg-white/10 hover:bg-white/20 p-1.5 rounded-lg text-white font-bold text-[10px] cursor-pointer">⚙ 總機設定</button>
+                    <button onclick="window.openCustomManager()" class="bg-white/10 hover:bg-white/20 p-1.5 rounded-lg text-white font-bold text-[10px] cursor-pointer">⚙ 總機</button>
                 </div>
                 
                 <div class="flex justify-between items-center bg-black/40 p-2.5 rounded-lg mt-3 border border-white/10 shadow-inner">
@@ -340,6 +343,19 @@
                 <input id="api-key-input" type="text" placeholder="請輸入您的金鑰..." class="w-full bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white outline-none font-mono text-xs mb-2">
                 <p class="text-[9px] text-gray-500 leading-relaxed">提供專屬 API Key 可避開免費節點限制。留空則使用系統免費備援。</p>
             </div>
+            
+            <div class="bg-black/40 p-4 rounded-xl border border-white/10">
+                <h3 class="text-xs text-green-400 font-bold uppercase tracking-widest mb-3 border-b border-white/10 pb-1">➕ 編列新城池 (輸入代號即可)</h3>
+                <div class="space-y-2">
+                    <select id="assign-sector-select" class="w-full bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white outline-none text-xs cursor-pointer"></select>
+                    <div class="flex gap-2">
+                        <input id="custom-symbol" type="text" placeholder="代號(如 8932)" class="w-1/3 bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white outline-none font-mono text-xs uppercase">
+                        <input id="custom-name" type="text" placeholder="名稱(選填，如 智通)" class="w-2/3 bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white outline-none text-xs">
+                    </div>
+                </div>
+                <button onclick="window.addCustomStock()" class="w-full bg-green-600 hover:bg-green-500 py-2 rounded-lg font-bold text-xs mt-2 transition-all shadow-lg cursor-pointer tracking-widest text-white">駐紮入軍</button>
+            </div>
+
             <div class="bg-black/40 p-4 rounded-xl border border-white/10">
                 <h3 class="text-xs text-sky-400 font-bold uppercase tracking-widest mb-3 border-b border-white/10 pb-1">➕ 擴充新領域</h3>
                 <div class="flex gap-2">
@@ -348,17 +364,7 @@
                 </div>
                 <button onclick="window.addNewSector()" class="w-full bg-sky-600 hover:bg-sky-500 py-2 rounded-lg font-bold text-xs mt-2 transition-all shadow-lg text-white cursor-pointer tracking-widest">建立新領域</button>
             </div>
-            <div class="bg-black/40 p-4 rounded-xl border border-white/10">
-                <h3 class="text-xs text-green-400 font-bold uppercase tracking-widest mb-3 border-b border-white/10 pb-1">➕ 編列新城池</h3>
-                <div class="space-y-2">
-                    <select id="assign-sector-select" class="w-full bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white outline-none text-xs cursor-pointer"></select>
-                    <div class="flex gap-2">
-                        <input id="custom-symbol" type="text" placeholder="代號(如 2603)" class="w-1/3 bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white outline-none font-mono text-xs uppercase">
-                        <input id="custom-name" type="text" placeholder="名稱(如 長榮)" class="w-2/3 bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white outline-none text-xs">
-                    </div>
-                </div>
-                <button onclick="window.addCustomStock()" class="w-full bg-green-600 hover:bg-green-500 py-2 rounded-lg font-bold text-xs mt-2 transition-all shadow-lg cursor-pointer tracking-widest text-white">駐紮入軍</button>
-            </div>
+
             <div class="bg-black/40 p-4 rounded-xl border border-white/10">
                 <h3 class="text-xs text-purple-400 font-bold uppercase tracking-widest mb-3 border-b border-white/10 pb-1">📋 領域與城池管理大廳</h3>
                 <div id="full-sector-list" class="space-y-2 max-h-60 overflow-y-auto pr-1 scrollbar-hide"></div>
@@ -594,8 +600,9 @@ window.checkInitialEntry = function() {
 
 window.submitEntryCity = function() {
     const sym = document.getElementById('entry-symbol').value.toUpperCase().trim();
-    const name = document.getElementById('entry-name').value.trim();
-    if(!sym || !name) { window.showMsg("請完整填寫股票代號與名稱"); return; }
+    let name = document.getElementById('entry-name').value.trim();
+    if(!sym) { window.showMsg("請輸入股票代號"); return; }
+    if(!name) name = sym; // 防呆：沒填名字就用代碼當名字
     
     if(!CITIES[sym]) CITIES[sym] = { name, price: 100, basePrice: 100, vol: 2, chartData: {} };
     if(!SECTORS["CUSTOM"]) SECTORS["CUSTOM"] = { name: "統帥自選", cities: [] };
@@ -647,7 +654,7 @@ function createForest(season) {
         const tree = new THREE.Group(); const tk = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.2, 4, 6), new THREE.MeshStandardMaterial({color: 0x1e293b, metalness: 0.6})); tk.position.y = 2;
         const l1 = new THREE.Mesh(new THREE.ConeGeometry(4.5, 8, 7), mat); l1.position.y = 6; const l2 = new THREE.Mesh(new THREE.ConeGeometry(3.5, 6, 7), mat); l2.position.y = 11;
         tree.add(tk, l1, l2); tree.scale.setScalar(0.8 + Math.random() * 0.8); 
-        // ★ 修復圖 23：將樹林往外移至 45 單位以外，避免遮擋右側綠色空軍陣營
+        // ★ 將樹林往外移至 45 單位以外，避免遮擋右側綠色空軍陣營
         tree.position.set(45 + Math.random()*25, 0, (Math.random()-0.5)*80); 
         group.add(tree);
     }
@@ -873,10 +880,9 @@ window.fetchFullChartData = async function() {
     
     const map = { "1m": {i: "1m", r: "1d"}, "5m": {i: "5m", r: "5d"}, "15m": {i: "15m", r: "5d"}, "30m": {i: "30m", r: "5d"}, "60m": {i: "60m", r: "1mo"}, "1d": {i: "1d", r: "6mo"}, "1wk": {i: "1wk", r: "2y"}, "1mo": {i: "1mo", r: "5y"} };
     const prm = map[gameState.timeframe] || map["1d"];
-    const ySym = /^\d{4}$/.test(cityCode) ? cityCode + '.TW' : cityCode;
     
-    // ★ 關鍵防快取：加入時間戳，強迫代理抓最新報價 (解決圖 24)
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ySym}?interval=${prm.i}&range=${prm.r}&_t=${Date.now()}`;
+    // ★ 修復圖 24 盲區：API 呼叫優化與 OTC(上櫃) 支援
+    // 我們會透過底層函數先嘗試 .TW(上市)，如果失敗則嘗試 .TWO(上櫃)
     
     let fetched = false;
     try {
@@ -897,11 +903,20 @@ window.fetchFullChartData = async function() {
             } catch(e) {} return false;
         };
         
+        const makeUrl = (suffix) => {
+            const sym = /^\d{4}$/.test(cityCode) ? cityCode + suffix : cityCode;
+            return `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=${prm.i}&range=${prm.r}&_t=${Date.now()}`;
+        };
+        
         let success = false;
-        if(gameState.apiKey) success = await fetchAPI(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}&key=${gameState.apiKey}`, true);
-        if(!success) success = await fetchAPI(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, true);
-        if(!success) success = await fetchAPI(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`);
-        if(!success) success = await fetchAPI(`https://corsproxy.io/?url=${encodeURIComponent(url)}`);
+        for (const suffix of ['.TW', '.TWO']) {
+            if (success) break;
+            const url = makeUrl(suffix);
+            if(gameState.apiKey) success = await fetchAPI(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}&key=${gameState.apiKey}`, true);
+            if(!success) success = await fetchAPI(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, true);
+            if(!success) success = await fetchAPI(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`);
+            if(!success) success = await fetchAPI(`https://corsproxy.io/?url=${encodeURIComponent(url)}`);
+        }
     } catch(e) {}
     
     if (!fetched || !city.chartData[gameState.timeframe] || city.chartData[gameState.timeframe].length < 10) {
@@ -917,7 +932,7 @@ window.renderChartInstance = function() {
     if (raw.length < 10) return;
 
     // ★ 改寫：生成帶有絕對時間戳的資料集以支援專業 Candlestick
-    const candleData = raw.map((d) => ({ x: new Date(d.x).valueOf(), o: d.o, h: d.h, l: d.l, c: d.c }));
+    const candleData = raw.map((d) => ({ x: d.x, o: d.o, h: d.h, l: d.l, c: d.c }));
     const closePrices = raw.map(d => d.c || 0);
     const upCol = '#ef4444'; const dnCol = '#22c55e'; 
     const barWidth = raw.length > 150 ? 2 : (raw.length > 50 ? 4 : 8);
@@ -939,7 +954,7 @@ window.renderChartInstance = function() {
         options: { 
             animation: false, responsive: true, maintainAspectRatio: false, 
             scales: { 
-                x: { type: 'timeseries', time: { unit: gameState.timeframe.includes('m') ? 'minute' : 'day' }, ticks: { color: '#888', maxTicksLimit: 8 } }, 
+                x: { type: 'time', time: { unit: gameState.timeframe.includes('m') ? 'minute' : 'day' }, ticks: { color: '#888', maxTicksLimit: 8 } }, 
                 y: { position: 'right', ticks: { color: '#ccc' }, grid: { color: 'rgba(255,255,255,0.05)' } } 
             }, 
             plugins: { legend: { display: false } } 
@@ -950,8 +965,8 @@ window.renderChartInstance = function() {
     if(volChart) volChart.destroy();
     volChart = new Chart(ctxV, {
         type: 'bar',
-        data: { datasets: [{ data: raw.map(d => ({x: new Date(d.x).valueOf(), y: d.v || 0})), backgroundColor: raw.map(d => d.c >= d.o ? upCol : dnCol), barThickness: barWidth }] },
-        options: { animation: false, responsive: true, maintainAspectRatio: false, scales: { x: { type: 'timeseries', display: false }, y: { display: false } }, plugins: { legend: { display: false } } }
+        data: { datasets: [{ data: raw.map(d => ({x: d.x, y: d.v || 0})), backgroundColor: raw.map(d => d.c >= d.o ? upCol : dnCol), barThickness: barWidth }] },
+        options: { animation: false, responsive: true, maintainAspectRatio: false, scales: { x: { type: 'time', display: false }, y: { display: false } }, plugins: { legend: { display: false } } }
     });
 
     const ctxI = document.getElementById('indicatorChartCanvas').getContext('2d');
@@ -994,7 +1009,7 @@ window.renderChartInstance = function() {
         data: { datasets }, 
         options: { 
             animation: false, responsive: true, maintainAspectRatio: false, 
-            scales: Object.assign({ x: { type: 'timeseries', display: true, ticks: { color: '#888', maxTicksLimit: 6 } } }, yScales),
+            scales: Object.assign({ x: { type: 'time', display: true, ticks: { color: '#888', maxTicksLimit: 6 } } }, yScales),
             plugins: { legend: { display: true, position: 'top', labels: { color: '#888', font: { size: 8 } } } } 
         } 
     });
@@ -1007,8 +1022,6 @@ async function fetchRealMarketData(isInitial = false, forceReal = false) {
     if(isSimMode && !forceReal) return false;
     const cityCode = gameState.activeCity; const city = CITIES[cityCode]; if(!city) return false;
     let fetchedPrice = null, fetchedBase = null;
-    const ySym = /^\d{4}$/.test(cityCode) ? cityCode + '.TW' : cityCode;
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ySym}?interval=1m&range=1d&_t=${Date.now()}`;
     
     const fetchAPI = async (proxyUrl, isAllOrigins = false) => {
         try { 
@@ -1024,11 +1037,20 @@ async function fetchRealMarketData(isInitial = false, forceReal = false) {
         } catch(e) {} return false;
     };
 
+    const makeUrl = (suffix) => {
+        const sym = /^\d{4}$/.test(cityCode) ? cityCode + suffix : cityCode;
+        return `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1m&range=1d&_t=${Date.now()}`;
+    };
+
     let success = false;
-    if (gameState.apiKey) success = await fetchAPI(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}&key=${gameState.apiKey}`, true);
-    if (!success) success = await fetchAPI(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, true);
-    if (!success) success = await fetchAPI(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`);
-    if (!success) success = await fetchAPI(`https://corsproxy.io/?url=${encodeURIComponent(url)}`);
+    for (const suffix of ['.TW', '.TWO']) {
+        if (success) break;
+        const url = makeUrl(suffix);
+        if(gameState.apiKey) success = await fetchAPI(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}&key=${gameState.apiKey}`, true);
+        if(!success) success = await fetchAPI(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, true);
+        if(!success) success = await fetchAPI(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`);
+        if(!success) success = await fetchAPI(`https://corsproxy.io/?url=${encodeURIComponent(url)}`);
+    }
 
     const p = parseFloat(fetchedPrice);
     if (!isNaN(p) && p > 0) {
