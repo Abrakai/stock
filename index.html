@@ -10,7 +10,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
     
-    <!-- Chart.js 相關套件 (確保 K棒 與 時間軸 正常運作) -->
+    <!-- Chart.js 相關套件 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0/build/global/luxon.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
@@ -79,10 +79,15 @@
         <button id="btn-anon-login" onclick="window.anonLogin()" class="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-black py-3 rounded-xl mb-4 transition-all shadow-lg active:scale-95 tracking-widest hidden cursor-pointer">
             一鍵簽署傭兵契約
         </button>
+        
+        <div class="border-t border-white/10 pt-4 mt-4 flex justify-around text-[10px] text-gray-500">
+            <div class="flex flex-col"><span>總進駐兵力</span><span id="stat-total-users" class="text-gray-300 font-mono text-sm">--</span></div>
+            <div class="flex flex-col"><span>今日活躍</span><span id="stat-today-active" class="text-yellow-500 font-mono text-sm">--</span></div>
+        </div>
     </div>
 </div>
 
-<!-- 軍機處 (轉生與極簡首登點) -->
+<!-- 軍機處 -->
 <div id="entry-modal" class="fixed inset-0 z-[90] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-300">
     <div class="glass p-6 rounded-2xl max-w-sm w-full text-center border border-sky-500/30 shadow-[0_0_30px_rgba(14,165,233,0.15)] transform scale-95 transition-transform duration-300" id="entry-modal-window">
         <h2 class="text-xl font-black mb-2 tracking-widest text-sky-400">軍機處 - 登錄首座城池</h2>
@@ -95,9 +100,7 @@
     </div>
 </div>
 
-<!-- ==========================================
-     主 UI 佈局
-     ========================================== -->
+<!-- 主 UI 佈局 -->
 <div id="main-ui" class="ui-scroll-container scrollbar-hide transition-all duration-500 hidden">
     <div class="ui-content-wrapper">
         
@@ -161,7 +164,7 @@
                 <p id="mystery-guest-msg" class="text-[11px] text-gray-300 leading-relaxed mb-2">天道傳來異動，有大戶進駐的跡象，建議派兵！</p>
                 <p class="text-[9px] text-red-500 font-bold mb-3 tracking-widest">※ 警告：這有可能是蠱惑的小道消息，請注意，盈虧自負。</p>
                 <div class="flex gap-2">
-                    <button onclick="window.acceptMysteryGuest()" class="flex-1 bg-yellow-600/80 hover:bg-yellow-500 text-[10px] text-black font-bold py-1.5 rounded transition-colors cursor-pointer">帶入面板(±5%槓桿)</button>
+                    <button onclick="window.acceptMysteryGuest()" class="flex-1 bg-yellow-600/80 hover:bg-yellow-500 text-[10px] text-black font-bold py-1.5 rounded transition-colors cursor-pointer">帶入面板</button>
                     <button onclick="window.ignoreMysteryGuest()" class="flex-1 bg-gray-700 hover:bg-gray-600 text-[10px] text-gray-300 font-bold py-1.5 rounded transition-colors cursor-pointer">忽視</button>
                 </div>
             </div>
@@ -396,7 +399,7 @@
 </div>
 
 <!-- ==========================================
-     核心腳本區 (純淨單例架構，無重複區塊)
+     核心腳本區
      ========================================== -->
 <script type="module">
 const MY_FIREBASE_CONFIG = null; 
@@ -426,6 +429,7 @@ const GUEST_COOLDOWN = 10 * 60 * 1000;
 let SECTORS = {};
 let CITIES = {};
 
+// ★ AI 智慧領域分類辭典
 const SMART_SECTOR_MAP = {
     "2330": "半導體", "2454": "半導體", "2303": "半導體", "2344": "半導體", "2379": "半導體", "3711": "半導體",
     "2317": "電子代工", "2382": "電子代工", "3231": "電子代工", "2356": "電子代工", "2324": "電子代工",
@@ -493,7 +497,6 @@ let isCloudLoadedOnce = false;
 let unsubscribeUser = null;
 
 window.safeNum = function(val, fallback = 0) { const n = Number(val); return (isNaN(n) || !isFinite(n)) ? fallback : n; };
-function safeCalcEMA(val, fallback = 0) { return (isNaN(val) || !isFinite(val)) ? fallback : val; }
 function getCityName(code) { return CITIES[code] ? CITIES[code].name : code; }
 
 let msgTimeout;
@@ -640,7 +643,7 @@ window.submitEntryCity = function() {
 }
 
 // ==========================================
-// 5. 3D 渲染引擎核心
+// 5. 3D 渲染引擎核心 
 // ==========================================
 function getSeason() { const m = new Date().getMonth() + 1; if(m >= 3 && m <= 5) return 'SPRING'; if(m >= 6 && m <= 8) return 'SUMMER'; if(m >= 9 && m <= 11) return 'AUTUMN'; return 'WINTER'; }
 function getPriceTier(price) { if(price < 100) return 1; if(price <= 200) return 2; if(price <= 500) return 3; if(price <= 999) return 4; return 5; }
@@ -679,8 +682,6 @@ function createForest(season) {
     }
     return group;
 }
-
-function createSnowman() { const group = new THREE.Group(); const snowMat = new THREE.MeshStandardMaterial({color: 0xffffff, roughness: 0.9}); const body = new THREE.Mesh(new THREE.DodecahedronGeometry(1.5, 1), snowMat); body.position.y = 1.5; const head = new THREE.Mesh(new THREE.DodecahedronGeometry(1.0, 1), snowMat); head.position.y = 3.5; const scarf = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.4, 8), new THREE.MeshStandardMaterial({color: 0xef4444})); scarf.position.y = 2.8; group.add(body, head, scarf); return group; }
 
 function createSoldier(colorHex, isPlayer, tier = 1, side = 'LONG') {
     const group = new THREE.Group();
@@ -862,6 +863,8 @@ function animate() {
 // ==========================================
 // 6. 圖表引擎與技術指標演算法 
 // ==========================================
+function safeCalcEMA(val, fallback = 0) { return (isNaN(val) || !isFinite(val)) ? fallback : val; }
+
 function calcEMA(data, period) { 
     if(data.length === 0) return []; 
     let k = 2 / (period + 1); 
@@ -1402,7 +1405,7 @@ function renderUnits() {
                 });
             }
         };
-        renderGroup(realUnits, "真實天道庫存", "text-yellow-400", "border-yellow-500"); renderGroup(simUnits, "沙推演庫存", "text-sky-400", "border-sky-500");
+        renderGroup(realUnits, "真實天道庫存", "text-yellow-400", "border-yellow-500"); renderGroup(simUnits, "沙盤推演庫存", "text-sky-400", "border-sky-500");
     } catch(e) { console.error('Render units error:', e); }
 }
 
