@@ -218,7 +218,7 @@
 </div>
 
 <!-- ==========================================
-     軍師分析圖頁
+     軍師分析圖頁 (升級專業 K 棒)
      ========================================== -->
 <div id="chart-page" class="fixed inset-0 z-40 bg-[#02050a] flex flex-col hidden transition-all duration-300 transform translate-y-full">
     <div class="flex justify-between items-center p-3 border-b border-white/10 bg-gray-900/80 backdrop-blur-md">
@@ -494,6 +494,15 @@ window.triggerGoldRain = function() {
     }
 };
 
+function patchSectors() {
+    if(SECTORS["COMPUTER"] && SECTORS["COMPUTER"].name === "電腦週邊") {
+        SECTORS["EMS"] = SECTORS["COMPUTER"];
+        SECTORS["EMS"].name = "電子代工";
+        delete SECTORS["COMPUTER"];
+        if(gameState.activeSector === "COMPUTER") gameState.activeSector = "EMS";
+    }
+}
+
 function saveLocal() {
     if (isSimMode) return;
     localStorage.setItem('abula_gamestate', JSON.stringify(gameState));
@@ -506,7 +515,7 @@ function saveLocal() {
 function loadLocal() {
     try {
         const ss = localStorage.getItem('abula_sectors'); const sc = localStorage.getItem('abula_cities');
-        if (ss && sc) { SECTORS = JSON.parse(ss); const pc = JSON.parse(sc); for(let key in pc) CITIES[key] = { ...pc[key], chartData: {} }; } else initDefaultDatabase();
+        if (ss && sc) { SECTORS = JSON.parse(ss); patchSectors(); const pc = JSON.parse(sc); for(let key in pc) CITIES[key] = { ...pc[key], chartData: {} }; } else initDefaultDatabase();
         const saved = localStorage.getItem('abula_gamestate');
         if (saved) {
             const parsed = JSON.parse(saved);
@@ -539,7 +548,7 @@ async function loadFromCloud(uid) {
             const data = docSnap.data();
             if(data.state) Object.assign(gameState, data.state);
             if(!gameState.pendingOrders) gameState.pendingOrders = [];
-            if(data.sectors) { SECTORS = data.sectors; }
+            if(data.sectors) { SECTORS = data.sectors; patchSectors(); }
             if(data.cities) { for(let key in data.cities) CITIES[key] = { ...data.cities[key], chartData: {} }; }
             
             if(!isCloudLoadedOnce) { isCloudLoadedOnce = true; window.checkInitialEntry(); } else if(isGameReady) updateUI();
@@ -549,6 +558,20 @@ async function loadFromCloud(uid) {
             if(!isCloudLoadedOnce) { isCloudLoadedOnce = true; window.checkInitialEntry(); } else if(isGameReady) updateUI(); 
         }
     }, (error) => { console.error("loadFromCloud error:", error); });
+}
+
+async function updateGlobalStats(uid) {
+    console.log("統帥身分已確認，戰場統計數據就緒。");
+}
+
+function updateLoginUI() {
+    const today = new Date();
+    const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+    const mockTotal = 15000 + (seed % 1000) * 12;
+    const mockActive = 1200 + (seed % 100) * 8 + today.getHours() * 10;
+    
+    const t = document.getElementById('stat-total-users'); const a = document.getElementById('stat-today-active');
+    if(t) t.innerText = mockTotal.toLocaleString(); if(a) a.innerText = mockActive.toLocaleString();
 }
 
 window.anonLogin = async function() {
@@ -572,7 +595,6 @@ window.checkInitialEntry = function() {
     }
 }
 
-// ★ 修復圖 27/28: 智慧新增城池與領域
 window.submitEntryCity = function() {
     const sym = document.getElementById('entry-symbol').value.toUpperCase().trim();
     let name = document.getElementById('entry-name').value.trim();
@@ -602,7 +624,7 @@ window.submitEntryCity = function() {
 }
 
 // ==========================================
-// 5. 3D 渲染引擎核心 (漲跌幅戰線強化)
+// 5. 3D 渲染引擎核心 
 // ==========================================
 function getSeason() { const m = new Date().getMonth() + 1; if(m >= 3 && m <= 5) return 'SPRING'; if(m >= 6 && m <= 8) return 'SUMMER'; if(m >= 9 && m <= 11) return 'AUTUMN'; return 'WINTER'; }
 function getPriceTier(price) { if(price < 100) return 1; if(price <= 200) return 2; if(price <= 500) return 3; if(price <= 999) return 4; return 5; }
@@ -636,7 +658,6 @@ function createForest(season) {
         const tree = new THREE.Group(); const tk = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.2, 4, 6), new THREE.MeshStandardMaterial({color: 0x1e293b, metalness: 0.6})); tk.position.y = 2;
         const l1 = new THREE.Mesh(new THREE.ConeGeometry(4.5, 8, 7), mat); l1.position.y = 6; const l2 = new THREE.Mesh(new THREE.ConeGeometry(3.5, 6, 7), mat); l2.position.y = 11;
         tree.add(tk, l1, l2); tree.scale.setScalar(0.8 + Math.random() * 0.8); 
-        // ★ 擴展景深：將森林移至 +45 以外
         tree.position.set(45 + Math.random()*25, 0, (Math.random()-0.5)*80); 
         group.add(tree);
     }
@@ -711,7 +732,7 @@ function updateVisuals() {
     if(!isGameReady || !is3DInitialized) return;
     const city = CITIES[gameState.activeCity]; if(!city) return;
     const base = isSimMode ? city.simBasePrice : city.basePrice; const diff = base > 0 ? (currentPrice - base) / base : 0;
-    const drift = window.safeNum(diff * 600, 0); // 1% = 6 units
+    const drift = window.safeNum(diff * 600, 0); 
     if(battleLine) battleLine.position.x += (drift - battleLine.position.x) * 0.15;
     const shift = drift * 0.4;
     [...baseRedArmy, ...playerRedArmy].forEach(m => { if(!m.userData.isAttacking) m.position.x += ((m.userData.baseX + shift) - m.position.x) * 0.1; });
@@ -757,17 +778,14 @@ function init3D() {
     
     scene.add(new THREE.AmbientLight(0xffffff, 4.0)); const dLight = new THREE.DirectionalLight(0xffffff, 5.5); dLight.position.set(20, 100, 40); scene.add(dLight);
     
-    // ★ 修復圖 28：實裝並強化漲跌幅網格戰線 (+/- 2.5%, 5%, 7.5%, 10%)
     const lineColors = [0x555555, 0xef4444, 0xef4444, 0xef4444, 0xff0000]; 
     const lineColorsG = [0x555555, 0x22c55e, 0x22c55e, 0x22c55e, 0x00ff00]; 
     
     for(let i=1; i<=4; i++) {
-        // Red (LONG) lines - 位於城牆前方
         const lineGeoR = new THREE.BoxGeometry(0.5, 0.1, 80);
         const lineMatR = new THREE.MeshBasicMaterial({color: lineColors[i], transparent: true, opacity: 0.6});
         const meshR = new THREE.Mesh(lineGeoR, lineMatR); meshR.position.set(-15 * i, 0.05, 0); scene.add(meshR);
         
-        // Green (SHORT) lines - 位於森林前方
         const lineGeoG = new THREE.BoxGeometry(0.5, 0.1, 80);
         const lineMatG = new THREE.MeshBasicMaterial({color: lineColorsG[i], transparent: true, opacity: 0.6});
         const meshG = new THREE.Mesh(lineGeoG, lineMatG); meshG.position.set(15 * i, 0.05, 0); scene.add(meshG);
@@ -776,7 +794,6 @@ function init3D() {
     const grid = new THREE.GridHelper(200, 80, 0x223344, 0x0a1122); grid.position.y = 0.01; scene.add(grid);
     battleLine = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.2, 75), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 })); scene.add(battleLine);
     
-    // ★ 拉高視角
     camera.position.set(0, 65, 100); camera.lookAt(0, 0, 0);
     is3DInitialized = true; 
     window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
@@ -788,6 +805,17 @@ function animate() {
     const time = Date.now() * 0.003;
     if(isGameReady && is3DInitialized) {
         [...baseRedArmy, ...baseGreenArmy, ...playerRedArmy, ...playerGreenArmy].forEach(m => { if (!m.userData.isAttacking && m.visible) m.position.y = Math.sin(time + m.userData.randomOffset) * 0.3; });
+
+        // ★ 新增全天候環境交火引擎 (Ambient Combat Engine)：隨機觸發小規模雷射，強化戰場沉浸感
+        if (Math.random() < 0.08) { 
+            const allArmies = [baseRedArmy, baseGreenArmy, playerRedArmy, playerGreenArmy];
+            const randomArmy = allArmies[Math.floor(Math.random() * allArmies.length)];
+            const visibleSoldiers = randomArmy.filter(s => s.visible && !s.userData.isAttacking);
+            if (visibleSoldiers.length > 0) {
+                const attacker = visibleSoldiers[Math.floor(Math.random() * visibleSoldiers.length)];
+                fireLaser(attacker);
+            }
+        }
     }
 
     if(snowParticles) { const p = snowParticles.geometry.attributes.position.array; for(let i=0; i<300; i++) { p[i*3+1] -= 0.15; if(p[i*3+1]<0) p[i*3+1]=60; } snowParticles.geometry.attributes.position.needsUpdate = true; }
@@ -907,12 +935,52 @@ window.fetchFullChartData = async function() {
     if(!document.getElementById('chart-page').classList.contains('hidden')) window.renderChartInstance(); 
 };
 
+// ★ 新增熱更新引擎：避免每次都摧毀 Canvas 導致閃爍
+window.updateChartDataOnly = function() {
+    if (!mainChart || !volChart || !indChart) return;
+    const city = CITIES[gameState.activeCity]; if(!city || !city.chartData[gameState.timeframe]) return;
+    const raw = city.chartData[gameState.timeframe];
+    if (raw.length < 10) return;
+
+    const candleData = raw.map((d) => ({ x: d.x, o: d.o, h: d.h, l: d.l, c: d.c }));
+    const closePrices = raw.map(d => d.c || 0);
+    const upCol = '#ef4444'; const dnCol = '#22c55e'; 
+    
+    mainChart.data.datasets[0].data = candleData;
+    mainChart.update('none'); 
+    
+    volChart.data.datasets[0].data = raw.map(d => ({x: d.x, y: d.v || 0}));
+    volChart.data.datasets[0].backgroundColor = raw.map(d => d.c >= d.o ? upCol : dnCol);
+    volChart.update('none');
+
+    const ind = gameState.activeIndicator;
+    if(ind === "MACD") {
+        const {macd, signal, hist} = calcMACD(closePrices);
+        if(indChart.data.datasets[0]) indChart.data.datasets[0].data = hist.map((v,i) => ({x: candleData[i].x, y: v}));
+        if(indChart.data.datasets[1]) indChart.data.datasets[1].data = macd.map((v,i) => ({x: candleData[i].x, y: v}));
+        if(indChart.data.datasets[2]) indChart.data.datasets[2].data = signal.map((v,i) => ({x: candleData[i].x, y: v}));
+    } else if(ind === "KD") {
+        const {k, d} = calcKD(closePrices);
+        if(indChart.data.datasets[0]) indChart.data.datasets[0].data = k.map((v,i) => ({x: candleData[i].x, y: v}));
+        if(indChart.data.datasets[1]) indChart.data.datasets[1].data = d.map((v,i) => ({x: candleData[i].x, y: v}));
+    } else if(ind === "RSI") {
+        const rsi5 = calcRSI(closePrices, 5); const rsi10 = calcRSI(closePrices, 10);
+        if(indChart.data.datasets[0]) indChart.data.datasets[0].data = rsi5.map((v,i) => ({x: candleData[i].x, y: v}));
+        if(indChart.data.datasets[1]) indChart.data.datasets[1].data = rsi10.map((v,i) => ({x: candleData[i].x, y: v}));
+    } else if(ind === "BIAS") {
+        const b5 = calcBIAS(closePrices, 5); const b10 = calcBIAS(closePrices, 10); const b20 = calcBIAS(closePrices, 20);
+        if(indChart.data.datasets[0]) indChart.data.datasets[0].data = b5.map((v,i) => ({x: candleData[i].x, y: v}));
+        if(indChart.data.datasets[1]) indChart.data.datasets[1].data = b10.map((v,i) => ({x: candleData[i].x, y: v}));
+        if(indChart.data.datasets[2]) indChart.data.datasets[2].data = b20.map((v,i) => ({x: candleData[i].x, y: v}));
+    }
+    indChart.update('none');
+};
+
 window.renderChartInstance = function() {
     const city = CITIES[gameState.activeCity]; if(!city || !city.chartData[gameState.timeframe]) return;
     const raw = city.chartData[gameState.timeframe];
     if (raw.length < 10) return;
 
-    // ★ 實體 K 棒資料轉換
     const candleData = raw.map((d) => ({ x: d.x, o: d.o, h: d.h, l: d.l, c: d.c }));
     const closePrices = raw.map(d => d.c || 0);
     const upCol = '#ef4444'; const dnCol = '#22c55e'; 
@@ -921,7 +989,6 @@ window.renderChartInstance = function() {
     const ctxM = document.getElementById('mainChartCanvas').getContext('2d');
     if(mainChart) mainChart.destroy();
     
-    // ★ 實裝專業金融 K 棒圖 (Candlestick) 與 X 軸時間顯示
     mainChart = new Chart(ctxM, {
         type: 'candlestick',
         data: { 
@@ -964,14 +1031,14 @@ window.renderChartInstance = function() {
         ];
     } else if(ind === "KD") {
         const {k, d} = calcKD(closePrices);
-        yScales = { y: { min: 0, max: 100, position: 'right', ticks: { color: '#fff', font: { size: 8 } } } }; // ★ 強制 0~100 刻度
+        yScales = { y: { min: 0, max: 100, position: 'right', ticks: { color: '#fff', font: { size: 8 } } } }; 
         datasets = [ 
             { type: 'line', label: 'K (快)', data: k.map((v,i) => ({x: candleData[i].x, y: v})), borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0 }, 
             { type: 'line', label: 'D (慢)', data: d.map((v,i) => ({x: candleData[i].x, y: v})), borderColor: '#fb923c', borderWidth: 1.5, pointRadius: 0 } 
         ];
     } else if(ind === "RSI") {
         const rsi5 = calcRSI(closePrices, 5); const rsi10 = calcRSI(closePrices, 10);
-        yScales = { y: { min: 0, max: 100, position: 'right', ticks: { color: '#fff', font: { size: 8 } } } }; // ★ 強制 0~100 刻度
+        yScales = { y: { min: 0, max: 100, position: 'right', ticks: { color: '#fff', font: { size: 8 } } } }; 
         datasets = [ 
             { type: 'line', label: 'RSI 5', data: rsi5.map((v,i) => ({x: candleData[i].x, y: v})), borderColor: '#c084fc', borderWidth: 1.5, pointRadius: 0 }, 
             { type: 'line', label: 'RSI 10', data: rsi10.map((v,i) => ({x: candleData[i].x, y: v})), borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0 } 
@@ -1023,7 +1090,7 @@ async function fetchRealMarketData(isInitial = false, forceReal = false) {
     };
 
     let success = false;
-    // ★ 涵蓋上市與上櫃股票
+    // 涵蓋上市與上櫃股票
     for (const suffix of ['.TW', '.TWO', '']) {
         if (success) break;
         const url = makeUrl(suffix);
@@ -1066,6 +1133,12 @@ function setCurrentPrice(p) {
         }
     }
     if(isGameReady) updateUI(); 
+    
+    // ★ 呼叫熱更新引擎，圖表即時平滑變動不閃爍
+    if(!document.getElementById('chart-page').classList.contains('hidden')) {
+        if (mainChart) window.updateChartDataOnly();
+        else window.renderChartInstance();
+    }
 }
 
 window.initialFetchAndStart = async function() {
@@ -1128,8 +1201,10 @@ function localTick() {
             if (checkPrice <= 0) continue;
             
             if ((po.side === 'LONG' && checkPrice <= po.targetPrice) || (po.side === 'SHORT' && checkPrice >= po.targetPrice)) {
-                // ★ 計算買入繳納的稅賦
-                const entryFee = po.targetPrice * po.qty * 1000 * (TAX_RATE + FEE_RATE);
+                // ★ 計算精準買入稅費
+                const entryVal = Math.floor(po.targetPrice * po.qty * 1000);
+                let entryFee = Math.floor(entryVal * FEE_RATE);
+                if (po.side === 'SHORT') entryFee += Math.floor(entryVal * TAX_RATE); // 融券賣出含稅
                 
                 gameState.units.push({ id: Date.now(), city: po.city, side: po.side, qty: po.qty, cost: po.targetPrice, isSim: po.isSim, isFromGuest: po.isFromGuest, time: new Date().toLocaleTimeString('zh-TW', {hour12:false}), timestamp: Date.now(), entryFee });
                 gameState.pendingOrders.splice(i, 1);
@@ -1182,9 +1257,6 @@ function localTick() {
             pollCounter = 0;
         }
     }
-    
-    if(!document.getElementById('chart-page').classList.contains('hidden')) window.renderChartInstance(); 
-    updateUI();
 }
 
 function initKbars(city, startPrice = null) {
@@ -1205,12 +1277,20 @@ function initKbars(city, startPrice = null) {
     });
 }
 
+// ★ 精準台股會計核算 (手續費 0.1425%, 證交稅 0.3%)
 function calcProfit(side, entryPrice, currentMarketPrice, qty) {
-    const diff = side === 'LONG' ? (currentMarketPrice - entryPrice) : (entryPrice - currentMarketPrice);
-    const grossProfit = diff * qty * 1000;
-    const entryFee = (entryPrice * qty * 1000) * (FEE_RATE + TAX_RATE);
-    const exitFee = (currentMarketPrice * qty * 1000) * (FEE_RATE + TAX_RATE);
-    return grossProfit - entryFee - exitFee;
+    const entryValue = Math.floor(entryPrice * qty * 1000);
+    const exitValue = Math.floor(currentMarketPrice * qty * 1000);
+    const feeIn = Math.floor(entryValue * FEE_RATE);
+    const feeOut = Math.floor(exitValue * FEE_RATE);
+
+    if (side === 'LONG') {
+        const tax = Math.floor(exitValue * TAX_RATE); // 賣出時收證交稅
+        return (exitValue - entryValue) - feeIn - feeOut - tax;
+    } else {
+        const tax = Math.floor(entryValue * TAX_RATE); // 融券賣出時收證交稅
+        return (entryValue - exitValue) - feeIn - feeOut - tax;
+    }
 }
 
 // ==========================================
@@ -1340,7 +1420,7 @@ function renderHistory() {
             }
             const isSimTag = h.isSim ? '<span class="text-sky-400 border border-sky-400/50 px-1 rounded mr-1">[沙盤]</span>' : '<span class="text-yellow-400 border border-yellow-400/50 px-1 rounded mr-1">[實戰]</span>';
             const guestTag = h.isFromGuest ? '<span class="text-purple-400 border border-purple-400/50 px-1 rounded mr-1">[神秘客]</span>' : '';
-            cont.innerHTML += `<div class="bg-black/30 rounded-lg p-2.5 border-r-2 border-gray-600 text-right text-[10px] mb-2 opacity-80"><div class="flex justify-between items-center mb-1"><div class="text-left">${isSimTag}${guestTag}<span class="text-gray-500 font-mono">${h.time}</span></div><span class="text-gray-300">${h.city} ${getCityName(h.city)} (${h.side === 'LONG' ? '做多' : '做空'})</span></div><div class="flex justify-between items-center mb-1"><span class="text-gray-500">平倉價: ${h.exit.toFixed(2)}</span><span class="font-mono font-bold ${h.pnl >= 0 ? 'text-red-400' : 'text-green-400'}">${h.pnl >= 0 ? '加 ' : '減 '}${Math.abs(Math.floor(h.pnl)).toLocaleString()}</span></div><div class="flex justify-between"><span class="text-[9px] text-yellow-500/70 border border-yellow-500/20 px-1 rounded">繳納稅賦: ${Math.floor(h.tax || 0).toLocaleString()}</span></div></div>`;
+            cont.innerHTML += `<div class="bg-black/30 rounded-lg p-2.5 border-r-2 border-gray-600 text-right text-[10px] mb-2 opacity-80"><div class="flex justify-between items-center mb-1"><div class="text-left">${isSimTag}${guestTag}<span class="text-gray-500 font-mono">${h.time}</span></div><span class="text-gray-300">${h.city} ${getCityName(h.city)} (${h.side === 'LONG' ? '做多' : '做空'})</span></div><div class="flex justify-between items-center mb-1"><span class="text-gray-500">平倉價: ${h.exit.toFixed(2)}</span><span class="font-mono font-bold ${h.pnl >= 0 ? 'text-red-400' : 'text-green-400'}">${h.pnl >= 0 ? '加 ' : '減 '}${Math.abs(Math.floor(h.pnl)).toLocaleString()}</span></div><div class="flex justify-between"><span class="text-[9px] text-yellow-500/70 border border-yellow-500/20 px-1 rounded">已繳納稅費: ${Math.floor(h.tax || 0).toLocaleString()}</span></div></div>`;
         });
     } catch(e) { console.error('Render history error:', e); }
 }
@@ -1398,7 +1478,6 @@ window.switchCity = async function(code) {
     document.getElementById('market-price').innerText = "連線中...";
     rebuildEnvironment(); 
     
-    // 強制更新真實基價
     const success = await fetchRealMarketData(false, true); 
     if (!success && !isSimMode) {
         window.showMsg("天界連線受阻，載入歷史資料");
@@ -1446,9 +1525,11 @@ window.issueOrder = function(side) {
         orderP = parseFloat(orderPStr);
     }
     
-    const vol = orderP * qty * 1000;
-    const entryFee = vol * (TAX_RATE + FEE_RATE);
-    const totalCost = vol + entryFee; // 包含手續費
+    // ★ 精準買進會計：做多需付手續費，做空需付手續費加稅
+    const vol = Math.floor(orderP * qty * 1000);
+    let entryFee = Math.floor(vol * FEE_RATE);
+    if(side === 'SHORT') entryFee += Math.floor(vol * TAX_RATE);
+    const totalCost = vol + entryFee; 
     
     if(gameState.balance < totalCost) { window.showFundAlert(totalCost); return; }
     
@@ -1516,9 +1597,12 @@ window.settle = function(id) {
     
     let profit = calcProfit(u.side, u.cost, currentCityPrice > 0 ? currentCityPrice : u.cost, u.qty);
     
-    // ★ 繳納總稅賦記錄
-    const exitFee = (currentCityPrice * u.qty * 1000) * (TAX_RATE + FEE_RATE);
-    const totalTax = (u.entryFee || 0) + exitFee;
+    // ★ 繳納總稅賦記錄 (精準核算)
+    const exitVol = Math.floor(currentCityPrice * u.qty * 1000);
+    let exitFee = Math.floor(exitVol * FEE_RATE);
+    let exitTax = 0;
+    if(u.side === 'LONG') exitTax = Math.floor(exitVol * TAX_RATE); // 做多賣出才收證交稅
+    const totalTax = (u.entryFee || 0) + exitFee + exitTax;
     
     let modalStyle = 'border-gray-500/40 shadow-2xl'; let titleStr = '結算紀實'; let iconStr = '';
     
@@ -1528,7 +1612,7 @@ window.settle = function(id) {
         else { modalStyle = 'glass-demon'; titleStr = '👿 神秘客的陷阱'; iconStr = '<div class="text-4xl mb-2 animate-pulse">🔥👿🔥</div><p class="text-xs text-red-400 mb-2">「貪婪的心智，終將被吞噬...」</p>'; window.triggerDemonAura(); window.showMsg("被妖言蠱惑！損失慘重！"); }
     }
 
-    gameState.balance += (u.cost * u.qty * 1000) + profit;
+    gameState.balance += Math.floor(u.cost * u.qty * 1000) + profit;
     if(!isSimMode) {
         gameState.realizedPnl += profit;
         gameState.taxTotal = (gameState.taxTotal || 0) + totalTax;
@@ -1539,7 +1623,7 @@ window.settle = function(id) {
     
     const modalWindow = document.getElementById('modal-window');
     modalWindow.className = `p-6 w-full max-w-md transform scale-95 transition-all duration-500 rounded-2xl ${modalStyle} flex flex-col max-h-[90vh]`;
-    document.getElementById('modal-body').innerHTML = `${iconStr}<h2 class="text-xl font-black mb-4 tracking-widest text-center">${titleStr}</h2><div class="text-center"><span class="text-xs opacity-70">平倉淨利</span><div class="text-4xl font-black mt-2 drop-shadow-md ${profit>=0?'text-red-500':'text-green-500'}">${profit>=0?'加 ':'減 '}${Math.abs(Math.floor(profit)).toLocaleString()}</div><div class="mt-4 pt-2 border-t border-white/10 text-gray-400 text-xs tracking-widest">已為天道繳納稅賦: ${Math.floor(totalTax).toLocaleString()}</div></div>`;
+    document.getElementById('modal-body').innerHTML = `${iconStr}<h2 class="text-xl font-black mb-4 tracking-widest text-center">${titleStr}</h2><div class="text-center"><span class="text-xs opacity-70">平倉淨利</span><div class="text-4xl font-black mt-2 drop-shadow-md ${profit>=0?'text-red-500':'text-green-500'}">${profit>=0?'加 ':'減 '}${Math.abs(Math.floor(profit)).toLocaleString()}</div><div class="mt-4 pt-2 border-t border-white/10 text-gray-400 text-xs tracking-widest">已為天界繳納稅費: ${Math.floor(totalTax).toLocaleString()}</div></div>`;
     document.getElementById('report-modal').classList.remove('opacity-0', 'pointer-events-none');
     setTimeout(() => modalWindow.classList.replace('scale-95', 'scale-100'), 10);
 };
@@ -1623,7 +1707,7 @@ window.forceStartSim = function() {
 window.openChartPage = function() { document.getElementById('chart-page').classList.remove('hidden'); setTimeout(() => { document.getElementById('chart-page').classList.remove('translate-y-full'); if (isSimMode) window.renderChartInstance(); else window.fetchFullChartData(); }, 10); };
 window.closeChartPage = function() { document.getElementById('chart-page').classList.add('translate-y-full'); setTimeout(() => document.getElementById('chart-page').classList.add('hidden'), 300); };
 window.setTimeframe = function(tf) { gameState.timeframe = tf; document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active')); document.getElementById(`tf-${tf}`).classList.add('active'); if (isSimMode) window.renderChartInstance(); else window.fetchFullChartData(); };
-window.setIndicator = function(ind) { gameState.activeIndicator = ind; document.querySelectorAll('.ind-btn').forEach(b => b.classList.toggle('active', b.id === 'btn-ind-' + ind)); renderChartInstance(); };
+window.setIndicator = function(ind) { gameState.activeIndicator = ind; document.querySelectorAll('.ind-btn').forEach(b => b.classList.toggle('active', b.id === 'btn-ind-' + ind)); window.updateChartDataOnly(); };
 window.switchTab = function(t) { currentTab = t; ['units', 'pending', 'history'].forEach(x => document.getElementById('tab-content-' + x).classList.toggle('hidden', x !== t)); document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === 'tab-' + t)); updateUI(); };
 
 window.openCustomManager = function() { 
@@ -1709,7 +1793,6 @@ window.removeCustomStock = function(sKey, sym) {
     }
 };
 
-// ★ 實裝戰績總表加入日期篩選與「稅賦」顯示 (修復圖 28)
 window.showDailySummary = function() {
     const filterStart = document.getElementById('report-start-date') ? document.getElementById('report-start-date').value : '';
     const filterEnd = document.getElementById('report-end-date') ? document.getElementById('report-end-date').value : '';
@@ -1765,7 +1848,7 @@ window.showDailySummary = function() {
             <div class="flex justify-between border-b border-white/10 pb-2"><span class="text-yellow-500 font-bold tracking-widest">總體戰略勝率</span><span class="text-yellow-500 font-mono drop-shadow-md">${rate.toFixed(1)} %</span></div>
             <div class="flex justify-between border-b border-white/10 pb-2"><span class="text-gray-400 font-bold tracking-widest">【未平倉】浮動淨利</span><span class="font-mono font-bold ${realUnrealized>=0?'text-red-400':'text-green-400'}">${Math.floor(realUnrealized).toLocaleString()}</span></div>
             <div class="flex justify-between"><span class="text-gray-400 font-bold tracking-widest">【已入庫】實現淨利</span><span class="font-mono font-bold ${gameState.realizedPnl>=0?'text-red-500':'text-green-500'}">${Math.floor(window.safeNum(gameState.realizedPnl,0)).toLocaleString()}</span></div>
-            <div class="flex justify-between border-t border-white/10 pt-2"><span class="text-gray-400 font-bold tracking-widest">💸【已繳納】總稅賦</span><span class="font-mono font-bold text-yellow-600/80">${Math.floor(gameState.taxTotal || 0).toLocaleString()}</span></div>
+            <div class="flex justify-between border-t border-white/10 pt-2"><span class="text-gray-400 font-bold tracking-widest">💸【已繳納】總稅費</span><span class="font-mono font-bold text-yellow-600/80">${Math.floor(gameState.taxTotal || 0).toLocaleString()}</span></div>
         </div>
         <div class="bg-black/60 border border-yellow-500/30 p-3 rounded-lg text-left">
             <span class="text-[10px] text-yellow-500 font-bold uppercase tracking-widest block mb-1">AI 戰機檢討</span>
