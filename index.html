@@ -10,7 +10,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
     
-    <!-- Chart.js 相關套件 -->
+    <!-- Chart.js 相關套件 (確保 K棒 與 時間軸 正常運作) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0/build/global/luxon.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
@@ -87,7 +87,7 @@
     </div>
 </div>
 
-<!-- 軍機處 -->
+<!-- 軍機處 (轉生與極簡首登點) -->
 <div id="entry-modal" class="fixed inset-0 z-[90] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-300">
     <div class="glass p-6 rounded-2xl max-w-sm w-full text-center border border-sky-500/30 shadow-[0_0_30px_rgba(14,165,233,0.15)] transform scale-95 transition-transform duration-300" id="entry-modal-window">
         <h2 class="text-xl font-black mb-2 tracking-widest text-sky-400">軍機處 - 登錄首座城池</h2>
@@ -100,7 +100,9 @@
     </div>
 </div>
 
-<!-- 主 UI 佈局 -->
+<!-- ==========================================
+     主 UI 佈局
+     ========================================== -->
 <div id="main-ui" class="ui-scroll-container scrollbar-hide transition-all duration-500 hidden">
     <div class="ui-content-wrapper">
         
@@ -429,7 +431,6 @@ const GUEST_COOLDOWN = 10 * 60 * 1000;
 let SECTORS = {};
 let CITIES = {};
 
-// ★ AI 智慧領域分類辭典
 const SMART_SECTOR_MAP = {
     "2330": "半導體", "2454": "半導體", "2303": "半導體", "2344": "半導體", "2379": "半導體", "3711": "半導體",
     "2317": "電子代工", "2382": "電子代工", "3231": "電子代工", "2356": "電子代工", "2324": "電子代工",
@@ -497,6 +498,7 @@ let isCloudLoadedOnce = false;
 let unsubscribeUser = null;
 
 window.safeNum = function(val, fallback = 0) { const n = Number(val); return (isNaN(n) || !isFinite(n)) ? fallback : n; };
+function safeCalcEMA(val, fallback = 0) { return (isNaN(val) || !isFinite(val)) ? fallback : val; }
 function getCityName(code) { return CITIES[code] ? CITIES[code].name : code; }
 
 let msgTimeout;
@@ -617,12 +619,13 @@ window.checkInitialEntry = function() {
 window.submitEntryCity = function() {
     const sym = document.getElementById('entry-symbol').value.toUpperCase().trim();
     let name = document.getElementById('entry-name').value.trim();
-    let sectorInput = document.getElementById('entry-sector').value.trim();
+    
     if(!sym) { window.showMsg("請輸入股票代號"); return; }
     if(!name) name = sym; 
-    if(!sectorInput) sectorInput = getSmartSector(sym);
     
+    let sectorInput = getSmartSector(sym);
     let sectorId = Object.keys(SECTORS).find(k => SECTORS[k].name === sectorInput);
+    
     if (!sectorId) {
         sectorId = "SEC_" + Date.now().toString().slice(-4);
         SECTORS[sectorId] = { name: sectorInput, cities: [] };
@@ -643,7 +646,7 @@ window.submitEntryCity = function() {
 }
 
 // ==========================================
-// 5. 3D 渲染引擎核心 
+// 5. 3D 渲染引擎核心
 // ==========================================
 function getSeason() { const m = new Date().getMonth() + 1; if(m >= 3 && m <= 5) return 'SPRING'; if(m >= 6 && m <= 8) return 'SUMMER'; if(m >= 9 && m <= 11) return 'AUTUMN'; return 'WINTER'; }
 function getPriceTier(price) { if(price < 100) return 1; if(price <= 200) return 2; if(price <= 500) return 3; if(price <= 999) return 4; return 5; }
@@ -863,8 +866,6 @@ function animate() {
 // ==========================================
 // 6. 圖表引擎與技術指標演算法 
 // ==========================================
-function safeCalcEMA(val, fallback = 0) { return (isNaN(val) || !isFinite(val)) ? fallback : val; }
-
 function calcEMA(data, period) { 
     if(data.length === 0) return []; 
     let k = 2 / (period + 1); 
@@ -1802,6 +1803,15 @@ window.addCustomStock = function() {
             targetSectorId = "SEC_" + Date.now().toString().slice(-4);
             SECTORS[targetSectorId] = { name: sectorInput, cities: [] };
         }
+    } else {
+        sectorInput = getSmartSector(sym);
+        let existingId = Object.keys(SECTORS).find(k => SECTORS[k].name === sectorInput);
+        if (existingId) {
+            targetSectorId = existingId;
+        } else {
+            targetSectorId = "SEC_" + Date.now().toString().slice(-4);
+            SECTORS[targetSectorId] = { name: sectorInput, cities: [] };
+        }
     }
     
     if(!sym) { window.showMsg("請輸入台股代號"); return; }
@@ -1814,7 +1824,7 @@ window.addCustomStock = function() {
     document.getElementById('custom-symbol').value = ''; 
     document.getElementById('custom-name').value = ''; 
     document.getElementById('custom-sector-name').value = '';
-    window.showMsg(`編列成功 至 ${SECTORS[targetSectorId].name}`); 
+    window.showMsg(`編列成功：已歸入【${SECTORS[targetSectorId].name}】`); 
     renderCustomList(); 
     syncToCloud();
 };
