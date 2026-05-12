@@ -497,7 +497,7 @@ let isCloudLoadedOnce = false;
 let unsubscribeUser = null;
 
 window.safeNum = function(val, fallback = 0) { const n = Number(val); return (isNaN(n) || !isFinite(n)) ? fallback : n; };
-function safeCalcEMA(val, fallback = 0) { return (isNaN(val) || !isFinite(val)) ? fallback : val; }
+function safeCalc(val, fallback = 0) { return (isNaN(val) || !isFinite(val)) ? fallback : val; }
 function getCityName(code) { return CITIES[code] ? CITIES[code].name : code; }
 
 let msgTimeout;
@@ -582,6 +582,16 @@ async function loadFromCloud(uid) {
             if(!isCloudLoadedOnce) { isCloudLoadedOnce = true; window.checkInitialEntry(); } else if(isGameReady) updateUI(); 
         }
     }, (error) => { console.error("loadFromCloud error:", error); });
+}
+
+function updateLoginUI() {
+    const today = new Date();
+    const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+    const mockTotal = 15000 + (seed % 1000) * 12;
+    const mockActive = 1200 + (seed % 100) * 8 + today.getHours() * 10;
+    
+    const t = document.getElementById('stat-total-users'); const a = document.getElementById('stat-today-active');
+    if(t) t.innerText = mockTotal.toLocaleString(); if(a) a.innerText = mockActive.toLocaleString();
 }
 
 window.anonLogin = async function() {
@@ -673,6 +683,8 @@ function createForest(season) {
     }
     return group;
 }
+
+function createSnowman() { const group = new THREE.Group(); const snowMat = new THREE.MeshStandardMaterial({color: 0xffffff, roughness: 0.9}); const body = new THREE.Mesh(new THREE.DodecahedronGeometry(1.5, 1), snowMat); body.position.y = 1.5; const head = new THREE.Mesh(new THREE.DodecahedronGeometry(1.0, 1), snowMat); head.position.y = 3.5; const scarf = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.4, 8), new THREE.MeshStandardMaterial({color: 0xef4444})); scarf.position.y = 2.8; group.add(body, head, scarf); return group; }
 
 function createSoldier(colorHex, isPlayer, tier = 1, side = 'LONG') {
     const group = new THREE.Group();
@@ -854,6 +866,8 @@ function animate() {
 // ==========================================
 // 6. 圖表引擎與技術指標演算法 
 // ==========================================
+function safeCalcEMA(val, fallback = 0) { return (isNaN(val) || !isFinite(val)) ? fallback : val; }
+
 function calcEMA(data, period) { 
     if(data.length === 0) return []; 
     let k = 2 / (period + 1); 
@@ -988,7 +1002,6 @@ window.updateChartDataOnly = function() {
     indChart.update('none');
 };
 
-// ★ X 軸絕對對齊設定
 const yAxisAlignConfig = { position: 'right', afterFit: (scale) => { scale.width = 45; }, ticks: { color: '#ccc', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.05)' } };
 const yAxisAlignIndConfig = { position: 'right', afterFit: (scale) => { scale.width = 45; }, ticks: { color: '#888', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.05)' } };
 
