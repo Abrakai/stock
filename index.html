@@ -87,7 +87,7 @@
     </div>
 </div>
 
-<!-- 軍機處 -->
+<!-- 軍機處 (轉生與登入點) -->
 <div id="entry-modal" class="fixed inset-0 z-[90] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-300">
     <div class="glass p-6 rounded-2xl max-w-sm w-full text-center border border-sky-500/30 shadow-[0_0_30px_rgba(14,165,233,0.15)] transform scale-95 transition-transform duration-300" id="entry-modal-window">
         <h2 class="text-xl font-black mb-2 tracking-widest text-sky-400">軍機處 - 登錄首座城池</h2>
@@ -354,18 +354,19 @@
 
             <div class="bg-black/40 p-4 rounded-xl border border-white/10">
                 <h3 class="text-xs text-purple-400 font-bold uppercase tracking-widest mb-3 border-b border-white/10 pb-1">📋 領域與城池管理大廳</h3>
-                <div id="full-sector-list" class="space-y-2 max-h-60 overflow-y-auto pr-1 scrollbar-hide"></div>
+                <div id="full-sector-list" class="space-y-2 max-h-40 overflow-y-auto pr-1 scrollbar-hide"></div>
             </div>
             
             <div class="bg-black/40 p-4 rounded-xl border border-white/10">
                 <h3 class="text-xs text-yellow-400 font-bold uppercase tracking-widest mb-1 border-b border-white/10 pb-1">🔑 天道連線金鑰 (突破延遲)</h3>
-                <p class="text-[9px] text-gray-500 leading-relaxed mb-2">沒有金鑰？<a href="https://allorigins.win/" target="_blank" class="text-sky-400 underline">點擊此處前往 AllOrigins 免費申請</a>，大幅提升連線穩定度！</p>
+                <p class="text-[9px] text-gray-500 leading-relaxed mb-2">遇到轉圈卡頓？系統免費通道可能雍塞。<br><a href="https://allorigins.win/" target="_blank" class="text-sky-400 underline font-bold">👉 點擊前往 AllOrigins 官網</a>，複製其網址作為金鑰貼入下方，即可突破限制！</p>
                 <input id="api-key-input" type="text" placeholder="請輸入您的金鑰..." class="w-full bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white outline-none font-mono text-xs mb-2">
             </div>
         </div>
-        <div class="flex gap-3 mt-4 pt-3 border-t border-white/10">
-            <button onclick="window.factoryResetData()" class="w-1/3 bg-red-900/50 hover:bg-red-800 border border-red-500/30 py-3 rounded-xl font-bold text-xs transition-all cursor-pointer text-red-200">還原預設</button>
-            <button onclick="window.closeCustomManager()" class="w-2/3 bg-gray-700 hover:bg-gray-600 py-3 rounded-xl font-bold text-sm transition-all cursor-pointer tracking-widest text-white">完成配置</button>
+        <div class="flex gap-2 mt-4 pt-3 border-t border-white/10">
+            <button onclick="window.factoryResetData()" class="w-1/4 bg-gray-800 hover:bg-gray-700 py-3 rounded-xl font-bold text-[10px] transition-all cursor-pointer text-gray-300">清空自選</button>
+            <button onclick="window.triggerRebirth()" class="w-1/4 bg-red-900/50 hover:bg-red-800 border border-red-500/30 py-3 rounded-xl font-bold text-[10px] transition-all cursor-pointer text-red-200 shadow-[0_0_10px_rgba(220,38,38,0.3)]">破產重生</button>
+            <button onclick="window.closeCustomManager()" class="w-2/4 bg-sky-700 hover:bg-sky-600 py-3 rounded-xl font-bold text-sm transition-all cursor-pointer tracking-widest text-white">完成配置</button>
         </div>
     </div>
 </div>
@@ -595,7 +596,7 @@ window.checkInitialEntry = function() {
     }
 }
 
-// ★ 修復：新增城池邏輯
+// ★ 修復：新增城池邏輯與自動創建領域
 window.submitEntryCity = function() {
     const sym = document.getElementById('entry-symbol').value.toUpperCase().trim();
     let name = document.getElementById('entry-name').value.trim();
@@ -807,7 +808,6 @@ function animate() {
     if(isGameReady && is3DInitialized) {
         [...baseRedArmy, ...baseGreenArmy, ...playerRedArmy, ...playerGreenArmy].forEach(m => { if (!m.userData.isAttacking && m.visible) m.position.y = Math.sin(time + m.userData.randomOffset) * 0.3; });
 
-        // ★ 新增全天候環境交火引擎 (Ambient Combat Engine)：隨機觸發小規模雷射，強化戰場沉浸感
         if (Math.random() < 0.08) { 
             const allArmies = [baseRedArmy, baseGreenArmy, playerRedArmy, playerGreenArmy];
             const randomArmy = allArmies[Math.floor(Math.random() * allArmies.length)];
@@ -846,7 +846,7 @@ function animate() {
 
 
 // ==========================================
-// 6. 圖表引擎與技術指標演算法
+// 6. 圖表引擎與技術指標演算法 (修復 8932 K棒黑屏與雙軸)
 // ==========================================
 function calcEMA(data, period) { 
     if(data.length === 0) return []; 
@@ -904,7 +904,14 @@ window.fetchFullChartData = async function() {
                     if (data?.chart?.result?.[0]) {
                         const result = data.chart.result[0]; const quote = result.indicators.quote[0]; const ts = result.timestamp || []; let ohlc = [];
                         for(let i = 0; i < ts.length; i++) {
-                            if(quote.close[i] !== null && quote.close[i] !== undefined) ohlc.push({ x: ts[i] * 1000, o: quote.open[i], h: quote.high[i], l: quote.low[i], c: quote.close[i], v: quote.volume[i] });
+                            // ★ 修復圖 31 K 棒黑屏 Bug：針對部分上櫃冷門股(如智通)高低開盤價可能為 Null 的情況進行補齊
+                            if(quote.close[i] !== null && quote.close[i] !== undefined) { 
+                                let c = quote.close[i];
+                                let o = quote.open[i] !== null ? quote.open[i] : c;
+                                let h = quote.high[i] !== null ? quote.high[i] : c;
+                                let l = quote.low[i] !== null ? quote.low[i] : c;
+                                ohlc.push({ x: ts[i] * 1000, o: o, h: h, l: l, c: c, v: quote.volume[i] || 0 });
+                            }
                         }
                         if(ohlc.length > 0) { city.chartData[gameState.timeframe] = ohlc; fetched = true; }
                         return true;
@@ -936,7 +943,6 @@ window.fetchFullChartData = async function() {
     if(!document.getElementById('chart-page').classList.contains('hidden')) window.renderChartInstance(); 
 };
 
-// ★ 新增熱更新引擎：避免每次都摧毀 Canvas 導致閃爍
 window.updateChartDataOnly = function() {
     if (!mainChart || !volChart || !indChart) return;
     const city = CITIES[gameState.activeCity]; if(!city || !city.chartData[gameState.timeframe]) return;
@@ -1091,7 +1097,7 @@ async function fetchRealMarketData(isInitial = false, forceReal = false) {
     };
 
     let success = false;
-    // 涵蓋上市與上櫃股票
+    // ★ 涵蓋上市與上櫃股票 (智慧探測)
     for (const suffix of ['.TW', '.TWO', '']) {
         if (success) break;
         const url = makeUrl(suffix);
@@ -1135,7 +1141,6 @@ function setCurrentPrice(p) {
     }
     if(isGameReady) updateUI(); 
     
-    // ★ 呼叫熱更新引擎，圖表即時平滑變動不閃爍
     if(!document.getElementById('chart-page').classList.contains('hidden')) {
         if (mainChart) window.updateChartDataOnly();
         else window.renderChartInstance();
@@ -1205,7 +1210,7 @@ function localTick() {
             if (checkPrice <= 0) continue;
             
             if ((po.side === 'LONG' && checkPrice <= po.targetPrice) || (po.side === 'SHORT' && checkPrice >= po.targetPrice)) {
-                // ★ 計算精準買入稅費
+                // 計算精準買入稅費
                 const entryVal = Math.floor(po.targetPrice * po.qty * 1000);
                 let entryFee = Math.floor(entryVal * FEE_RATE);
                 if (po.side === 'SHORT') entryFee += Math.floor(entryVal * TAX_RATE); // 融券賣出含稅
@@ -1473,7 +1478,6 @@ window.switchCity = async function(code) {
     document.getElementById('market-price').innerText = "連線中...";
     rebuildEnvironment(); 
     
-    // 強制更新真實基價，即使在沙盤推演也能抓到最新真實狀態
     const success = await fetchRealMarketData(false, true); 
     if (!success && !isSimMode) {
         window.showMsg("天界連線受阻，載入歷史資料");
@@ -1498,7 +1502,6 @@ window.switchSector = function(code) {
     }
 };
 
-// ★ 強制檢查多空互斥與「市價單」直接入庫存邏輯
 window.issueOrder = function(side) {
     if (currentMarketState === "CLOSED" && !isSimMode) { window.showMsg("天道休市期間 僅開放沙盤練兵下單"); window.triggerThunder(); return; }
     
@@ -1590,6 +1593,13 @@ window.settle = function(id) {
     const currentCityPrice = u.city === gameState.activeCity ? currentPrice : (isSimMode ? window.safeNum(CITIES[u.city]?.price, CITIES[u.city]?.simBasePrice) : window.safeNum(CITIES[u.city]?.realPrice, CITIES[u.city]?.basePrice));
     
     let profit = calcProfit(u.side, u.cost, currentCityPrice > 0 ? currentCityPrice : u.cost, u.qty);
+    
+    const exitVol = Math.floor(currentCityPrice * u.qty * 1000);
+    let exitFee = Math.floor(exitVol * FEE_RATE);
+    let exitTax = 0;
+    if(u.side === 'LONG') exitTax = Math.floor(exitVol * TAX_RATE); 
+    const totalTax = (u.entryFee || 0) + exitFee + exitTax;
+    
     let modalStyle = 'border-gray-500/40 shadow-2xl'; let titleStr = '結算紀實'; let iconStr = '';
     
     if (u.isFromGuest) {
@@ -1599,13 +1609,17 @@ window.settle = function(id) {
     }
 
     gameState.balance += Math.floor(u.cost * u.qty * 1000) + profit;
-    if(!isSimMode) gameState.realizedPnl += profit;
-    gameState.history.unshift({...u, pnl: profit, exit: currentCityPrice, time: new Date().toLocaleTimeString('zh-TW', {hour12:false}), timestamp: Date.now()});
+    if(!isSimMode) {
+        gameState.realizedPnl += profit;
+        gameState.taxTotal = (gameState.taxTotal || 0) + totalTax;
+    }
+    
+    gameState.history.unshift({...u, pnl: profit, exit: currentCityPrice, time: new Date().toLocaleTimeString('zh-TW', {hour12:false}), timestamp: Date.now(), tax: totalTax });
     gameState.units.splice(idx, 1); syncPlayerTroopsFromState(); updateUI(); syncToCloud();
     
     const modalWindow = document.getElementById('modal-window');
     modalWindow.className = `p-6 w-full max-w-md transform scale-95 transition-all duration-500 rounded-2xl ${modalStyle} flex flex-col max-h-[90vh]`;
-    document.getElementById('modal-body').innerHTML = `${iconStr}<h2 class="text-xl font-black mb-4 tracking-widest text-center">${titleStr}</h2><div class="text-center"><span class="text-xs opacity-70">平倉淨利</span><div class="text-4xl font-black mt-2 drop-shadow-md ${profit>=0?'text-red-500':'text-green-500'}">${profit>=0?'加 ':'減 '}${Math.abs(Math.floor(profit)).toLocaleString()}</div></div>`;
+    document.getElementById('modal-body').innerHTML = `${iconStr}<h2 class="text-xl font-black mb-4 tracking-widest text-center">${titleStr}</h2><div class="text-center"><span class="text-xs opacity-70">平倉淨利</span><div class="text-4xl font-black mt-2 drop-shadow-md ${profit>=0?'text-red-500':'text-green-500'}">${profit>=0?'加 ':'減 '}${Math.abs(Math.floor(profit)).toLocaleString()}</div><div class="mt-4 pt-2 border-t border-white/10 text-gray-400 text-xs tracking-widest">已為天界繳納稅費: ${Math.floor(totalTax).toLocaleString()}</div></div>`;
     document.getElementById('report-modal').classList.remove('opacity-0', 'pointer-events-none');
     setTimeout(() => modalWindow.classList.replace('scale-95', 'scale-100'), 10);
 };
@@ -1635,7 +1649,11 @@ window.forceCloseSimMode = async function(auto = false) {
         let profit = calcProfit(u.side, u.cost, currentCityPrice, u.qty);
         if (u.isFromGuest) profit *= 1.05; 
         finalSimBalance += (u.cost * u.qty * 1000) + profit;
-        gameState.history.unshift({...u, pnl: profit, exit: currentCityPrice, time: new Date().toLocaleTimeString('zh-TW', {hour12:false}), timestamp: Date.now()});
+        
+        const exitFee = (currentCityPrice * u.qty * 1000) * (TAX_RATE + FEE_RATE);
+        const totalTax = (u.entryFee || 0) + exitFee;
+        
+        gameState.history.unshift({...u, pnl: profit, exit: currentCityPrice, time: new Date().toLocaleTimeString('zh-TW', {hour12:false}), timestamp: Date.now(), tax: totalTax});
     });
     
     gameState.pendingOrders.filter(po => po.isSim).forEach(po => {
@@ -1698,36 +1716,80 @@ window.openCustomManager = function() {
 };
 window.closeCustomManager = function() { gameState.apiKey = document.getElementById('api-key-input').value; document.getElementById('custom-modal').classList.add('opacity-0', 'pointer-events-none'); syncToCloud(); };
 
-window.addNewSector = function() {
-    const id = document.getElementById('new-sector-id').value.toUpperCase().trim();
-    const name = document.getElementById('new-sector-name').value.trim();
-    if(!id || !name) return;
-    if(!SECTORS[id]) {
-        SECTORS[id] = { name: name, cities: [] };
-        window.showMsg(`已建立領域：${name}`);
-        document.getElementById('new-sector-id').value = '';
-        document.getElementById('new-sector-name').value = '';
-        renderCustomList();
-        const sel = document.getElementById('assign-sector-select');
-        sel.innerHTML = '';
-        for(let k in SECTORS) { sel.appendChild(new Option(`${k} ${SECTORS[k].name}`, k)); }
+// ★ 實裝：破產轉生機制 (修復圖 32)
+window.triggerRebirth = function() {
+    if(confirm("統帥，確定要宣告破產並重新轉生嗎？\n這將會清除您所有的庫存、資金與戰紀，並獲得全新的 500 萬天幣！")) {
+        gameState.balance = 5000000;
+        gameState.frozen = 0;
+        gameState.realizedPnl = 0;
+        gameState.taxTotal = 0;
+        gameState.units = [];
+        gameState.history = [];
+        gameState.pendingOrders = [];
+        if (isSimMode) {
+            isSimMode = false;
+            realStateSnapshot = null;
+            document.getElementById('sim-pnl-container').classList.add('hidden'); 
+            document.getElementById('real-pnl-container').classList.remove('hidden');
+            ['main-dashboard','tab-container','order-panel'].forEach(id => { document.getElementById(id).classList.replace('glass-sim', 'glass'); });
+        }
+        
+        window.closeCustomManager();
+        updateOrderButtonsUI();
+        updateUI();
         syncToCloud();
-    } else {
-        window.showMsg("該領域代號已存在！");
+        
+        window.showMsg("輪迴轉生成功！天界已為您注入 500 萬兵推資金。");
+        document.getElementById('entry-modal').classList.remove('hidden');
+        setTimeout(() => document.getElementById('entry-modal').classList.remove('opacity-0'), 50);
+    }
+};
+
+window.factoryResetData = function() {
+    if(confirm("確定要刪除所有自訂領域與城池，還原至出廠設定嗎？(您的國庫與戰報將保留)")) {
+        initDefaultDatabase();
+        gameState.activeSector = "SEMICON";
+        gameState.activeCity = "2330";
+        saveDataToCloud();
+        window.closeCustomManager();
+        window.showMsg("已還原原廠領域編制");
+        setTimeout(() => location.reload(), 1000); 
     }
 };
 
 window.addCustomStock = function() {
     const sym = document.getElementById('custom-symbol').value.toUpperCase().trim();
     const name = document.getElementById('custom-name').value.trim();
-    let sectorId = document.getElementById('assign-sector-select').value;
+    let sectorInput = document.getElementById('custom-sector-name').value.trim();
+    let sectorDropdown = document.getElementById('assign-sector-select').value;
     
-    if(!sectorId) sectorId = "CUSTOM";
+    let targetSectorId = sectorDropdown;
     
-    if(!sym || !name) return;
-    if(!CITIES[sym]) { CITIES[sym] = { name, price: 100, basePrice: 100, vol: 2, chartData: {} }; } else { CITIES[sym].name = name; }
-    if(!SECTORS[sectorId].cities.includes(sym)) { SECTORS[sectorId].cities.push(sym); }
-    document.getElementById('custom-symbol').value = ''; document.getElementById('custom-name').value = ''; window.showMsg(`編列 ${name} 至 ${SECTORS[sectorId].name}`); renderCustomList(); syncToCloud();
+    if(sectorInput) {
+        let existingId = Object.keys(SECTORS).find(k => SECTORS[k].name === sectorInput);
+        if (existingId) {
+            targetSectorId = existingId;
+        } else {
+            targetSectorId = "SEC_" + Date.now().toString().slice(-4);
+            SECTORS[targetSectorId] = { name: sectorInput, cities: [] };
+        }
+    } else if (!targetSectorId) {
+        targetSectorId = "CUSTOM";
+    }
+    
+    if(!sym) { window.showMsg("請輸入代號"); return; }
+    
+    if(!CITIES[sym]) { CITIES[sym] = { name: name || sym, price: 100, basePrice: 100, vol: 2, chartData: {} }; } 
+    else if (name) { CITIES[sym].name = name; }
+    
+    if(!SECTORS[targetSectorId].cities.includes(sym)) { SECTORS[targetSectorId].cities.push(sym); }
+    
+    document.getElementById('custom-symbol').value = ''; 
+    document.getElementById('custom-name').value = ''; 
+    document.getElementById('custom-sector-name').value = '';
+    window.showMsg(`編列成功 至 ${SECTORS[targetSectorId].name}`); 
+    renderCustomList(); 
+    syncToCloud();
 };
 
 window.renderCustomList = function() {
@@ -1748,6 +1810,11 @@ window.renderCustomList = function() {
         html += `</div>`;
         list.innerHTML += html;
     }
+    const sel = document.getElementById('assign-sector-select');
+    if (sel) {
+        sel.innerHTML = '';
+        for(let k in SECTORS) { sel.appendChild(new Option(`${k} ${SECTORS[k].name}`, k)); }
+    }
 };
 
 window.removeSector = function(sKey) {
@@ -1756,9 +1823,6 @@ window.removeSector = function(sKey) {
     delete SECTORS[sKey];
     window.showMsg(`已刪除領域`);
     renderCustomList();
-    const sel = document.getElementById('assign-sector-select');
-    sel.innerHTML = '';
-    for(let k in SECTORS) { sel.appendChild(new Option(`${k} ${SECTORS[k].name}`, k)); }
     syncToCloud();
 };
 
@@ -1826,6 +1890,7 @@ window.showDailySummary = function() {
             <div class="flex justify-between border-b border-white/10 pb-2"><span class="text-yellow-500 font-bold tracking-widest">總體戰略勝率</span><span class="text-yellow-500 font-mono drop-shadow-md">${rate.toFixed(1)} %</span></div>
             <div class="flex justify-between border-b border-white/10 pb-2"><span class="text-gray-400 font-bold tracking-widest">【未平倉】浮動淨利</span><span class="font-mono font-bold ${realUnrealized>=0?'text-red-400':'text-green-400'}">${Math.floor(realUnrealized).toLocaleString()}</span></div>
             <div class="flex justify-between"><span class="text-gray-400 font-bold tracking-widest">【已入庫】實現淨利</span><span class="font-mono font-bold ${gameState.realizedPnl>=0?'text-red-500':'text-green-500'}">${Math.floor(window.safeNum(gameState.realizedPnl,0)).toLocaleString()}</span></div>
+            <div class="flex justify-between border-t border-white/10 pt-2"><span class="text-gray-400 font-bold tracking-widest">💸【已繳納】總稅費</span><span class="font-mono font-bold text-yellow-600/80">${Math.floor(gameState.taxTotal || 0).toLocaleString()}</span></div>
         </div>
         <div class="bg-black/60 border border-yellow-500/30 p-3 rounded-lg text-left">
             <span class="text-[10px] text-yellow-500 font-bold uppercase tracking-widest block mb-1">AI 戰機檢討</span>
