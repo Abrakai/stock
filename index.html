@@ -133,7 +133,7 @@
                 <div class="mt-3 pt-3 border-t border-white/10 flex gap-2 items-center">
                     <select id="sector-selector" onchange="window.switchSector(this.value)" class="bg-black/50 border border-white/20 rounded-lg px-2 py-1.5 text-[10px] md:text-xs font-bold text-gray-200 focus:outline-none w-24 md:w-auto truncate cursor-pointer"></select>
                     <select id="city-selector" onchange="window.switchCity(this.value)" class="flex-1 bg-black/50 border border-white/20 rounded-lg px-2 py-1.5 text-[11px] md:text-sm font-bold text-white focus:outline-none truncate cursor-pointer"></select>
-                    <button onclick="window.openCustomManager()" class="bg-white/10 hover:bg-white/20 p-1.5 rounded-lg text-white font-bold text-[10px] cursor-pointer">⚙ 總機設定</button>
+                    <button onclick="window.openCustomManager()" class="bg-white/10 hover:bg-white/20 p-1.5 rounded-lg text-white font-bold text-[10px] cursor-pointer">⚙ 總機</button>
                 </div>
                 
                 <div class="flex justify-between items-center bg-black/40 p-2.5 rounded-lg mt-3 border border-white/10 shadow-inner">
@@ -254,7 +254,7 @@
             </div>
         </div>
         
-        <div class="h-[25vh] min-h-[150px] bg-black/50 border border-white/10 p-2 rounded-xl relative flex flex-col shadow-inner">
+        <div class="h-[25vh] min-h-[200px] bg-black/50 border border-white/10 p-2 rounded-xl relative flex flex-col shadow-inner">
             <div class="flex gap-2 absolute top-2 left-3 z-10">
                 <button onclick="window.setIndicator('MACD')" id="btn-ind-MACD" class="ind-btn active">MACD</button>
                 <button onclick="window.setIndicator('KD')" id="btn-ind-KD" class="ind-btn">KD</button>
@@ -271,7 +271,6 @@
 <!-- ==========================================
      各類 Modal 彈窗系統
      ========================================== -->
-
 <div id="fund-alert-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-[70] opacity-0 pointer-events-none transition-opacity duration-300 p-4">
     <div class="glass rounded-2xl p-6 w-full max-w-sm border-red-500/50 shadow-[0_0_40px_rgba(220,38,38,0.4)] text-center transform scale-95 transition-transform duration-300" id="fund-alert-window">
         <div class="text-6xl mb-4 animate-bounce">💸</div>
@@ -438,7 +437,6 @@ let gameState = {
     units: [], history: [], pendingOrders: [], apiKey: ""
 };
 
-let globalStats = { totalUsers: 0, todayActive: 0 };
 let isSimMode = false;
 let realStateSnapshot = null;
 let currentMarketState = "CLOSED"; 
@@ -560,10 +558,6 @@ async function loadFromCloud(uid) {
     }, (error) => { console.error("loadFromCloud error:", error); });
 }
 
-async function updateGlobalStats(uid) {
-    console.log("統帥身分已確認，戰場統計數據就緒。");
-}
-
 function updateLoginUI() {
     const today = new Date();
     const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
@@ -616,7 +610,7 @@ window.submitEntryCity = function() {
 }
 
 // ==========================================
-// 5. 3D 渲染引擎核心
+// 5. 3D 渲染引擎核心 (強化景深與漲跌幅網格線)
 // ==========================================
 function getSeason() { const m = new Date().getMonth() + 1; if(m >= 3 && m <= 5) return 'SPRING'; if(m >= 6 && m <= 8) return 'SUMMER'; if(m >= 9 && m <= 11) return 'AUTUMN'; return 'WINTER'; }
 function getPriceTier(price) { if(price < 100) return 1; if(price <= 200) return 2; if(price <= 500) return 3; if(price <= 999) return 4; return 5; }
@@ -649,7 +643,10 @@ function createForest(season) {
     for(let i=0; i<45; i++) {
         const tree = new THREE.Group(); const tk = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.2, 4, 6), new THREE.MeshStandardMaterial({color: 0x1e293b, metalness: 0.6})); tk.position.y = 2;
         const l1 = new THREE.Mesh(new THREE.ConeGeometry(4.5, 8, 7), mat); l1.position.y = 6; const l2 = new THREE.Mesh(new THREE.ConeGeometry(3.5, 6, 7), mat); l2.position.y = 11;
-        tree.add(tk, l1, l2); tree.scale.setScalar(0.8 + Math.random() * 0.8); tree.position.set(30 + Math.random()*25, 0, (Math.random()-0.5)*75); group.add(tree);
+        tree.add(tk, l1, l2); tree.scale.setScalar(0.8 + Math.random() * 0.8); 
+        // ★ 修復：將樹林往外移，避免遮擋右側綠色空軍
+        tree.position.set(45 + Math.random()*25, 0, (Math.random()-0.5)*80); 
+        group.add(tree);
     }
     return group;
 }
@@ -722,7 +719,7 @@ function updateVisuals() {
     if(!isGameReady || !is3DInitialized) return;
     const city = CITIES[gameState.activeCity]; if(!city) return;
     const base = isSimMode ? city.simBasePrice : city.basePrice; const diff = base > 0 ? (currentPrice - base) / base : 0;
-    const drift = window.safeNum(diff * 600, 0);
+    const drift = window.safeNum(diff * 600, 0); // 1% = 6 units
     if(battleLine) battleLine.position.x += (drift - battleLine.position.x) * 0.15;
     const shift = drift * 0.4;
     [...baseRedArmy, ...playerRedArmy].forEach(m => { if(!m.userData.isAttacking) m.position.x += ((m.userData.baseX + shift) - m.position.x) * 0.1; });
@@ -767,10 +764,23 @@ function init3D() {
     renderer.domElement.className = 'three-canvas'; document.body.appendChild(renderer.domElement);
     
     scene.add(new THREE.AmbientLight(0xffffff, 4.0)); const dLight = new THREE.DirectionalLight(0xffffff, 5.5); dLight.position.set(20, 100, 40); scene.add(dLight);
+    
+    // ★ 實裝漲跌幅距離標示線 (+/- 2.5%, 5%, 7.5%, 10%)
+    for(let i=1; i<=4; i++) {
+        const lineGeoR = new THREE.BoxGeometry(0.2, 0.1, 80);
+        const lineMatR = new THREE.MeshBasicMaterial({color: 0xef4444, transparent: true, opacity: 0.35 - i*0.05});
+        const meshR = new THREE.Mesh(lineGeoR, lineMatR); meshR.position.set(-15 * i, 0.05, 0); scene.add(meshR);
+        
+        const lineGeoG = new THREE.BoxGeometry(0.2, 0.1, 80);
+        const lineMatG = new THREE.MeshBasicMaterial({color: 0x22c55e, transparent: true, opacity: 0.35 - i*0.05});
+        const meshG = new THREE.Mesh(lineGeoG, lineMatG); meshG.position.set(15 * i, 0.05, 0); scene.add(meshG);
+    }
+    
     const grid = new THREE.GridHelper(200, 80, 0x223344, 0x0a1122); grid.position.y = 0.01; scene.add(grid);
     battleLine = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 75), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })); scene.add(battleLine);
     
-    camera.position.set(0, 50, 85); camera.lookAt(0, 5, 0);
+    // ★ 將視角拉高拉遠，擴闊視野
+    camera.position.set(0, 65, 100); camera.lookAt(0, 0, 0);
     is3DInitialized = true; 
     window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
     animate();
@@ -810,7 +820,7 @@ function animate() {
 
 
 // ==========================================
-// 6. 圖表引擎與技術指標演算法強化
+// 6. 圖表引擎與技術指標演算法 (修復雙軸與 NaN 問題)
 // ==========================================
 function calcEMA(data, period) { 
     if(data.length === 0) return []; 
@@ -831,7 +841,7 @@ function calcMACD(data) {
     let ema26 = calcEMA(data, 26); 
     let macd = ema12.map((v, i) => v - ema26[i]); 
     let signal = calcEMA(macd, 9); 
-    let hist = macd.map((v, i) => (v - signal[i]) * 2); // 放大視覺係數
+    let hist = macd.map((v, i) => (v - signal[i]) * 2); // 放大柱狀圖視覺係數
     return {macd, signal, hist}; 
 }
 function calcKD(data, period = 9) { if(data.length < period) return {k: [], d: []}; let k = [], dv = [], pk = 50, pd = 50; for(let i = 0; i < data.length; i++) { let st = Math.max(0, i - period + 1); let sl = data.slice(st, i + 1); let hi = Math.max(...sl); let lo = Math.min(...sl); let rsv = (hi === lo) ? 50 : ((data[i] - lo) / (hi - lo)) * 100; let ck = (2 / 3) * pk + (1 / 3) * rsv; let cd = (2 / 3) * pd + (1 / 3) * ck; k.push(ck); dv.push(cd); pk = ck; pd = cd; } return {k, dv}; }
@@ -896,18 +906,19 @@ window.renderChartInstance = function() {
     const ctxM = document.getElementById('mainChartCanvas').getContext('2d');
     if(mainChart) mainChart.destroy();
     
+    // ★ 實裝 X 軸時間顯示與刻度
     mainChart = new Chart(ctxM, {
         type: 'line',
         data: { 
             labels: labels, 
             datasets: [{ 
-                label: '收盤價走勢', data: closePrices, borderColor: '#eab308', backgroundColor: 'rgba(234, 179, 8, 0.15)', 
+                label: '收盤價', data: closePrices, borderColor: '#eab308', backgroundColor: 'rgba(234, 179, 8, 0.15)', 
                 borderWidth: 2, pointRadius: 0, tension: 0.1, fill: true 
             }] 
         },
         options: { 
             animation: false, responsive: true, maintainAspectRatio: false, 
-            scales: { x: { display: true, ticks: { color: '#888', maxTicksLimit: 8, maxRotation: 0 } }, y: { position: 'right', ticks: { color: '#ccc' }, grid: { color: 'rgba(255,255,255,0.05)' } } }, 
+            scales: { x: { display: true, ticks: { color: '#888', maxTicksLimit: 6, maxRotation: 0 } }, y: { position: 'right', ticks: { color: '#ccc' }, grid: { color: 'rgba(255,255,255,0.05)' } } }, 
             plugins: { legend: { display: false } } 
         }
     });
@@ -917,7 +928,7 @@ window.renderChartInstance = function() {
     volChart = new Chart(ctxV, {
         type: 'bar',
         data: { labels, datasets: [{ data: raw.map(d => d.v || 0), backgroundColor: raw.map(d => d.c >= d.o ? upCol : dnCol), barThickness: barWidth }] },
-        options: { animation: false, responsive: true, maintainAspectRatio: false, scales: { x: { display: true, ticks: { display: false }, grid: { display: false } }, y: { display: false } }, plugins: { legend: { display: false } } }
+        options: { animation: false, responsive: true, maintainAspectRatio: false, scales: { x: { display: true, ticks: { color: '#888', maxTicksLimit: 6, maxRotation: 0 }, grid: { display: false } }, y: { display: false } }, plugins: { legend: { display: false } } }
     });
 
     const ctxI = document.getElementById('indicatorChartCanvas').getContext('2d');
@@ -927,6 +938,7 @@ window.renderChartInstance = function() {
     
     if(ind === "MACD") {
         const {macd, signal, hist} = calcMACD(closePrices);
+        // ★ MACD 雙軸分離技術，保證快慢線與柱狀圖完美呈現
         yScales = {
             y: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'MACD', color: '#888', font: {size: 8} }, ticks: { color: '#fff', font: { size: 8 } } },
             y1: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'OSC', color: '#888', font: {size: 8} }, ticks: { color: '#aaa', font: { size: 8 } }, grid: { drawOnChartArea: false } }
@@ -938,9 +950,11 @@ window.renderChartInstance = function() {
         ];
     } else if(ind === "KD") {
         const {k, d} = calcKD(closePrices);
-        datasets = [ { type: 'line', label: 'K', data: k, borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0 }, { type: 'line', label: 'D', data: d, borderColor: '#fb923c', borderWidth: 1.5, pointRadius: 0 } ];
+        yScales = { y: { min: 0, max: 100, position: 'right', ticks: { color: '#fff', font: { size: 8 } } } }; // ★ 強制 0~100 刻度
+        datasets = [ { type: 'line', label: 'K (快)', data: k, borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0 }, { type: 'line', label: 'D (慢)', data: d, borderColor: '#fb923c', borderWidth: 1.5, pointRadius: 0 } ];
     } else if(ind === "RSI") {
         const rsi5 = calcRSI(closePrices, 5); const rsi10 = calcRSI(closePrices, 10);
+        yScales = { y: { min: 0, max: 100, position: 'right', ticks: { color: '#fff', font: { size: 8 } } } }; // ★ 強制 0~100 刻度
         datasets = [ { type: 'line', label: 'RSI 5', data: rsi5, borderColor: '#c084fc', borderWidth: 1.5, pointRadius: 0 }, { type: 'line', label: 'RSI 10', data: rsi10, borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0 } ];
     } else if(ind === "BIAS") {
         const b5 = calcBIAS(closePrices, 5); const b10 = calcBIAS(closePrices, 10); const b20 = calcBIAS(closePrices, 20);
@@ -951,7 +965,7 @@ window.renderChartInstance = function() {
         data: { labels, datasets }, 
         options: { 
             animation: false, responsive: true, maintainAspectRatio: false, 
-            scales: Object.assign({ x: { display: true, ticks: { color: '#888', maxTicksLimit: 8, maxRotation: 0 } } }, yScales),
+            scales: Object.assign({ x: { display: true, ticks: { color: '#888', maxTicksLimit: 6, maxRotation: 0 } } }, yScales),
             plugins: { legend: { display: true, position: 'top', labels: { color: '#888', font: { size: 8 } } } } 
         } 
     });
@@ -1004,7 +1018,7 @@ function setCurrentPrice(p) {
     if(isNaN(p) || p <= 0) return; 
     currentPrice = p; 
     
-    // ★ 即時更新最後一根 K 線，確保真實世界的看盤圖表可以即時隨股價連動
+    // ★ 即時連動：股價改變時同步寫入最後一根 K 線並即時重繪
     if (!isSimMode) {
         const city = CITIES[gameState.activeCity];
         if (city && city.chartData) {
@@ -1131,8 +1145,11 @@ function localTick() {
         }
     } else if (currentMarketState === "OPEN" && Math.random() > 0.8) { fetchRealMarketData(); }
     
-    // 如果圖表開著，確保每秒渲染最新的一根 K 線
+    // ★ 保證每秒渲染最新 K 線
     if(!document.getElementById('chart-page').classList.contains('hidden')) window.renderChartInstance(); 
+    
+    // ★ 保證 UI (庫存損益) 每秒跟隨現價跳動
+    updateUI();
 }
 
 function initKbars(city, startPrice = null) {
@@ -1234,10 +1251,15 @@ function renderUnits() {
                 g.items.forEach(u => {
                     const profit = calcProfit(u.side, u.cost, currentCityPrice > 0 ? currentCityPrice : u.cost, u.qty);
                     const guestTag = u.isFromGuest ? '<span class="text-[9px] bg-yellow-500/20 text-yellow-400 px-1 rounded ml-1 border border-yellow-500/50">神秘客</span>' : '';
+                    
+                    // ★ 放大平倉按鈕並依照損益變色，直覺指引操作
                     cont.innerHTML += `
                     <div class="bg-black/40 p-2 rounded-lg border-r-4 ${profit >= 0 ? 'border-red-500' : 'border-green-500'} mb-2 ml-4">
-                        <div class="flex justify-between text-xs"><span>庫存 ${u.side === 'LONG' ? '做多' : '做空'} ${guestTag}</span><span class="${profit >= 0 ? 'text-red-400' : 'text-green-400'}">${Math.floor(profit).toLocaleString()}</span></div>
-                        <div class="flex justify-between items-center mt-1"><span class="text-[9px] text-gray-500">進場單價 ${u.cost.toFixed(2)}</span><button onclick="window.settle(${u.id})" class="text-[10px] bg-white/10 px-3 py-1 rounded hover:bg-white/20 transition-colors cursor-pointer">平倉賣出</button></div>
+                        <div class="flex justify-between text-xs"><span>庫存 ${u.side === 'LONG' ? '做多' : '做空'} ${guestTag}</span><span class="${profit >= 0 ? 'text-red-400' : 'text-green-400'} font-bold">${Math.floor(profit).toLocaleString()}</span></div>
+                        <div class="flex justify-between items-center mt-2">
+                            <span class="text-[9px] text-gray-400 bg-black/50 px-2 py-1 rounded">進場價: ${u.cost.toFixed(2)}</span>
+                            <button onclick="window.settle(${u.id})" class="text-[11px] font-bold text-white px-4 py-1.5 rounded shadow-lg transition-colors border border-white/20 ${profit >= 0 ? 'bg-red-600 hover:bg-red-500' : 'bg-green-600 hover:bg-green-500'} cursor-pointer">平倉結算</button>
+                        </div>
                     </div>`;
                 });
             }
@@ -1341,7 +1363,7 @@ window.switchCity = async function(code) {
     document.getElementById('market-price').innerText = "連線中...";
     rebuildEnvironment(); 
     
-    // 強制更新真實基價，即使在沙盤推演也能抓到最新真實狀態
+    // ★ 修復：強制更新真實基價，即使在沙盤推演也能抓到最新真實狀態
     const success = await fetchRealMarketData(false, true); 
     if (!success && !isSimMode) {
         window.showMsg("天界連線受阻，載入歷史資料");
@@ -1366,7 +1388,7 @@ window.switchSector = function(code) {
     }
 };
 
-// ★ 強制檢查多空互斥與「市價單」直接入庫存邏輯
+// ★ 修復：強制市價單立即入庫
 window.issueOrder = function(side) {
     if (currentMarketState === "CLOSED" && !isSimMode) { window.showMsg("天道休市期間 僅開放沙盤練兵下單"); window.triggerThunder(); return; }
     
@@ -1383,7 +1405,6 @@ window.issueOrder = function(side) {
     let orderP;
     let isMarketOrder = false;
 
-    // 如果沒有輸入數字，視為直接以現價成交的「市價單」
     if(orderPStr === "" || isNaN(parseFloat(orderPStr))) {
         orderP = currentPrice;
         isMarketOrder = true;
@@ -1399,7 +1420,6 @@ window.issueOrder = function(side) {
     let isFromGuest = (window.mysteryGuestActiveSide === side);
     if(isFromGuest) window.mysteryGuestActiveSide = null; 
     
-    // 只有當使用者輸入明確數字且大於微小差異時，才轉入掛單區
     if (!isMarketOrder && Math.abs(orderP - currentPrice) > 0.001) {
         gameState.balance -= totalCost; gameState.frozen += totalCost;
         if(!gameState.pendingOrders) gameState.pendingOrders = [];
@@ -1413,7 +1433,6 @@ window.issueOrder = function(side) {
         window.switchTab('units');
     }
     
-    // 清空輸入框準備下一次下單
     document.getElementById('order-qty').value = "1";
     document.getElementById('order-price').value = "";
     
@@ -1521,7 +1540,7 @@ window.forceCloseSimMode = async function(auto = false) {
     gameState.history = preservedHistory; 
     isSimMode = false;
     
-    // 瞬間鎖定最新現價並重繪畫面
+    // ★ 瞬間鎖定最新現價並重繪畫面 (修復圖 10)
     const realC = CITIES[gameState.activeCity];
     if (realC) { setCurrentPrice(window.safeNum(realC.realPrice, realC.basePrice)); }
     
