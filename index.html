@@ -37,8 +37,6 @@
         .ind-btn.active { background: #3b82f6; color: white; border-color: #3b82f6; font-weight: bold; box-shadow: 0 0 10px rgba(59,130,246,0.5); }
         .timeframe-btn { font-size: 11px; padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; cursor: pointer; }
         .timeframe-btn.active { background: #eab308; color: black; border-color: #eab308; font-weight: 900; }
-        .filter-btn { font-size: 11px; padding: 4px 12px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); cursor: pointer; transition: all 0.2s; }
-        .filter-btn.active { background: #a855f7; color: white; border-color: #a855f7; }
         
         input[type=number], input[type=text], input[type=date], select { background: rgba(0,0,0,0.4); box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); transition: all 0.3s; color: white; border: 1px solid rgba(255,255,255,0.1); outline: none; }
         input[type=number]:focus, input[type=text]:focus, input[type=date]:focus, select:focus { background: rgba(255,255,255,0.1); box-shadow: 0 0 10px rgba(234,179,8,0.3), inset 0 2px 4px rgba(0,0,0,0.5); border-color: #eab308; }
@@ -149,7 +147,7 @@
                             <span id="market-price" class="text-2xl md:text-3xl font-mono font-black text-white">等待天道</span>
                             <span id="price-change" class="text-[10px] md:text-[11px] font-bold text-gray-400">0.00 %</span>
                         </div>
-                        <span id="price-update-time" class="text-[9px] text-gray-500 mt-1 font-mono tracking-widest">報價時間: --:--:--</span>
+                        <span id="price-update-time" class="text-[10px] text-sky-300 mt-1 font-mono tracking-wider bg-black/50 px-1.5 py-0.5 rounded w-max border border-sky-900/50">報價時間: --:--:--</span>
                     </div>
                     <div class="text-right flex flex-col items-end">
                         <span id="base-price-label" class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-0.5">前一交易日收盤價</span>
@@ -191,7 +189,10 @@
             </div>
 
             <div id="order-panel" class="glass rounded-xl p-3 md:p-4 flex flex-col w-full md:flex-1 justify-center gap-3 relative overflow-hidden">
-                <div id="order-overlay-msg" class="absolute inset-0 bg-black/80 backdrop-blur-sm z-20 flex items-center justify-center text-yellow-500 font-bold tracking-widest hidden">請先開啟沙盤或等待天道開盤</div>
+                <div id="order-overlay-msg" class="absolute inset-0 bg-black/80 backdrop-blur-sm z-20 flex flex-col items-center justify-center text-center p-2 hidden">
+                    <span class="text-yellow-500 font-bold tracking-widest text-sm mb-1">等待天道開盤</span>
+                    <span class="text-[10px] text-gray-300 leading-relaxed">在非台股開盤期間，只能於沙盤推演中買與賣。<br>真實世界的買賣皆須於台股開盤期間執行。</span>
+                </div>
                 <div class="flex gap-3 relative z-10">
                     <div class="flex flex-col flex-1">
                         <span class="text-[10px] text-gray-400 font-bold uppercase mb-1 ml-1 tracking-widest">派遣營數 (1營=1000股)</span>
@@ -565,6 +566,10 @@ async function loadFromCloud(uid) {
     }, (error) => { console.error("loadFromCloud error:", error); });
 }
 
+async function updateGlobalStats(uid) {
+    console.log("統帥身分已確認，戰場統計數據就緒。");
+}
+
 function updateLoginUI() {
     const today = new Date();
     const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
@@ -625,7 +630,7 @@ window.submitEntryCity = function() {
 }
 
 // ==========================================
-// 5. 3D 渲染引擎核心
+// 5. 3D 渲染引擎核心 
 // ==========================================
 function getSeason() { const m = new Date().getMonth() + 1; if(m >= 3 && m <= 5) return 'SPRING'; if(m >= 6 && m <= 8) return 'SUMMER'; if(m >= 9 && m <= 11) return 'AUTUMN'; return 'WINTER'; }
 function getPriceTier(price) { if(price < 100) return 1; if(price <= 200) return 2; if(price <= 500) return 3; if(price <= 999) return 4; return 5; }
@@ -665,7 +670,7 @@ function createForest(season) {
     return group;
 }
 
-function createSnowman() { const group = new THREE.Group(); const snowMat = new THREE.MeshStandardMaterial({color: 0xffffff, roughness: 0.9}); const body = new THREE.Mesh(new THREE.DodecahedronGeometry(1.5, 1), snowMat); body.position.y = 1.5; const head = new THREE.Mesh(new THREE.DodecahedronGeometry(1.0, 1), snowMat); head.position.y = 3.5; const scarf = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.4, 8), new THREE.MeshStandardMaterial({color: 0xef4444})); scarf.position.y = 2.8; group.add(body, head, scarf); return group; }
+function createSnowman() { const group = new THREE.Group(); const snowMat = new THREE.MeshStandardMaterial({color: 0xffffff, roughness: 0.9}); const body = new THREE.Mesh(new THREE.DodecahedronGeometry(1.5, 1), snowMat); body.position.y = 1.5; const head = new THREE.Mesh(new THREE.DodecahedronGeometry(1.0, 1), snowMat); head.position.y = 3.5; const scarf = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.4, 8), new MeshStandardMaterial({color: 0xef4444})); scarf.position.y = 2.8; group.add(body, head, scarf); return group; }
 
 function createSoldier(colorHex, isPlayer, tier = 1, side = 'LONG') {
     const group = new THREE.Group();
@@ -1712,9 +1717,6 @@ window.switchTab = function(t) { currentTab = t; ['units', 'pending', 'history']
 window.openCustomManager = function() { 
     document.getElementById('custom-modal').classList.remove('opacity-0', 'pointer-events-none'); 
     document.getElementById('api-key-input').value = gameState.apiKey; 
-    const sel = document.getElementById('assign-sector-select');
-    sel.innerHTML = '';
-    for(let k in SECTORS) { sel.appendChild(new Option(`${k} ${SECTORS[k].name}`, k)); }
     renderCustomList(); 
 };
 window.closeCustomManager = function() { gameState.apiKey = document.getElementById('api-key-input').value; document.getElementById('custom-modal').classList.add('opacity-0', 'pointer-events-none'); syncToCloud(); };
@@ -1763,9 +1765,8 @@ window.addCustomStock = function() {
     const sym = document.getElementById('custom-symbol').value.toUpperCase().trim();
     const name = document.getElementById('custom-name').value.trim();
     let sectorInput = document.getElementById('custom-sector-name').value.trim();
-    let sectorDropdown = document.getElementById('assign-sector-select').value;
     
-    let targetSectorId = sectorDropdown;
+    let targetSectorId = "CUSTOM";
     
     if(sectorInput) {
         let existingId = Object.keys(SECTORS).find(k => SECTORS[k].name === sectorInput);
@@ -1775,8 +1776,6 @@ window.addCustomStock = function() {
             targetSectorId = "SEC_" + Date.now().toString().slice(-4);
             SECTORS[targetSectorId] = { name: sectorInput, cities: [] };
         }
-    } else if (!targetSectorId) {
-        targetSectorId = "CUSTOM";
     }
     
     if(!sym) { window.showMsg("請輸入代號"); return; }
@@ -1812,11 +1811,6 @@ window.renderCustomList = function() {
         html += `</div>`;
         list.innerHTML += html;
     }
-    const sel = document.getElementById('assign-sector-select');
-    if (sel) {
-        sel.innerHTML = '';
-        for(let k in SECTORS) { sel.appendChild(new Option(`${k} ${SECTORS[k].name}`, k)); }
-    }
 };
 
 window.removeSector = function(sKey) {
@@ -1825,9 +1819,6 @@ window.removeSector = function(sKey) {
     delete SECTORS[sKey];
     window.showMsg(`已刪除領域`);
     renderCustomList();
-    const sel = document.getElementById('assign-sector-select');
-    sel.innerHTML = '';
-    for(let k in SECTORS) { sel.appendChild(new Option(`${k} ${SECTORS[k].name}`, k)); }
     syncToCloud();
 };
 
