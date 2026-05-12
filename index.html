@@ -5,11 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>天道戰紀：傭兵與貪婪之城</title>
     
-    <!-- 引入外部核心套件 -->
+    <!-- 引入外部核心套件 (新增金融 K 棒與時間套件) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0/build/global/luxon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.1.1/dist/chartjs-chart-financial.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
     
     <style>
@@ -133,7 +136,7 @@
                 <div class="mt-3 pt-3 border-t border-white/10 flex gap-2 items-center">
                     <select id="sector-selector" onchange="window.switchSector(this.value)" class="bg-black/50 border border-white/20 rounded-lg px-2 py-1.5 text-[10px] md:text-xs font-bold text-gray-200 focus:outline-none w-24 md:w-auto truncate cursor-pointer"></select>
                     <select id="city-selector" onchange="window.switchCity(this.value)" class="flex-1 bg-black/50 border border-white/20 rounded-lg px-2 py-1.5 text-[11px] md:text-sm font-bold text-white focus:outline-none truncate cursor-pointer"></select>
-                    <button onclick="window.openCustomManager()" class="bg-white/10 hover:bg-white/20 p-1.5 rounded-lg text-white font-bold text-[10px] cursor-pointer">⚙ 總機</button>
+                    <button onclick="window.openCustomManager()" class="bg-white/10 hover:bg-white/20 p-1.5 rounded-lg text-white font-bold text-[10px] cursor-pointer">⚙ 總機設定</button>
                 </div>
                 
                 <div class="flex justify-between items-center bg-black/40 p-2.5 rounded-lg mt-3 border border-white/10 shadow-inner">
@@ -211,7 +214,7 @@
 </div>
 
 <!-- ==========================================
-     軍師分析圖頁
+     軍師分析圖頁 (升級專業 K 棒)
      ========================================== -->
 <div id="chart-page" class="fixed inset-0 z-40 bg-[#02050a] flex flex-col hidden transition-all duration-300 transform translate-y-full">
     <div class="flex justify-between items-center p-3 border-b border-white/10 bg-gray-900/80 backdrop-blur-md">
@@ -240,8 +243,8 @@
             </div>
         </div>
         
-        <div class="flex-1 min-h-[30vh] md:min-h-[40vh] bg-black/50 border border-white/10 p-2 rounded-xl relative flex flex-col shadow-inner">
-            <span class="text-[10px] text-gray-400 font-bold uppercase absolute top-2 left-3 z-10 tracking-widest">連續價格走勢</span>
+        <div class="flex-1 min-h-[35vh] md:min-h-[45vh] bg-black/50 border border-white/10 p-2 rounded-xl relative flex flex-col shadow-inner">
+            <span class="text-[10px] text-gray-400 font-bold uppercase absolute top-2 left-3 z-10 tracking-widest">K棒價格走勢 (紅漲綠跌)</span>
             <div class="flex-1 relative w-full h-full mt-4">
                 <canvas id="mainChartCanvas"></canvas>
             </div>
@@ -644,7 +647,7 @@ function createForest(season) {
         const tree = new THREE.Group(); const tk = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.2, 4, 6), new THREE.MeshStandardMaterial({color: 0x1e293b, metalness: 0.6})); tk.position.y = 2;
         const l1 = new THREE.Mesh(new THREE.ConeGeometry(4.5, 8, 7), mat); l1.position.y = 6; const l2 = new THREE.Mesh(new THREE.ConeGeometry(3.5, 6, 7), mat); l2.position.y = 11;
         tree.add(tk, l1, l2); tree.scale.setScalar(0.8 + Math.random() * 0.8); 
-        // ★ 修復：將樹林往外移，避免遮擋右側綠色空軍
+        // ★ 修復圖 23：將樹林往外移至 45 單位以外，避免遮擋右側綠色空軍陣營
         tree.position.set(45 + Math.random()*25, 0, (Math.random()-0.5)*80); 
         group.add(tree);
     }
@@ -766,20 +769,23 @@ function init3D() {
     scene.add(new THREE.AmbientLight(0xffffff, 4.0)); const dLight = new THREE.DirectionalLight(0xffffff, 5.5); dLight.position.set(20, 100, 40); scene.add(dLight);
     
     // ★ 實裝漲跌幅距離標示線 (+/- 2.5%, 5%, 7.5%, 10%)
+    const lineColors = [0x555555, 0xef4444, 0xef4444, 0xef4444, 0xff0000]; // 0, 2.5, 5, 7.5, 10 (紅漲)
+    const lineColorsG = [0x555555, 0x22c55e, 0x22c55e, 0x22c55e, 0x00ff00]; // 綠跌
+    
     for(let i=1; i<=4; i++) {
         const lineGeoR = new THREE.BoxGeometry(0.2, 0.1, 80);
-        const lineMatR = new THREE.MeshBasicMaterial({color: 0xef4444, transparent: true, opacity: 0.35 - i*0.05});
+        const lineMatR = new THREE.MeshBasicMaterial({color: lineColors[i], transparent: true, opacity: 0.25 + i*0.1});
         const meshR = new THREE.Mesh(lineGeoR, lineMatR); meshR.position.set(-15 * i, 0.05, 0); scene.add(meshR);
         
         const lineGeoG = new THREE.BoxGeometry(0.2, 0.1, 80);
-        const lineMatG = new THREE.MeshBasicMaterial({color: 0x22c55e, transparent: true, opacity: 0.35 - i*0.05});
+        const lineMatG = new THREE.MeshBasicMaterial({color: lineColorsG[i], transparent: true, opacity: 0.25 + i*0.1});
         const meshG = new THREE.Mesh(lineGeoG, lineMatG); meshG.position.set(15 * i, 0.05, 0); scene.add(meshG);
     }
     
     const grid = new THREE.GridHelper(200, 80, 0x223344, 0x0a1122); grid.position.y = 0.01; scene.add(grid);
     battleLine = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 75), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })); scene.add(battleLine);
     
-    // ★ 將視角拉高拉遠，擴闊視野
+    // ★ 將視角拉高拉遠，擴闊視野，讓空軍陣營一覽無遺
     camera.position.set(0, 65, 100); camera.lookAt(0, 0, 0);
     is3DInitialized = true; 
     window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
@@ -844,7 +850,20 @@ function calcMACD(data) {
     let hist = macd.map((v, i) => (v - signal[i]) * 2); // 放大柱狀圖視覺係數
     return {macd, signal, hist}; 
 }
-function calcKD(data, period = 9) { if(data.length < period) return {k: [], d: []}; let k = [], dv = [], pk = 50, pd = 50; for(let i = 0; i < data.length; i++) { let st = Math.max(0, i - period + 1); let sl = data.slice(st, i + 1); let hi = Math.max(...sl); let lo = Math.min(...sl); let rsv = (hi === lo) ? 50 : ((data[i] - lo) / (hi - lo)) * 100; let ck = (2 / 3) * pk + (1 / 3) * rsv; let cd = (2 / 3) * pd + (1 / 3) * ck; k.push(ck); dv.push(cd); pk = ck; pd = cd; } return {k, dv}; }
+function calcKD(data, period = 9) { 
+    if(data.length < period) return {k: [], d: []}; 
+    let k = [], dv = [], pk = 50, pd = 50; 
+    for(let i = 0; i < data.length; i++) { 
+        if (i < period - 1) { k.push(50); dv.push(50); continue; }
+        let sl = data.slice(i - period + 1, i + 1); 
+        let hi = Math.max(...sl); let lo = Math.min(...sl); 
+        let rsv = (hi === lo) ? 50 : ((data[i] - lo) / (hi - lo)) * 100; 
+        let ck = (2 / 3) * pk + (1 / 3) * rsv; 
+        let cd = (2 / 3) * pd + (1 / 3) * ck; 
+        k.push(ck); dv.push(cd); pk = ck; pd = cd; 
+    } 
+    return {k, d: dv}; 
+}
 function calcRSI(data, period) { if(data.length < period) return new Array(data.length).fill(50); let rsi = [], g = 0, l = 0; for(let i = 1; i <= period; i++) { let df = data[i] - data[i - 1]; if(df >= 0) g += df; else l -= df; } let ag = g / period; let al = l / period; rsi.push(100 - (100 / (1 + (al === 0 ? 999 : ag / al)))); for(let i = period + 1; i < data.length; i++) { let df = data[i] - data[i - 1]; ag = (ag * (period - 1) + (df >= 0 ? df : 0)) / period; al = (al * (period - 1) + (df < 0 ? -df : 0)) / period; rsi.push(100 - (100 / (1 + (al === 0 ? 999 : ag / al)))); } return new Array(period).fill(50).concat(rsi); }
 function calcBIAS(data, period) { if(data.length < period) return new Array(data.length).fill(0); let s = calcSMA(data, period); return data.map((v, i) => s[i] > 0 ? ((v - s[i]) / s[i]) * 100 : 0); }
 
@@ -855,7 +874,9 @@ window.fetchFullChartData = async function() {
     const map = { "1m": {i: "1m", r: "1d"}, "5m": {i: "5m", r: "5d"}, "15m": {i: "15m", r: "5d"}, "30m": {i: "30m", r: "5d"}, "60m": {i: "60m", r: "1mo"}, "1d": {i: "1d", r: "6mo"}, "1wk": {i: "1wk", r: "2y"}, "1mo": {i: "1mo", r: "5y"} };
     const prm = map[gameState.timeframe] || map["1d"];
     const ySym = /^\d{4}$/.test(cityCode) ? cityCode + '.TW' : cityCode;
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ySym}?interval=${prm.i}&range=${prm.r}`;
+    
+    // ★ 關鍵防快取：加入時間戳，強迫代理抓最新報價 (解決圖 24)
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ySym}?interval=${prm.i}&range=${prm.r}&_t=${Date.now()}`;
     
     let fetched = false;
     try {
@@ -895,10 +916,8 @@ window.renderChartInstance = function() {
     const raw = city.chartData[gameState.timeframe];
     if (raw.length < 10) return;
 
-    const labels = raw.map(d => {
-        const dt = new Date(d.x);
-        return gameState.timeframe.includes('m') ? dt.toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : dt.toLocaleDateString('zh-TW', {month: '2-digit', day: '2-digit'});
-    });
+    // ★ 改寫：生成帶有絕對時間戳的資料集以支援專業 Candlestick
+    const candleData = raw.map((d) => ({ x: new Date(d.x).valueOf(), o: d.o, h: d.h, l: d.l, c: d.c }));
     const closePrices = raw.map(d => d.c || 0);
     const upCol = '#ef4444'; const dnCol = '#22c55e'; 
     const barWidth = raw.length > 150 ? 2 : (raw.length > 50 ? 4 : 8);
@@ -906,19 +925,23 @@ window.renderChartInstance = function() {
     const ctxM = document.getElementById('mainChartCanvas').getContext('2d');
     if(mainChart) mainChart.destroy();
     
-    // ★ 實裝 X 軸時間顯示與刻度
+    // ★ 實裝專業金融 K 棒圖 (Candlestick) 與 X 軸時間顯示
     mainChart = new Chart(ctxM, {
-        type: 'line',
+        type: 'candlestick',
         data: { 
-            labels: labels, 
             datasets: [{ 
-                label: '收盤價', data: closePrices, borderColor: '#eab308', backgroundColor: 'rgba(234, 179, 8, 0.15)', 
-                borderWidth: 2, pointRadius: 0, tension: 0.1, fill: true 
+                label: '價格走勢', data: candleData, 
+                color: { up: upCol, down: dnCol, unchanged: '#999' },
+                borderColor: { up: upCol, down: dnCol, unchanged: '#999' },
+                barThickness: barWidth 
             }] 
         },
         options: { 
             animation: false, responsive: true, maintainAspectRatio: false, 
-            scales: { x: { display: true, ticks: { color: '#888', maxTicksLimit: 6, maxRotation: 0 } }, y: { position: 'right', ticks: { color: '#ccc' }, grid: { color: 'rgba(255,255,255,0.05)' } } }, 
+            scales: { 
+                x: { type: 'timeseries', time: { unit: gameState.timeframe.includes('m') ? 'minute' : 'day' }, ticks: { color: '#888', maxTicksLimit: 8 } }, 
+                y: { position: 'right', ticks: { color: '#ccc' }, grid: { color: 'rgba(255,255,255,0.05)' } } 
+            }, 
             plugins: { legend: { display: false } } 
         }
     });
@@ -927,8 +950,8 @@ window.renderChartInstance = function() {
     if(volChart) volChart.destroy();
     volChart = new Chart(ctxV, {
         type: 'bar',
-        data: { labels, datasets: [{ data: raw.map(d => d.v || 0), backgroundColor: raw.map(d => d.c >= d.o ? upCol : dnCol), barThickness: barWidth }] },
-        options: { animation: false, responsive: true, maintainAspectRatio: false, scales: { x: { display: true, ticks: { color: '#888', maxTicksLimit: 6, maxRotation: 0 }, grid: { display: false } }, y: { display: false } }, plugins: { legend: { display: false } } }
+        data: { datasets: [{ data: raw.map(d => ({x: new Date(d.x).valueOf(), y: d.v || 0})), backgroundColor: raw.map(d => d.c >= d.o ? upCol : dnCol), barThickness: barWidth }] },
+        options: { animation: false, responsive: true, maintainAspectRatio: false, scales: { x: { type: 'timeseries', display: false }, y: { display: false } }, plugins: { legend: { display: false } } }
     });
 
     const ctxI = document.getElementById('indicatorChartCanvas').getContext('2d');
@@ -938,34 +961,40 @@ window.renderChartInstance = function() {
     
     if(ind === "MACD") {
         const {macd, signal, hist} = calcMACD(closePrices);
-        // ★ MACD 雙軸分離技術，保證快慢線與柱狀圖完美呈現
-        yScales = {
-            y: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'MACD', color: '#888', font: {size: 8} }, ticks: { color: '#fff', font: { size: 8 } } },
-            y1: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'OSC', color: '#888', font: {size: 8} }, ticks: { color: '#aaa', font: { size: 8 } }, grid: { drawOnChartArea: false } }
-        };
+        // ★ MACD 統一 Y 軸，避免快慢線消失
         datasets = [
-            { type: 'bar', label: 'Hist', data: hist, backgroundColor: hist.map(v => v >= 0 ? '#ef4444' : '#22c55e'), yAxisID: 'y1', barThickness: barWidth, order: 2 },
-            { type: 'line', label: 'MACD 快線', data: macd, borderColor: '#fff', borderWidth: 1.5, pointRadius: 0, tension: 0.1, yAxisID: 'y', order: 1 },
-            { type: 'line', label: 'Signal 慢線', data: signal, borderColor: '#facc15', borderWidth: 1.5, pointRadius: 0, tension: 0.1, yAxisID: 'y', order: 1 }
+            { type: 'bar', label: 'Hist', data: hist.map((v,i) => ({x: candleData[i].x, y: v})), backgroundColor: hist.map(v => v >= 0 ? '#ef4444' : '#22c55e'), barThickness: barWidth, order: 2 },
+            { type: 'line', label: 'MACD', data: macd.map((v,i) => ({x: candleData[i].x, y: v})), borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0, tension: 0.1, order: 1 },
+            { type: 'line', label: 'Signal', data: signal.map((v,i) => ({x: candleData[i].x, y: v})), borderColor: '#facc15', borderWidth: 1.5, pointRadius: 0, tension: 0.1, order: 1 }
         ];
     } else if(ind === "KD") {
         const {k, d} = calcKD(closePrices);
         yScales = { y: { min: 0, max: 100, position: 'right', ticks: { color: '#fff', font: { size: 8 } } } }; // ★ 強制 0~100 刻度
-        datasets = [ { type: 'line', label: 'K (快)', data: k, borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0 }, { type: 'line', label: 'D (慢)', data: d, borderColor: '#fb923c', borderWidth: 1.5, pointRadius: 0 } ];
+        datasets = [ 
+            { type: 'line', label: 'K (快)', data: k.map((v,i) => ({x: candleData[i].x, y: v})), borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0 }, 
+            { type: 'line', label: 'D (慢)', data: d.map((v,i) => ({x: candleData[i].x, y: v})), borderColor: '#fb923c', borderWidth: 1.5, pointRadius: 0 } 
+        ];
     } else if(ind === "RSI") {
         const rsi5 = calcRSI(closePrices, 5); const rsi10 = calcRSI(closePrices, 10);
         yScales = { y: { min: 0, max: 100, position: 'right', ticks: { color: '#fff', font: { size: 8 } } } }; // ★ 強制 0~100 刻度
-        datasets = [ { type: 'line', label: 'RSI 5', data: rsi5, borderColor: '#c084fc', borderWidth: 1.5, pointRadius: 0 }, { type: 'line', label: 'RSI 10', data: rsi10, borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0 } ];
+        datasets = [ 
+            { type: 'line', label: 'RSI 5', data: rsi5.map((v,i) => ({x: candleData[i].x, y: v})), borderColor: '#c084fc', borderWidth: 1.5, pointRadius: 0 }, 
+            { type: 'line', label: 'RSI 10', data: rsi10.map((v,i) => ({x: candleData[i].x, y: v})), borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0 } 
+        ];
     } else if(ind === "BIAS") {
         const b5 = calcBIAS(closePrices, 5); const b10 = calcBIAS(closePrices, 10); const b20 = calcBIAS(closePrices, 20);
-        datasets = [ { type: 'line', label: 'BIAS 5', data: b5, borderColor: '#fff', borderWidth: 1.5, pointRadius: 0 }, { type: 'line', label: 'BIAS 10', data: b10, borderColor: '#facc15', borderWidth: 1.5, pointRadius: 0 }, { type: 'line', label: 'BIAS 20', data: b20, borderColor: '#ec4899', borderWidth: 1.5, pointRadius: 0 } ];
+        datasets = [ 
+            { type: 'line', label: 'BIAS 5', data: b5.map((v,i) => ({x: candleData[i].x, y: v})), borderColor: '#fff', borderWidth: 1.5, pointRadius: 0 }, 
+            { type: 'line', label: 'BIAS 10', data: b10.map((v,i) => ({x: candleData[i].x, y: v})), borderColor: '#facc15', borderWidth: 1.5, pointRadius: 0 }, 
+            { type: 'line', label: 'BIAS 20', data: b20.map((v,i) => ({x: candleData[i].x, y: v})), borderColor: '#ec4899', borderWidth: 1.5, pointRadius: 0 } 
+        ];
     }
     
     indChart = new Chart(ctxI, { 
-        data: { labels, datasets }, 
+        data: { datasets }, 
         options: { 
             animation: false, responsive: true, maintainAspectRatio: false, 
-            scales: Object.assign({ x: { display: true, ticks: { color: '#888', maxTicksLimit: 6, maxRotation: 0 } } }, yScales),
+            scales: Object.assign({ x: { type: 'timeseries', display: true, ticks: { color: '#888', maxTicksLimit: 6 } } }, yScales),
             plugins: { legend: { display: true, position: 'top', labels: { color: '#888', font: { size: 8 } } } } 
         } 
     });
@@ -979,7 +1008,7 @@ async function fetchRealMarketData(isInitial = false, forceReal = false) {
     const cityCode = gameState.activeCity; const city = CITIES[cityCode]; if(!city) return false;
     let fetchedPrice = null, fetchedBase = null;
     const ySym = /^\d{4}$/.test(cityCode) ? cityCode + '.TW' : cityCode;
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ySym}?interval=1m&range=1d`;
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ySym}?interval=1m&range=1d&_t=${Date.now()}`;
     
     const fetchAPI = async (proxyUrl, isAllOrigins = false) => {
         try { 
@@ -1056,6 +1085,8 @@ window.initialFetchAndStart = async function() {
     updateOrderButtonsUI(); 
     if(!gameTickInterval) gameTickInterval = setInterval(localTick, 1000); 
 };
+
+let pollCounter = 0;
 
 function localTick() {
     if(!isGameReady || !is3DInitialized) return;
@@ -1143,7 +1174,13 @@ function localTick() {
                 else { lastBar.c = np; lastBar.h = Math.max(lastBar.h, np); lastBar.l = Math.min(lastBar.l, np); lastBar.v += Math.random() * 10; }
             });
         }
-    } else if (currentMarketState === "OPEN" && Math.random() > 0.8) { fetchRealMarketData(); }
+    } else if (currentMarketState === "OPEN") { 
+        pollCounter++;
+        if (pollCounter >= 3) {
+            fetchRealMarketData();
+            pollCounter = 0;
+        }
+    }
     
     // ★ 保證每秒渲染最新 K 線
     if(!document.getElementById('chart-page').classList.contains('hidden')) window.renderChartInstance(); 
@@ -1611,8 +1648,12 @@ window.addNewSector = function() {
 window.addCustomStock = function() {
     const sym = document.getElementById('custom-symbol').value.toUpperCase().trim();
     const name = document.getElementById('custom-name').value.trim();
-    const sectorId = document.getElementById('assign-sector-select').value;
-    if(!sym || !name || !sectorId) return;
+    let sectorId = document.getElementById('assign-sector-select').value;
+    
+    // ★ 優化圖 24：若使用者沒選，自動放入 CUSTOM
+    if(!sectorId) sectorId = "CUSTOM";
+    
+    if(!sym || !name) return;
     if(!CITIES[sym]) { CITIES[sym] = { name, price: 100, basePrice: 100, vol: 2, chartData: {} }; } else { CITIES[sym].name = name; }
     if(!SECTORS[sectorId].cities.includes(sym)) { SECTORS[sectorId].cities.push(sym); }
     document.getElementById('custom-symbol').value = ''; document.getElementById('custom-name').value = ''; window.showMsg(`編列 ${name} 至 ${SECTORS[sectorId].name}`); renderCustomList(); syncToCloud();
@@ -1756,7 +1797,9 @@ window.addEventListener('DOMContentLoaded', async () => {
             user = currentUser;
             document.getElementById('login-overlay').classList.add('opacity-0');
             setTimeout(() => { document.getElementById('login-overlay').classList.add('hidden'); }, 500);
-            updateLoginUI();
+            
+            // 已移除引發 permission-denied 的全域統計監聽，確保流程順暢
+            
             loadFromCloud(currentUser.uid);
         } else {
             document.getElementById('btn-anon-login').classList.remove('hidden');
