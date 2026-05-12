@@ -79,11 +79,6 @@
         <button id="btn-anon-login" onclick="window.anonLogin()" class="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-black py-3 rounded-xl mb-4 transition-all shadow-lg active:scale-95 tracking-widest hidden cursor-pointer">
             一鍵簽署傭兵契約
         </button>
-        
-        <div class="border-t border-white/10 pt-4 mt-4 flex justify-around text-[10px] text-gray-500">
-            <div class="flex flex-col"><span>總進駐兵力</span><span id="stat-total-users" class="text-gray-300 font-mono text-sm">--</span></div>
-            <div class="flex flex-col"><span>今日活躍</span><span id="stat-today-active" class="text-yellow-500 font-mono text-sm">--</span></div>
-        </div>
     </div>
 </div>
 
@@ -333,6 +328,7 @@
     </div>
 </div>
 
+<!-- 沙盤結算甘霖 -->
 <div id="sim-reward-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300 p-4">
     <div class="glass rounded-2xl p-6 w-full max-w-md border-yellow-500/40 transform scale-95 transition-transform duration-300 shadow-[0_0_40px_rgba(234,179,8,0.3)] text-center">
         <div class="text-6xl mb-4">🌧️💰</div>
@@ -400,7 +396,7 @@
 </div>
 
 <!-- ==========================================
-     核心腳本區
+     核心腳本區 (純淨單例架構，無重複區塊)
      ========================================== -->
 <script type="module">
 const MY_FIREBASE_CONFIG = null; 
@@ -497,7 +493,7 @@ let isCloudLoadedOnce = false;
 let unsubscribeUser = null;
 
 window.safeNum = function(val, fallback = 0) { const n = Number(val); return (isNaN(n) || !isFinite(n)) ? fallback : n; };
-function safeCalc(val, fallback = 0) { return (isNaN(val) || !isFinite(val)) ? fallback : val; }
+function safeCalcEMA(val, fallback = 0) { return (isNaN(val) || !isFinite(val)) ? fallback : val; }
 function getCityName(code) { return CITIES[code] ? CITIES[code].name : code; }
 
 let msgTimeout;
@@ -644,7 +640,7 @@ window.submitEntryCity = function() {
 }
 
 // ==========================================
-// 5. 3D 渲染引擎核心 
+// 5. 3D 渲染引擎核心
 // ==========================================
 function getSeason() { const m = new Date().getMonth() + 1; if(m >= 3 && m <= 5) return 'SPRING'; if(m >= 6 && m <= 8) return 'SUMMER'; if(m >= 9 && m <= 11) return 'AUTUMN'; return 'WINTER'; }
 function getPriceTier(price) { if(price < 100) return 1; if(price <= 200) return 2; if(price <= 500) return 3; if(price <= 999) return 4; return 5; }
@@ -866,8 +862,6 @@ function animate() {
 // ==========================================
 // 6. 圖表引擎與技術指標演算法 
 // ==========================================
-function safeCalcEMA(val, fallback = 0) { return (isNaN(val) || !isFinite(val)) ? fallback : val; }
-
 function calcEMA(data, period) { 
     if(data.length === 0) return []; 
     let k = 2 / (period + 1); 
@@ -1408,7 +1402,7 @@ function renderUnits() {
                 });
             }
         };
-        renderGroup(realUnits, "真實天道庫存", "text-yellow-400", "border-yellow-500"); renderGroup(simUnits, "沙盤推演庫存", "text-sky-400", "border-sky-500");
+        renderGroup(realUnits, "真實天道庫存", "text-yellow-400", "border-yellow-500"); renderGroup(simUnits, "沙推演庫存", "text-sky-400", "border-sky-500");
     } catch(e) { console.error('Render units error:', e); }
 }
 
