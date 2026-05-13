@@ -10,7 +10,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
     
-    <!-- Chart.js 相關套件 (確保 K棒 與 時間軸 正常運作) -->
+    <!-- Chart.js 相關套件 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0/build/global/luxon.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
@@ -87,7 +87,7 @@
     </div>
 </div>
 
-<!-- 軍機處 (轉生與極簡首登點) -->
+<!-- 軍機處 -->
 <div id="entry-modal" class="fixed inset-0 z-[90] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-300">
     <div class="glass p-6 rounded-2xl max-w-sm w-full text-center border border-sky-500/30 shadow-[0_0_30px_rgba(14,165,233,0.15)] transform scale-95 transition-transform duration-300" id="entry-modal-window">
         <h2 class="text-xl font-black mb-2 tracking-widest text-sky-400">軍機處 - 登錄首座城池</h2>
@@ -100,9 +100,7 @@
     </div>
 </div>
 
-<!-- ==========================================
-     主 UI 佈局
-     ========================================== -->
+<!-- 主 UI 佈局 -->
 <div id="main-ui" class="ui-scroll-container scrollbar-hide transition-all duration-500 hidden">
     <div class="ui-content-wrapper">
         
@@ -363,9 +361,8 @@
                         <input id="custom-symbol" type="text" placeholder="台股代號 (必填)" class="w-1/2 bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white outline-none font-mono text-xs uppercase">
                         <input id="custom-name" type="text" placeholder="城池名稱 (選填)" class="w-1/2 bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white outline-none text-xs">
                     </div>
-                    <input id="custom-sector-name" type="text" placeholder="自訂領域名稱 (選填，如 AI軟體，無則自動歸類)" class="w-full bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white outline-none text-xs">
                 </div>
-                <button onclick="window.addCustomStock()" class="w-full bg-green-600 hover:bg-green-500 py-2.5 rounded-lg font-bold text-xs mt-3 transition-all shadow-lg cursor-pointer tracking-widest text-white">駐紮入軍</button>
+                <button onclick="window.addCustomStock()" class="w-full bg-green-600 hover:bg-green-500 py-2.5 rounded-lg font-bold text-xs mt-3 transition-all shadow-lg cursor-pointer tracking-widest text-white">自動智慧歸類並駐紮</button>
             </div>
 
             <div class="bg-black/40 p-4 rounded-xl border border-white/10">
@@ -489,9 +486,12 @@ window.mysteryGuestActiveSide = null;
 
 let scene, camera, renderer, battleLine;
 let baseRedArmy = [], baseGreenArmy = [], playerRedArmy = [], playerGreenArmy = []; 
-let snowParticles = null, smokeParticles = null, fireParticles = null;
+let snowParticles = null, decorationsGroup = null, castleGroup = null, forestGroup = null;
+// ★ 新增極端漲跌特效容器
+let forestFireParticles = null;
+let castleDamageParticles = null;
+
 let fireworks = [], lasers = [], explosions = [];
-let castleGroup, forestGroup, decorationsGroup;
 let mainChart = null, volChart = null, indChart = null;
 
 let isCloudLoadedOnce = false;
@@ -619,7 +619,6 @@ window.checkInitialEntry = function() {
 window.submitEntryCity = function() {
     const sym = document.getElementById('entry-symbol').value.toUpperCase().trim();
     let name = document.getElementById('entry-name').value.trim();
-    
     if(!sym) { window.showMsg("請輸入股票代號"); return; }
     if(!name) name = sym; 
     
@@ -646,7 +645,7 @@ window.submitEntryCity = function() {
 }
 
 // ==========================================
-// 5. 3D 渲染引擎核心
+// 5. 3D 渲染引擎核心 
 // ==========================================
 function getSeason() { const m = new Date().getMonth() + 1; if(m >= 3 && m <= 5) return 'SPRING'; if(m >= 6 && m <= 8) return 'SUMMER'; if(m >= 9 && m <= 11) return 'AUTUMN'; return 'WINTER'; }
 function getPriceTier(price) { if(price < 100) return 1; if(price <= 200) return 2; if(price <= 500) return 3; if(price <= 999) return 4; return 5; }
@@ -707,12 +706,55 @@ function createSoldier(colorHex, isPlayer, tier = 1, side = 'LONG') {
     return group;
 }
 
+// ★ 實裝：漲停森林燃燒 與 跌停城牆黑煙 特效
+function triggerForestFire() {
+    if (forestFireParticles) return;
+    const geom = new THREE.BufferGeometry();
+    const pos = new Float32Array(300 * 3);
+    for(let i=0; i<300; i++) {
+        pos[i*3] = 35 + Math.random()*30;
+        pos[i*3+1] = Math.random()*20;
+        pos[i*3+2] = (Math.random()-0.5)*80;
+    }
+    geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    forestFireParticles = new THREE.Points(geom, new THREE.PointsMaterial({color: 0xff4400, size: 5.0, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending}));
+    scene.add(forestFireParticles);
+}
+
+function clearForestFire() {
+    if(forestFireParticles) { scene.remove(forestFireParticles); forestFireParticles = null; }
+}
+
+function triggerCastleDamage() {
+    if (castleDamageParticles) return;
+    const geom = new THREE.BufferGeometry();
+    const pos = new Float32Array(300 * 3);
+    const vels = [];
+    for(let i=0; i<300; i++) {
+        pos[i*3] = -35 + (Math.random()-0.5)*15;
+        pos[i*3+1] = Math.random()*30;
+        pos[i*3+2] = (Math.random()-0.5)*60;
+        vels.push({x: (Math.random()-0.5)*0.1, y: 0.1+Math.random()*0.3, z: (Math.random()-0.5)*0.1});
+    }
+    geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    castleDamageParticles = new THREE.Points(geom, new THREE.PointsMaterial({color: 0x111111, size: 8.0, transparent: true, opacity: 0.8}));
+    castleDamageParticles.userData = { vels };
+    scene.add(castleDamageParticles);
+}
+
+function clearCastleDamage() {
+    if(castleDamageParticles) { scene.remove(castleDamageParticles); castleDamageParticles = null; }
+}
+
 function rebuildEnvironment() {
     if(!is3DInitialized) return; 
     const city = CITIES[gameState.activeCity]; if(!city) return;
     const tier = getPriceTier(window.safeNum(city.basePrice, 100)); const season = getSeason();
     if(castleGroup) scene.remove(castleGroup); if(forestGroup) scene.remove(forestGroup); if(decorationsGroup) scene.remove(decorationsGroup); if(snowParticles) { scene.remove(snowParticles); snowParticles = null; }
     
+    clearForestFire();
+    clearCastleDamage();
+
     castleGroup = createCastle(tier, season); forestGroup = createForest(season); decorationsGroup = new THREE.Group();
     scene.add(castleGroup); scene.add(forestGroup);
     
@@ -727,8 +769,11 @@ function rebuildEnvironment() {
     
     [...baseRedArmy, ...baseGreenArmy].forEach(m => scene.remove(m)); baseRedArmy = []; baseGreenArmy = [];
     const cols = 10;
+    
+    // ★ 實裝：修正陣列寬度，縮小 Z 軸間距 (4.5 -> 3.2) 避免人物被城牆與森林阻擋
     for(let i = 0; i < MAX_PHALANX_SIZE; i++) {
-        const r = Math.floor(i / cols); const c = i % cols; const zPos = (c - 4.5) * 4.5;
+        const r = Math.floor(i / cols); const c = i % cols; 
+        const zPos = (c - 4.5) * 3.2; // 安全通道寬度
         const rm = createSoldier(0xdd3333, false, tier, 'LONG'); rm.userData.baseX = -15 - r * 3; rm.position.set(rm.userData.baseX, 0, zPos); baseRedArmy.push(rm); scene.add(rm);
         const gm = createSoldier(0x33dd33, false, tier, 'SHORT'); gm.userData.baseX = 15 + r * 3; gm.position.set(gm.userData.baseX, 0, zPos); baseGreenArmy.push(gm); scene.add(gm);
     }
@@ -742,7 +787,8 @@ function syncPlayerTroopsFromState(tier) {
     gameState.units.forEach(u => {
         if(u.city === gameState.activeCity) {
             const m = createSoldier(u.side === 'LONG' ? 0xff2222 : 0x22ff22, true, tier, u.side);
-            m.userData.baseX = u.side === 'LONG' ? -8 : 8; m.position.set(m.userData.baseX, 0, (Math.random() - 0.5) * 30); scene.add(m); 
+            // 縮小隨機 Z 軸範圍
+            m.userData.baseX = u.side === 'LONG' ? -8 : 8; m.position.set(m.userData.baseX, 0, (Math.random() - 0.5) * 20); scene.add(m); 
             if (u.side === 'LONG') playerRedArmy.push(m); else playerGreenArmy.push(m);
         }
     });
@@ -757,6 +803,18 @@ function updateVisuals() {
     const shift = drift * 0.4;
     [...baseRedArmy, ...playerRedArmy].forEach(m => { if(!m.userData.isAttacking) m.position.x += ((m.userData.baseX + shift) - m.position.x) * 0.1; });
     [...baseGreenArmy, ...playerGreenArmy].forEach(m => { if(!m.userData.isAttacking) m.position.x += ((m.userData.baseX + shift) - m.position.x) * 0.1; });
+
+    // ★ 實裝：漲停/跌停 視覺觸發
+    if (diff >= 0.095) {
+        triggerForestFire();
+        clearCastleDamage();
+    } else if (diff <= -0.095) {
+        triggerCastleDamage();
+        clearForestFire();
+    } else {
+        clearForestFire();
+        clearCastleDamage();
+    }
 }
 
 function fireLaser(attacker) {
@@ -839,6 +897,29 @@ function animate() {
 
     if(snowParticles) { const p = snowParticles.geometry.attributes.position.array; for(let i=0; i<300; i++) { p[i*3+1] -= 0.15; if(p[i*3+1]<0) p[i*3+1]=60; } snowParticles.geometry.attributes.position.needsUpdate = true; }
     
+    // 動態更新森林火與城牆煙
+    if (forestFireParticles) {
+        const p = forestFireParticles.geometry.attributes.position.array;
+        for(let i=0; i<300; i++) {
+            p[i*3+1] += 0.3; 
+            if (p[i*3+1] > 20) p[i*3+1] = 0; 
+        }
+        forestFireParticles.geometry.attributes.position.needsUpdate = true;
+    }
+    if (castleDamageParticles) {
+        const p = castleDamageParticles.geometry.attributes.position.array;
+        const v = castleDamageParticles.userData.vels;
+        for(let i=0; i<300; i++) {
+            p[i*3] += v[i].x; p[i*3+1] += v[i].y; p[i*3+2] += v[i].z;
+            if (p[i*3+1] > 35) {
+                p[i*3] = -35 + (Math.random()-0.5)*15;
+                p[i*3+1] = Math.random()*5;
+                p[i*3+2] = (Math.random()-0.5)*60;
+            }
+        }
+        castleDamageParticles.geometry.attributes.position.needsUpdate = true;
+    }
+
     for(let i = fireworks.length - 1; i >= 0; i--) {
         const fw = fireworks[i]; fw.userData.life -= 0.015; fw.material.opacity = fw.userData.life;
         const p = fw.geometry.attributes.position.array;
@@ -870,12 +951,12 @@ function calcEMA(data, period) {
     if(data.length === 0) return []; 
     let k = 2 / (period + 1); 
     let ema = []; 
-    let current = safeCalcEMA(data[0]); 
+    let current = data[0]; 
     ema.push(current); 
     for(let i = 1; i < data.length; i++) { 
         let v = (data[i] !== undefined && data[i] !== null && !isNaN(data[i])) ? data[i] : current;
         current = v * k + current * (1 - k); 
-        ema.push(safeCalcEMA(current)); 
+        ema.push(current); 
     } 
     return ema; 
 }
@@ -898,12 +979,12 @@ function calcKD(data, period = 9) {
         let rsv = (hi === lo) ? 50 : ((data[i] - lo) / (hi - lo)) * 100; 
         let ck = (2 / 3) * pk + (1 / 3) * rsv; 
         let cd = (2 / 3) * pd + (1 / 3) * ck; 
-        k.push(safeCalcEMA(ck, 50)); dv.push(safeCalcEMA(cd, 50)); pk = ck; pd = cd; 
+        k.push(ck); dv.push(cd); pk = ck; pd = cd; 
     } 
     return {k, d: dv}; 
 }
-function calcRSI(data, period) { if(data.length < period) return new Array(data.length).fill(50); let rsi = [], g = 0, l = 0; for(let i = 1; i <= period; i++) { let df = data[i] - data[i - 1]; if(df >= 0) g += df; else l -= df; } let ag = g / period; let al = l / period; rsi.push(100 - (100 / (1 + (al === 0 ? 999 : ag / al)))); for(let i = period + 1; i < data.length; i++) { let df = data[i] - data[i - 1]; ag = (ag * (period - 1) + (df >= 0 ? df : 0)) / period; al = (al * (period - 1) + (df < 0 ? -df : 0)) / period; rsi.push(safeCalcEMA(100 - (100 / (1 + (al === 0 ? 999 : ag / al))), 50)); } return new Array(period).fill(50).concat(rsi); }
-function calcBIAS(data, period) { if(data.length < period) return new Array(data.length).fill(0); let s = calcSMA(data, period); return data.map((v, i) => s[i] > 0 ? safeCalcEMA(((v - s[i]) / s[i]) * 100, 0) : 0); }
+function calcRSI(data, period) { if(data.length < period) return new Array(data.length).fill(50); let rsi = [], g = 0, l = 0; for(let i = 1; i <= period; i++) { let df = data[i] - data[i - 1]; if(df >= 0) g += df; else l -= df; } let ag = g / period; let al = l / period; rsi.push(100 - (100 / (1 + (al === 0 ? 999 : ag / al)))); for(let i = period + 1; i < data.length; i++) { let df = data[i] - data[i - 1]; ag = (ag * (period - 1) + (df >= 0 ? df : 0)) / period; al = (al * (period - 1) + (df < 0 ? -df : 0)) / period; rsi.push(100 - (100 / (1 + (al === 0 ? 999 : ag / al)))); } return new Array(period).fill(50).concat(rsi); }
+function calcBIAS(data, period) { if(data.length < period) return new Array(data.length).fill(0); let s = calcSMA(data, period); return data.map((v, i) => s[i] > 0 ? ((v - s[i]) / s[i]) * 100 : 0); }
 
 window.fetchFullChartData = async function() {
     const cityCode = gameState.activeCity; const city = CITIES[cityCode]; if(!city) return;
@@ -980,22 +1061,22 @@ window.updateChartDataOnly = function() {
     const ind = gameState.activeIndicator;
     if(ind === "MACD") {
         const {macd, signal, hist} = calcMACD(closePrices);
-        if(indChart.data.datasets[0]) indChart.data.datasets[0].data = hist.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v)}));
-        if(indChart.data.datasets[1]) indChart.data.datasets[1].data = macd.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v)}));
-        if(indChart.data.datasets[2]) indChart.data.datasets[2].data = signal.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v)}));
+        if(indChart.data.datasets[0]) indChart.data.datasets[0].data = hist.map((v,i) => ({x: candleData[i].x, y: v}));
+        if(indChart.data.datasets[1]) indChart.data.datasets[1].data = macd.map((v,i) => ({x: candleData[i].x, y: v}));
+        if(indChart.data.datasets[2]) indChart.data.datasets[2].data = signal.map((v,i) => ({x: candleData[i].x, y: v}));
     } else if(ind === "KD") {
         const {k, d} = calcKD(closePrices);
-        if(indChart.data.datasets[0]) indChart.data.datasets[0].data = k.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v, 50)}));
-        if(indChart.data.datasets[1]) indChart.data.datasets[1].data = d.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v, 50)}));
+        if(indChart.data.datasets[0]) indChart.data.datasets[0].data = k.map((v,i) => ({x: candleData[i].x, y: v}));
+        if(indChart.data.datasets[1]) indChart.data.datasets[1].data = d.map((v,i) => ({x: candleData[i].x, y: v}));
     } else if(ind === "RSI") {
         const rsi5 = calcRSI(closePrices, 5); const rsi10 = calcRSI(closePrices, 10);
-        if(indChart.data.datasets[0]) indChart.data.datasets[0].data = rsi5.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v, 50)}));
-        if(indChart.data.datasets[1]) indChart.data.datasets[1].data = rsi10.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v, 50)}));
+        if(indChart.data.datasets[0]) indChart.data.datasets[0].data = rsi5.map((v,i) => ({x: candleData[i].x, y: v}));
+        if(indChart.data.datasets[1]) indChart.data.datasets[1].data = rsi10.map((v,i) => ({x: candleData[i].x, y: v}));
     } else if(ind === "BIAS") {
         const b5 = calcBIAS(closePrices, 5); const b10 = calcBIAS(closePrices, 10); const b20 = calcBIAS(closePrices, 20);
-        if(indChart.data.datasets[0]) indChart.data.datasets[0].data = b5.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v)}));
-        if(indChart.data.datasets[1]) indChart.data.datasets[1].data = b10.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v)}));
-        if(indChart.data.datasets[2]) indChart.data.datasets[2].data = b20.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v)}));
+        if(indChart.data.datasets[0]) indChart.data.datasets[0].data = b5.map((v,i) => ({x: candleData[i].x, y: v}));
+        if(indChart.data.datasets[1]) indChart.data.datasets[1].data = b10.map((v,i) => ({x: candleData[i].x, y: v}));
+        if(indChart.data.datasets[2]) indChart.data.datasets[2].data = b20.map((v,i) => ({x: candleData[i].x, y: v}));
     }
     indChart.update('none');
 };
@@ -1056,30 +1137,30 @@ window.renderChartInstance = function() {
             y1: { type: 'linear', display: true, position: 'left', ticks: { color: '#aaa', font: { size: 8 } }, grid: { drawOnChartArea: false } }
         };
         datasets = [
-            { type: 'bar', label: 'Hist', data: hist.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v)})), backgroundColor: hist.map(v => v >= 0 ? '#ef4444' : '#22c55e'), yAxisID: 'y1', barThickness: barWidth, order: 2 },
-            { type: 'line', label: 'MACD', data: macd.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v)})), borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0, tension: 0.1, yAxisID: 'y', order: 1 },
-            { type: 'line', label: 'Signal', data: signal.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v)})), borderColor: '#facc15', borderWidth: 1.5, pointRadius: 0, tension: 0.1, yAxisID: 'y', order: 1 }
+            { type: 'bar', label: 'Hist', data: hist.map((v,i) => ({x: candleData[i].x, y: v})), backgroundColor: hist.map(v => v >= 0 ? '#ef4444' : '#22c55e'), yAxisID: 'y1', barThickness: barWidth, order: 2 },
+            { type: 'line', label: 'MACD', data: macd.map((v,i) => ({x: candleData[i].x, y: v})), borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0, tension: 0.1, yAxisID: 'y', order: 1 },
+            { type: 'line', label: 'Signal', data: signal.map((v,i) => ({x: candleData[i].x, y: v})), borderColor: '#facc15', borderWidth: 1.5, pointRadius: 0, tension: 0.1, yAxisID: 'y', order: 1 }
         ];
     } else if(ind === "KD") {
         const {k, d} = calcKD(closePrices);
         yScales = { y: { ...yAxisAlignIndConfig, min: 0, max: 100 } }; 
         datasets = [ 
-            { type: 'line', label: 'K (快)', data: k.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v, 50)})), borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0 }, 
-            { type: 'line', label: 'D (慢)', data: d.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v, 50)})), borderColor: '#fb923c', borderWidth: 1.5, pointRadius: 0 } 
+            { type: 'line', label: 'K (快)', data: k.map((v,i) => ({x: candleData[i].x, y: v})), borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0 }, 
+            { type: 'line', label: 'D (慢)', data: d.map((v,i) => ({x: candleData[i].x, y: v})), borderColor: '#fb923c', borderWidth: 1.5, pointRadius: 0 } 
         ];
     } else if(ind === "RSI") {
         const rsi5 = calcRSI(closePrices, 5); const rsi10 = calcRSI(closePrices, 10);
         yScales = { y: { ...yAxisAlignIndConfig, min: 0, max: 100 } }; 
         datasets = [ 
-            { type: 'line', label: 'RSI 5', data: rsi5.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v, 50)})), borderColor: '#c084fc', borderWidth: 1.5, pointRadius: 0 }, 
-            { type: 'line', label: 'RSI 10', data: rsi10.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v, 50)})), borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0 } 
+            { type: 'line', label: 'RSI 5', data: rsi5.map((v,i) => ({x: candleData[i].x, y: v})), borderColor: '#c084fc', borderWidth: 1.5, pointRadius: 0 }, 
+            { type: 'line', label: 'RSI 10', data: rsi10.map((v,i) => ({x: candleData[i].x, y: v})), borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0 } 
         ];
     } else if(ind === "BIAS") {
         const b5 = calcBIAS(closePrices, 5); const b10 = calcBIAS(closePrices, 10); const b20 = calcBIAS(closePrices, 20);
         datasets = [ 
-            { type: 'line', label: 'BIAS 5', data: b5.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v)})), borderColor: '#fff', borderWidth: 1.5, pointRadius: 0 }, 
-            { type: 'line', label: 'BIAS 10', data: b10.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v)})), borderColor: '#facc15', borderWidth: 1.5, pointRadius: 0 }, 
-            { type: 'line', label: 'BIAS 20', data: b20.map((v,i) => ({x: candleData[i].x, y: safeCalcEMA(v)})), borderColor: '#ec4899', borderWidth: 1.5, pointRadius: 0 } 
+            { type: 'line', label: 'BIAS 5', data: b5.map((v,i) => ({x: candleData[i].x, y: v})), borderColor: '#fff', borderWidth: 1.5, pointRadius: 0 }, 
+            { type: 'line', label: 'BIAS 10', data: b10.map((v,i) => ({x: candleData[i].x, y: v})), borderColor: '#facc15', borderWidth: 1.5, pointRadius: 0 }, 
+            { type: 'line', label: 'BIAS 20', data: b20.map((v,i) => ({x: candleData[i].x, y: v})), borderColor: '#ec4899', borderWidth: 1.5, pointRadius: 0 } 
         ];
     }
     
@@ -1502,8 +1583,13 @@ window.ignoreMysteryGuest = function() { document.getElementById('mystery-guest-
 window.switchCity = async function(code) { 
     gameState.activeCity = code; 
     document.getElementById('chart-city-name').innerText = getCityName(code);
+    
+    // ★ 實裝：切換股票時，強制淨空數據避免殘影
     document.getElementById('market-price').innerText = "連線中...";
     document.getElementById('price-change').innerText = "-- %"; 
+    document.getElementById('price-update-time').innerText = "報價時間: 更新中...";
+    currentPrice = 0;
+    
     rebuildEnvironment(); 
     
     const success = await fetchRealMarketData(false, true); 
@@ -1824,7 +1910,7 @@ window.addCustomStock = function() {
     document.getElementById('custom-symbol').value = ''; 
     document.getElementById('custom-name').value = ''; 
     document.getElementById('custom-sector-name').value = '';
-    window.showMsg(`編列成功：已歸入【${SECTORS[targetSectorId].name}】`); 
+    window.showMsg(`編列成功 至 ${SECTORS[targetSectorId].name}`); 
     renderCustomList(); 
     syncToCloud();
 };
